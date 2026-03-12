@@ -99,14 +99,17 @@ public class FacturacionController {
         return "redirect:/web/admin/facturacion";
     }
 
-    @PostMapping("/cancelar")
-    public String cancelar(@RequestParam("facturaId") Long facturaId,
+    @PostMapping("/eliminar")
+    public String eliminar(@RequestParam("facturaId") Long facturaId,
                            RedirectAttributes ra) {
         try {
-            FacturaSaaS f = facturaSaaSService.cancelar(facturaId);
-            auditoriaService.registrarAccion("PUT", "Factura cancelada",
-                    "ID " + facturaId + " | Empresa: " + f.getEmpresa().getNombre());
-            ra.addFlashAttribute("mensaje", "Factura cancelada.");
+            FacturaSaaS f = facturaSaaSService.obtenerPorIdConEmpresaYPlan(facturaId);
+            facturaSaaSService.eliminar(facturaId);
+            auditoriaService.registrarEliminacion("factura_saas",
+                    "Empresa: " + (f.getEmpresa() != null ? f.getEmpresa().getNombre() : ""),
+                    "Periodo " + f.getPeriodoDesde() + " - " + f.getPeriodoHasta()
+                            + " | Monto: " + f.getMonto());
+            ra.addFlashAttribute("mensaje", "Factura eliminada permanentemente.");
         } catch (IllegalArgumentException ex) {
             ra.addFlashAttribute("error", ex.getMessage());
         }

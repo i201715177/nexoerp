@@ -154,6 +154,18 @@ public class FacturaSaaSService {
         return repository.save(f);
     }
 
+    /**
+     * Elimina físicamente una factura SaaS de la base de datos.
+     * Se recomienda usar solo para facturas de prueba o que aún no han sido pagadas.
+     */
+    public void eliminar(Long facturaId) {
+        FacturaSaaS f = obtenerPorId(facturaId);
+        if (f.getEstado() == EstadoFactura.PAGADA) {
+            throw new IllegalArgumentException("No se puede eliminar una factura que ya está pagada.");
+        }
+        repository.deleteById(facturaId);
+    }
+
     /** Cuenta facturas PENDIENTE con fecha vencimiento ya pasada. */
     public long countPendientesVencidas() {
         return repository.findByEstadoAndFechaVencimientoBefore(EstadoFactura.PENDIENTE, LocalDate.now()).size();

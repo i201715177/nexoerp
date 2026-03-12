@@ -12,6 +12,7 @@ import com.farmacia.sistema.domain.usuario.Usuario;
 import com.farmacia.sistema.domain.usuario.UsuarioService;
 import com.farmacia.sistema.dto.EmpresaUsoDto;
 import com.farmacia.sistema.tenant.TenantContext;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -133,11 +134,17 @@ public class SaasAdminController {
     @PostMapping("/eliminar")
     public String eliminarEmpresa(@RequestParam("empresaId") Long empresaId,
                                   RedirectAttributes ra) {
-        Empresa e = empresaService.obtenerPorId(empresaId);
-        auditoriaService.registrarEliminacion("empresa",
-                e.getNombre(), "Código: " + e.getCodigo());
-        empresaService.eliminar(empresaId);
-        ra.addFlashAttribute("mensaje", "Empresa '" + e.getNombre() + "' eliminada.");
+        try {
+            Empresa e = empresaService.obtenerPorId(empresaId);
+            auditoriaService.registrarEliminacion("empresa",
+                    e.getNombre(), "Código: " + e.getCodigo());
+            empresaService.eliminar(empresaId);
+            ra.addFlashAttribute("mensaje", "Empresa '" + e.getNombre() + "' eliminada.");
+        } catch (DataIntegrityViolationException ex) {
+            ra.addFlashAttribute("error",
+                    "No se puede eliminar la empresa porque tiene datos relacionados (usuarios, sucursales, ventas, etc.). " +
+                            "Puede suspenderla cambiando su estado a inactiva.");
+        }
         return "redirect:/web/admin/empresas";
     }
 
