@@ -6,6 +6,7 @@ import com.farmacia.sistema.domain.empresa.PlanSuscripcion;
 import com.farmacia.sistema.domain.empresa.PlanSuscripcionService;
 import com.farmacia.sistema.domain.empresa.SaasAdminService;
 import com.farmacia.sistema.domain.empresa.TipoSuscripcion;
+import com.farmacia.sistema.domain.empresa.FacturaSaaSService;
 import com.farmacia.sistema.domain.sucursal.Sucursal;
 import com.farmacia.sistema.domain.sucursal.SucursalRepository;
 import com.farmacia.sistema.domain.usuario.Usuario;
@@ -33,6 +34,7 @@ public class SaasAdminController {
     private final SaasAdminService saasAdminService;
     private final UsuarioService usuarioService;
     private final PlanSuscripcionService planSuscripcionService;
+    private final FacturaSaaSService facturaSaaSService;
     private final SucursalRepository sucursalRepository;
     private final com.farmacia.sistema.domain.auditoria.AuditoriaService auditoriaService;
 
@@ -41,13 +43,15 @@ public class SaasAdminController {
                                UsuarioService usuarioService,
                                PlanSuscripcionService planSuscripcionService,
                                SucursalRepository sucursalRepository,
-                               com.farmacia.sistema.domain.auditoria.AuditoriaService auditoriaService) {
+                               com.farmacia.sistema.domain.auditoria.AuditoriaService auditoriaService,
+                               FacturaSaaSService facturaSaaSService) {
         this.empresaService = empresaService;
         this.saasAdminService = saasAdminService;
         this.usuarioService = usuarioService;
         this.planSuscripcionService = planSuscripcionService;
         this.sucursalRepository = sucursalRepository;
         this.auditoriaService = auditoriaService;
+        this.facturaSaaSService = facturaSaaSService;
     }
 
     @GetMapping
@@ -136,6 +140,8 @@ public class SaasAdminController {
                                   RedirectAttributes ra) {
         try {
             Empresa e = empresaService.obtenerPorId(empresaId);
+            // Primero eliminamos las facturas SaaS asociadas a esta empresa
+            facturaSaaSService.eliminarPorEmpresa(empresaId);
             auditoriaService.registrarEliminacion("empresa",
                     e.getNombre(), "Código: " + e.getCodigo());
             empresaService.eliminar(empresaId);

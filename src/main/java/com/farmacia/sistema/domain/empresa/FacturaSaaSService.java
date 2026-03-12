@@ -155,6 +155,17 @@ public class FacturaSaaSService {
     }
 
     /**
+     * Elimina todas las facturas asociadas a una empresa.
+     * Útil cuando se desea borrar la empresa completa desde Admin SaaS.
+     */
+    public void eliminarPorEmpresa(Long empresaId) {
+        List<FacturaSaaS> facturas = repository.findByEmpresaIdOrderByPeriodoDesdeDesc(empresaId);
+        if (!facturas.isEmpty()) {
+            repository.deleteAll(facturas);
+        }
+    }
+
+    /**
      * Elimina físicamente una factura SaaS de la base de datos.
      * Se recomienda usar solo para facturas de prueba o que aún no han sido pagadas.
      */
