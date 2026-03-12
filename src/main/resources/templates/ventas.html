@@ -1,0 +1,1172 @@
+<!DOCTYPE html>
+<html lang="es" xmlns:th="http://www.thymeleaf.org" xmlns:sec="http://www.thymeleaf.org/extras/spring-security">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Ventas - NexoERP</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+    <link rel="stylesheet" th:href="@{/css/app.css}">
+</head>
+<body>
+<div class="app-layout">
+    <!-- Sidebar -->
+    <aside class="sidebar" id="sidebar">
+        <div class="sidebar-header">
+            <span class="sidebar-brand"><i class="bi bi-diagram-3"></i> NexoERP</span>
+            <button class="sidebar-toggle d-lg-none" onclick="toggleSidebar()"><i class="bi bi-x-lg"></i></button>
+        </div>
+        <nav class="sidebar-nav">
+            <div class="sidebar-section-title">Operaciones</div>
+            <a class="sidebar-link" href="/web/productos"><i class="bi bi-box-seam"></i> Productos</a>
+            <a class="sidebar-link" href="/web/clientes"><i class="bi bi-people"></i> Clientes</a>
+            <a class="sidebar-link" href="/web/proveedores" sec:authorize="hasAnyRole('ADMIN','SAAS_ADMIN')"><i class="bi bi-truck"></i> Proveedores</a>
+            <a class="sidebar-link" href="/web/compras" sec:authorize="hasAnyRole('ADMIN','SAAS_ADMIN')"><i class="bi bi-cart-plus"></i> Compras</a>
+            <a class="sidebar-link active" href="/web/ventas"><i class="bi bi-receipt"></i> Ventas</a>
+            <a class="sidebar-link" href="/web/caja"><i class="bi bi-cash-stack"></i> Caja</a>
+            <a class="sidebar-link" href="/web/requerimientos"><i class="bi bi-box-arrow-in-down"></i> Requerimientos</a>
+            <div class="sidebar-section-title">Gesti&oacute;n</div>
+            <a class="sidebar-link" href="/web/finanzas" sec:authorize="hasAnyRole('ADMIN','SAAS_ADMIN')"><i class="bi bi-graph-up"></i> Finanzas</a>
+            <a class="sidebar-link" href="/web/inventario"><i class="bi bi-clipboard-data"></i> Inventario</a>
+            <a class="sidebar-link" href="/web/reportes"><i class="bi bi-file-earmark-bar-graph"></i> Reportes</a>
+            <a class="sidebar-link" href="/web/sucursales" sec:authorize="hasAnyRole('ADMIN','SAAS_ADMIN')"><i class="bi bi-building"></i> Sucursales</a>
+            <div class="sidebar-section-title">Sistema</div>
+            <a class="sidebar-link" href="/web/auditoria" sec:authorize="hasAnyRole('ADMIN','SAAS_ADMIN')"><i class="bi bi-shield-check"></i> Auditor&iacute;a</a>
+            <a class="sidebar-link" href="/web/admin/empresas" sec:authorize="hasRole('SAAS_ADMIN')"><i class="bi bi-gear"></i> Admin SaaS</a>
+        </nav>
+        <div class="sidebar-footer">
+            <div sec:authorize="hasRole('SAAS_ADMIN')">
+                <form th:if="${empresasTodas != null and !#lists.isEmpty(empresasTodas)}"
+                      th:action="@{/web/empresas/cambiar}" method="post" class="mb-2">
+                    <select name="tenantId" class="form-select form-select-sm"
+                            onchange="this.form.submit()" style="background:#243656; color:#c8d6e5; border-color:rgba(255,255,255,.12); font-size:12px;">
+                        <option th:each="e : ${empresasTodas}" th:value="${e.id}"
+                                th:selected="${empresaActual != null and e.id == empresaActual.id}"
+                                th:text="${e.nombre}">Empresa</option>
+                    </select>
+                    <input type="hidden" name="redirect" value="/web/ventas">
+                </form>
+            </div>
+        </div>
+    </aside>
+    <div id="sidebarBackdrop" class="sidebar-backdrop"></div>
+
+    <!-- Main -->
+    <div class="main-wrapper">
+        <header class="topbar">
+            <button class="btn-sidebar-toggle" onclick="toggleSidebar()"><i class="bi bi-list"></i></button>
+            <h1 class="topbar-title">Ventas</h1>
+            <div class="topbar-actions">
+                <button type="button" class="btn btn-outline-primary btn-sm" data-bs-toggle="modal" data-bs-target="#modalVentasRecientes" title="Ver listado de ventas recientes">
+                    <i class="bi bi-clock-history me-1"></i>Ventas recientes
+                </button>
+            </div>
+            <div class="topbar-user" th:if="${usuarioActual != null}">
+                <div class="topbar-user-avatar" th:text="${#strings.toUpperCase(#strings.substring(usuarioActual,0,1))}">A</div>
+                <div>
+                    <span class="topbar-user-name" th:text="${usuarioActual}">admin</span>
+                    <div class="topbar-user-empresa" th:text="${empresaActual != null ? empresaActual.nombre : ''}"></div>
+                    <div class="topbar-user-sucursal text-muted small" th:if="${sucursalNombreUsuario != null}" th:text="'Sucursal: ' + ${sucursalNombreUsuario}">Sucursal: Sur</div>
+                </div>
+                <form th:action="@{/logout}" method="post">
+                    <button type="submit" class="btn-logout-top"><i class="bi bi-box-arrow-left"></i> Salir</button>
+                </form>
+            </div>
+        </header>
+
+        <main class="main-content">
+            <!-- Mensajes flash -->
+            <div th:if="${mensaje}" class="alert alert-success py-2 small mb-2" th:text="${mensaje}">Mensaje</div>
+            <div th:if="${error}" class="alert alert-danger py-2 small mb-2" th:text="${error}">Error</div>
+            <!-- Offline / sync indicators -->
+            <div id="offlineIndicator" class="alert alert-secondary py-2 small mb-2" style="display:none;">
+                <i class="bi bi-wifi-off me-1"></i> Sin conexi&oacute;n &mdash; las ventas se guardar&aacute;n para sincronizar al reconectar.
+            </div>
+            <div id="pendientesBar" class="alert alert-info py-2 small mb-2" style="display:none;">
+                <i class="bi bi-arrow-repeat me-1"></i>
+                <span id="pendientesCount">0</span> venta(s) pendientes de sincronizar.
+                <button type="button" class="btn btn-sm btn-primary ms-2" id="btnSincronizar">Sincronizar</button>
+            </div>
+
+            <!-- KPIs -->
+            <div class="kpi-row">
+                <div class="kpi-card">
+                    <div class="kpi-icon blue"><i class="bi bi-receipt"></i></div>
+                    <div class="kpi-body">
+                        <div class="kpi-label">Total ventas</div>
+                        <div class="kpi-value" th:text="${#lists.size(ventas)}">0</div>
+                    </div>
+                </div>
+                <div class="kpi-card">
+                    <div class="kpi-icon green"><i class="bi bi-currency-dollar"></i></div>
+                    <div class="kpi-body">
+                        <div class="kpi-label">Monto total vendido</div>
+                        <div class="kpi-value" th:text="${'S/ ' + (montoTotalVentas != null ? montoTotalVentas : '0.00')}">S/ 0.00</div>
+                    </div>
+                </div>
+                <div class="kpi-card">
+                    <div class="kpi-icon yellow"><i class="bi bi-calendar-event"></i></div>
+                    <div class="kpi-body">
+                        <div class="kpi-label">Ventas hoy</div>
+                        <div class="kpi-value" th:text="${ventasHoyCount}">0</div>
+                        <div class="small text-muted">S/ <span th:text="${ventasHoyMonto != null ? ventasHoyMonto : '0.00'}">0.00</span></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Selected sale card -->
+            <div class="content-card mb-4" id="cardVentaSeleccionada" style="border-left:4px solid var(--secondary-400, #94a3b8);">
+                <div class="content-card-body">
+                    <div class="d-flex justify-content-between align-items-center flex-wrap gap-3">
+                        <div>
+                            <div class="text-muted small">Venta seleccionada</div>
+                            <div class="fs-5 fw-bold">
+                                ID <span id="vs-id">-</span> &middot;
+                                <span id="vs-cliente">Ninguna</span>
+                            </div>
+                            <div class="small text-muted">
+                                Fecha: <span id="vs-fecha">-</span> &middot;
+                                <span id="vs-tipo-wrap">Tipo: <span id="vs-tipo">-</span> &middot;</span>
+                                <span id="vs-doc-label">Comprobante:</span> <span id="vs-comprobante">-</span>
+                                <span id="vs-estado-wrap" style="display:none;"> &middot; <span id="vs-estado" class="badge bg-secondary">Anulada</span></span>
+                            </div>
+                            <div class="small text-muted" id="vs-pagos-wrap" style="display:none;">
+                                Pagos: <span id="vs-pagos">-</span>
+                            </div>
+                            <div class="mt-2" id="vs-productos-wrap" style="display:none;">
+                                <div class="small text-muted mb-1"><strong>Productos vendidos:</strong></div>
+                                <div id="vs-productos" class="small" style="max-width:400px; line-height:1.5;">—</div>
+                                <div id="vs-productos-devueltos" class="small text-secondary fst-italic mt-1" style="display:none;">
+                                    <i class="bi bi-arrow-return-left me-1"></i>Estos productos fueron devueltos al almac&eacute;n.
+                                </div>
+                            </div>
+                        </div>
+                        <div class="d-flex gap-4 align-items-center">
+                            <div class="text-center">
+                                <div class="text-muted small">&Iacute;tems</div>
+                                <div class="fs-5 fw-bold" id="vs-items">-</div>
+                            </div>
+                            <div class="text-center">
+                                <div class="text-muted small">Descuento</div>
+                                <div class="fs-5 fw-bold">S/ <span id="vs-descuento">0.00</span></div>
+                            </div>
+                            <div class="text-center">
+                                <div class="text-muted small">Total</div>
+                                <div class="fs-5 fw-bold">S/ <span id="vs-total">0.00</span></div>
+                            </div>
+                            <div th:if="${cajaAbierta != null}" class="d-flex gap-2 align-items-center">
+                                <a id="btn-comprobante" href="#" class="btn btn-sm btn-outline-primary" style="display:none;" target="_blank" title="Ver o imprimir">
+                                    <i class="bi bi-receipt me-1"></i><span id="btn-comprobante-text">Comprobante</span>
+                                </a>
+                                <a id="btn-nc" href="#" class="btn btn-sm btn-outline-warning" style="display:none;">
+                                    <i class="bi bi-file-earmark-minus me-1"></i>Emitir NC
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Formulario Nueva venta (POS) - pantalla completa, sin scroll -->
+            <div class="ventas-pos-wrapper">
+                <div class="content-card ventas-pos-card">
+                    <div class="content-card-header ventas-pos-header">
+                        <h3 class="mb-0"><i class="bi bi-cart-check me-2"></i>Nueva venta (POS)</h3>
+                    </div>
+                    <div class="content-card-body ventas-pos-body">
+                        <form id="formVenta" class="ventas-pos-form" th:action="@{/web/ventas}" th:object="${venta}" method="post">
+                            <input type="hidden" name="cajaTurnoId" id="cajaTurnoId" th:value="${cajaAbierta != null ? cajaAbierta.id : ''}">
+
+                            <div class="ventas-pos-grid">
+                                <!-- Columna izquierda: datos, producto, ítems -->
+                                <div class="ventas-pos-col-izq">
+                                    <!-- 1. Datos de la venta -->
+                                    <div class="ventas-form-section ventas-section-compact">
+                                        <div class="ventas-section-title"><i class="bi bi-receipt-cutoff me-1"></i>Datos</div>
+                                        <div class="row g-2 align-items-end">
+                                            <div class="col-2">
+                                                <label class="form-label">Comprobante</label>
+                                                <select name="tipoComprobante" id="tipoComprobante" class="form-select form-select-sm" th:field="*{tipoComprobante}" title="Boleta / Factura">
+                                                    <option value="BOL">Boleta</option>
+                                                    <option value="FAC">Factura</option>
+                                                </select>
+                                                <div class="form-text small" id="facturaRequisito" style="display:none;">RUC 11 d&iacute;gitos.</div>
+                                            </div>
+                                            <div class="col-4">
+                                                <label class="form-label">Cliente</label>
+                                                <select class="form-select form-select-sm" id="selectCliente" th:field="*{clienteId}" required onchange="onCambioCliente(this)">
+                                                    <option value="" disabled selected>Seleccione...</option>
+                                                    <option th:each="c : ${clientes}" th:value="${c.id}" th:attr="data-tipo-doc=${c.tipoDocumento},data-num-doc=${c.numeroDocumento}" th:text="${(c.nombres != null ? c.nombres : '') + ' ' + (c.apellidos != null ? c.apellidos : '') + ' (' + (c.tipoDocumento != null ? c.tipoDocumento : '') + ' ' + (c.numeroDocumento != null ? c.numeroDocumento : '') + ')'}"></option>
+                                                </select>
+                                            </div>
+                                            <div class="col">
+                                                <label class="form-label">Nombre en venta</label>
+                                                <input type="text" th:field="*{nombreClienteVenta}" class="form-control form-control-sm" placeholder="Texto libre">
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <!-- 2. Agregar producto -->
+                                    <div class="ventas-form-section ventas-section-compact">
+                                        <div class="ventas-section-title"><i class="bi bi-box-seam me-1"></i>Agregar producto</div>
+                                        <div class="row g-2 align-items-end">
+                                            <div class="col">
+                                                <label class="form-label">C&oacute;digo / escanear</label>
+                                                <input type="text" id="codigoBarras" class="form-control form-control-sm" placeholder="C&oacute;digo + Enter">
+                                            </div>
+                                            <div class="col-auto">
+                                                <button type="button" class="btn btn-sm btn-outline-primary ventas-btn-add" onclick="buscarYAgregarProducto()"><i class="bi bi-upc-scan me-1"></i>Agregar</button>
+                                            </div>
+                                            <div class="col">
+                                                <label class="form-label">Buscar</label>
+                                                <input type="text" id="filtroProducto" class="form-control form-control-sm ventas-filtro-producto" placeholder="Nombre producto...">
+                                            </div>
+                                            <div class="col-auto d-flex gap-1">
+                                                <button type="button" class="btn btn-sm btn-primary" id="btnFiltrarProducto" title="Filtrar"><i class="bi bi-search"></i></button>
+                                                <button type="button" class="btn btn-sm btn-outline-secondary" id="btnLimpiarFiltroProducto" title="Limpiar"><i class="bi bi-x-lg"></i></button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <!-- 3. Detalle ítems (scroll interno) -->
+                                    <div class="ventas-form-section ventas-section-items">
+                                        <div class="d-flex justify-content-between align-items-center mb-1">
+                                            <div class="ventas-section-title mb-0"><i class="bi bi-list-ul me-1"></i>Ítems</div>
+                                            <button type="button" class="btn btn-sm btn-outline-primary py-0" id="btnAgregarItem"><i class="bi bi-plus-lg me-1"></i>Agregar</button>
+                                        </div>
+                                        <div class="ventas-tabla-items-wrap">
+                                            <table class="data-table data-table-compact ventas-tabla-items">
+                                                <thead>
+                                                <tr>
+                                                    <th>Producto</th>
+                                                    <th class="ventas-col-cant">Cant.</th>
+                                                    <th class="ventas-col-precio">Precio</th>
+                                                    <th class="ventas-col-subtotal">Subtotal</th>
+                                                    <th class="ventas-col-accion"></th>
+                                                </tr>
+                                                </thead>
+                                                <tbody id="itemsBody">
+                                                <tr class="fila-item" th:each="item,idx : *{items}">
+                                                    <td>
+                                                        <select class="form-select form-select-sm select-producto" th:field="*{items[__${idx.index}__].productoId}" onchange="onProductoChange(this)" required>
+                                                            <option value="" disabled selected>Seleccione...</option>
+                                                            <option th:each="p : ${productos}" th:value="${p.id}" th:text="${p.nombre}" th:attr="data-precio=${p.precioVenta},data-nombre=${p.nombre},data-stock=${stockPorProducto != null ? (stockPorProducto.get(p.id) != null ? stockPorProducto.get(p.id) : 0) : p.stockActual}"></option>
+                                                        </select>
+                                                    </td>
+                                                    <td class="ventas-col-cant"><input type="number" min="1" class="form-control form-control-sm text-end" th:field="*{items[__${idx.index}__].cantidad}" onchange="recalcularTotales()"></td>
+                                                    <td class="ventas-col-precio"><input type="number" step="0.01" min="0" class="form-control form-control-sm text-end" th:field="*{items[__${idx.index}__].precioUnitario}" onchange="recalcularTotales()"></td>
+                                                    <td class="text-end align-middle ventas-col-subtotal"><span class="subtotal-item">0.00</span></td>
+                                                    <td class="ventas-col-accion"><button type="button" class="btn-action danger quitar-fila" title="Quitar"><i class="bi bi-dash-lg"></i></button></td>
+                                                </tr>
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                    </div>
+                                </div>
+                                <!-- Columna derecha: descuento, pagos, totales -->
+                                <div class="ventas-pos-col-der">
+                                    <div class="ventas-panel-der">
+                                        <!-- 4. Descuento -->
+                                        <div class="ventas-form-section ventas-section-compact">
+                                            <div class="ventas-section-title"><i class="bi bi-percent me-1"></i>Descuento</div>
+                                            <div class="row g-2 align-items-end">
+                                                <div class="col-6">
+                                                    <label class="form-label">S/</label>
+                                                    <input type="number" step="0.01" min="0" name="descuentoTotal" id="descuentoTotal" th:field="*{descuentoTotal}" class="form-control form-control-sm" placeholder="0" onchange="recalcularTotales()">
+                                                </div>
+                                                <div class="col-6">
+                                                    <label class="form-label">%</label>
+                                                    <input type="number" step="0.1" min="0" max="100" id="descuentoPorcentaje" class="form-control form-control-sm" placeholder="0" onchange="aplicarDescuentoPorcentaje()">
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <!-- 5. Pagos -->
+                                        <div class="ventas-form-section ventas-section-compact">
+                                            <div class="ventas-section-title"><i class="bi bi-wallet2 me-1"></i>Pagos</div>
+                                            <div class="ventas-tabla-pagos-wrap">
+                                                <table class="data-table data-table-compact ventas-tabla-pagos">
+                                                    <thead><tr><th>Medio</th><th>Monto</th><th></th></tr></thead>
+                                                    <tbody id="pagosBody">
+                                                    <tr class="fila-pago">
+                                                        <td>
+                                                            <select class="form-select form-select-sm medio-pago">
+                                                                <option value="EFECTIVO">Efectivo</option>
+                                                                <option value="TARJETA">Tarjeta</option>
+                                                                <option value="TRANSFERENCIA">Transferencia</option>
+                                                                <option value="YAPE">Yape</option>
+                                                                <option value="PLIN">Plin</option>
+                                                            </select>
+                                                        </td>
+                                                        <td><input type="number" step="0.01" min="0" class="form-control form-control-sm monto-pago"></td>
+                                                        <td class="text-end">
+                                                            <button type="button" class="btn-action" id="btnAgregarPago" title="Agregar"><i class="bi bi-plus-lg"></i></button>
+                                                            <button type="button" class="btn-action danger btnQuitarPago" title="Quitar"><i class="bi bi-dash-lg"></i></button>
+                                                        </td>
+                                                    </tr>
+                                                    </tbody>
+                                                </table>
+                                            </div>
+                                        </div>
+                                        <!-- 6. Totales y registrar -->
+                                        <div class="ventas-form-section ventas-totales-section">
+                                            <div class="ventas-totales-box">
+                                                <div class="ventas-total-row"><span>Subtotal</span><input type="text" id="subtotalVenta" class="form-control form-control-sm text-end border-0 bg-transparent" readonly value="0.00"></div>
+                                                <div class="ventas-total-row fw-bold"><span>Total</span><input type="text" id="totalVenta" class="form-control form-control-sm text-end border-0 bg-transparent fw-bold" readonly value="0.00"></div>
+                                                <div class="ventas-total-row"><span>Vuelto</span><input type="text" id="vuelto" class="form-control form-control-sm text-end border-0 bg-transparent" readonly value="0.00"></div>
+                                            </div>
+                                            <button type="submit" class="btn btn-success w-100 ventas-btn-registrar">
+                                                <i class="bi bi-check-lg me-2"></i>Registrar venta
+                                            </button>
+                                            <div class="alert alert-warning small mt-2 py-2" id="offlineAlert" style="display:none;"><i class="bi bi-wifi-off me-1"></i> Sin conexi&oacute;n.</div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+</div>
+
+<!-- Modal flotante: Ventas recientes -->
+<div class="modal fade" id="modalVentasRecientes" tabindex="-1" aria-labelledby="modalVentasRecientesLabel" aria-hidden="true" data-bs-backdrop="true" data-bs-keyboard="true">
+    <div class="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="modalVentasRecientesLabel"><i class="bi bi-clock-history me-2"></i>Ventas recientes</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+            </div>
+            <div class="modal-body p-0">
+                <div class="export-bar d-flex flex-wrap align-items-center gap-2 p-3 border-bottom">
+                    <a th:href="@{/web/ventas/excel}" id="btnExportExcel" class="btn-export btn-export-excel"><i class="bi bi-file-earmark-excel"></i> Excel</a>
+                    <a th:href="@{/web/ventas/pdf}" id="btnExportPdf" class="btn-export btn-export-pdf"><i class="bi bi-file-earmark-pdf"></i> PDF</a>
+                    <button type="button" class="btn-export btn btn-sm btn-outline-primary" id="btnVerComprobante" title="Ver factura o comprobante de la venta seleccionada">
+                        <i class="bi bi-receipt me-1"></i>Factura
+                    </button>
+                    <form id="formDevolucion" action="#" method="post" class="d-inline">
+                        <button type="button" class="btn-export btn btn-sm btn-outline-warning" id="btnDevolucion" title="Devolución total: productos al almacén y anular comprobante">
+                            <i class="bi bi-arrow-return-left me-1"></i>Devolución
+                        </button>
+                    </form>
+                    <span class="small text-muted ms-1">Seleccione una o más ventas con las casillas.</span>
+                </div>
+                <div class="table-responsive" style="max-height:70vh;">
+                    <table class="data-table">
+                        <thead>
+                        <tr>
+                            <th class="text-center" style="width:2.5rem;"><input type="checkbox" id="ventasSelectAll" title="Seleccionar todo" class="form-check-input"></th>
+                            <th>ID</th>
+                            <th>Fecha</th>
+                            <th>Tipo</th>
+                            <th>N&uacute;mero</th>
+                            <th>Cliente</th>
+                            <th>Comprobante</th>
+                            <th class="text-center">&Iacute;tems</th>
+                            <th class="ventas-col-productos">Productos vendidos</th>
+                            <th class="text-end">Total</th>
+                            <th>Estado</th>
+                        </tr>
+                        </thead>
+                        <tbody>
+                        <tr th:each="v : ${ventas}" style="cursor:pointer;" class="venta-row"
+                            th:attr="data-venta-id=${v.id},data-estado=${v.estado},data-cliente=${v.nombreClienteVenta},data-fecha=${#temporals.format(v.fechaHora, 'dd/MM/yyyy HH:mm')},data-items=${v.itemsCount},data-total=${v.total},data-comprobante=${v.comprobante},data-descuento=${v.descuentoTotal != null ? v.descuentoTotal : 0},data-pagos=${v.pagosResumen},data-items-detalle=${v.itemsDetalle},data-tipo=${v.tipoComprobante}">
+                            <td class="text-center" onclick="event.stopPropagation();"><input type="checkbox" class="form-check-input venta-check" th:value="${v.id}"></td>
+                            <td><span class="badge-tag" th:text="${v.id}">1</span></td>
+                            <td th:text="${#temporals.format(v.fechaHora, 'dd/MM/yyyy HH:mm')}">fecha</td>
+                            <td>
+                                <span th:if="${v.tipoComprobante == 'FAC'}" class="badge bg-primary">Factura</span>
+                                <span th:if="${v.tipoComprobante != 'FAC'}" class="badge bg-secondary">Boleta</span>
+                            </td>
+                            <td th:text="${v.numeroDocumentoCliente}">—</td>
+                            <td class="fw-700" th:text="${v.nombreClienteVenta}">cliente</td>
+                            <td th:text="${v.comprobante}">-</td>
+                            <td class="text-center" th:text="${v.itemsCount}">1</td>
+                            <td class="ventas-col-productos small" th:title="${v.itemsDetalle}">
+                                <span th:text="${v.itemsDetalleCorto}">—</span>
+                            </td>
+                            <td class="text-end" th:text="${'S/ ' + #numbers.formatDecimal(v.total, 1, 2)}">0.00</td>
+                            <td>
+                                <span th:if="${v.estado == 'ANULADA'}" class="badge bg-secondary">Anulada</span>
+                                <span th:if="${v.estado != 'ANULADA'}" class="badge bg-success">Emitida</span>
+                            </td>
+                        </tr>
+                        <tr th:if="${#lists.isEmpty(ventas)}">
+                            <td colspan="11">
+                                <div class="empty-state">
+                                    <i class="bi bi-inbox"></i>
+                                    <p>No hay ventas registradas.</p>
+                                </div>
+                            </td>
+                        </tr>
+                        <tr th:if="${cajaAbierta != null}" class="table-light">
+                            <td colspan="11" class="small text-muted">
+                                <i class="bi bi-cash-stack me-1"></i>Caja abierta: turno #<span th:text="${cajaAbierta.id}">0</span>. Las ventas se asocian a este turno.
+                            </td>
+                        </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+<script th:src="@{/js/app.js}"></script>
+<script>
+    function recalcularTotales() {
+        let total = 0.0;
+        const filas = document.querySelectorAll('#itemsBody tr');
+        filas.forEach(function (fila) {
+            const cantidadInput = fila.querySelector('input[name$=".cantidad"]');
+            const precioInput = fila.querySelector('input[name$=".precioUnitario"]');
+            const subtotalSpan = fila.querySelector('.subtotal-item');
+            const cantidad = parseFloat(cantidadInput && cantidadInput.value ? cantidadInput.value : 0);
+            const precio = parseFloat(precioInput && precioInput.value ? precioInput.value : 0);
+            const subtotal = cantidad * precio;
+            if (subtotalSpan) {
+                subtotalSpan.textContent = subtotal.toFixed(2);
+            }
+            total += subtotal;
+        });
+        const descuentoInput = document.getElementById('descuentoTotal') || document.querySelector('input[name="descuentoTotal"]');
+        const descuento = parseFloat(descuentoInput && descuentoInput.value ? descuentoInput.value : 0) || 0;
+        const totalConDescuento = Math.max(0, total - descuento);
+
+        const subtotalInput = document.getElementById('subtotalVenta');
+        if (subtotalInput) subtotalInput.value = total.toFixed(2);
+        const totalInput = document.getElementById('totalVenta');
+        if (totalInput) totalInput.value = totalConDescuento.toFixed(2);
+        const vueltoInput = document.getElementById('vuelto');
+        if (vueltoInput) {
+            let pagadoTotal = 0;
+            document.querySelectorAll('#pagosBody .monto-pago').forEach(function (inp) {
+                const val = parseFloat(inp.value ? inp.value : 0);
+                if (!isNaN(val)) pagadoTotal += val;
+            });
+            const vuelto = pagadoTotal - totalConDescuento;
+            vueltoInput.value = vuelto > 0 ? vuelto.toFixed(2) : '0.00';
+        }
+    }
+
+    function buscarYAgregarProducto() {
+        const codigoInput = document.getElementById('codigoBarras');
+        if (!codigoInput || !codigoInput.value) {
+            return;
+        }
+        const codigo = codigoInput.value;
+        fetch('/api/productos/codigo/' + encodeURIComponent(codigo))
+            .then(resp => {
+                if (!resp.ok) {
+                    throw new Error('Producto no encontrado');
+                }
+                return resp.json();
+            })
+            .then(producto => {
+                const filas = document.querySelectorAll('#itemsBody tr');
+                if (filas.length > 0) {
+                    const ultima = filas[filas.length - 1];
+                    const select = ultima.querySelector('select[name$=".productoId"]');
+                    const cantidadInput = ultima.querySelector('input[name$=".cantidad"]');
+                    const precioInput = ultima.querySelector('input[name$=".precioUnitario"]');
+                    if (select && cantidadInput && precioInput) {
+                        select.value = producto.id;
+                        if (!cantidadInput.value) {
+                            cantidadInput.value = 1;
+                        }
+                        if (!precioInput.value) {
+                            precioInput.value = producto.precioVenta;
+                        }
+                    }
+                }
+                recalcularTotales();
+                codigoInput.value = '';
+            })
+            .catch(() => {
+                nexoS.toast({ type: 'warning', message: 'Producto no encontrado para el código ingresado.' });
+            });
+    }
+
+    function onProductoChange(selectElement) {
+        if (!selectElement) {
+            return;
+        }
+        const selectedOption = selectElement.options[selectElement.selectedIndex];
+        if (!selectedOption) {
+            return;
+        }
+        const precio = selectedOption.getAttribute('data-precio');
+        if (!precio) {
+            return;
+        }
+        const fila = selectElement.closest('tr');
+        if (!fila) {
+            return;
+        }
+        const precioInput = fila.querySelector('input[name$=".precioUnitario"]');
+        if (precioInput) {
+            const valor = parseFloat(precio);
+            if (!isNaN(valor)) {
+                precioInput.value = valor.toFixed(2);
+            }
+        }
+        const cantidadInput = fila.querySelector('input[name$=".cantidad"]');
+        if (cantidadInput && !cantidadInput.value) {
+            cantidadInput.value = 1;
+        }
+        recalcularTotales();
+    }
+
+    function onCambioCliente(selectElement) {
+        if (!selectElement) {
+            return;
+        }
+        const selectedOption = selectElement.options[selectElement.selectedIndex];
+        if (!selectedOption) {
+            return;
+        }
+        const nombre = selectedOption.text;
+        const inputTexto = document.querySelector('input[name="nombreClienteVenta"]');
+        if (inputTexto && (!inputTexto.value || inputTexto.value.trim().length === 0)) {
+            inputTexto.value = nombre;
+        }
+    }
+
+    function aplicarDescuentoPorcentaje() {
+        const pct = document.getElementById('descuentoPorcentaje');
+        const subtotalEl = document.getElementById('subtotalVenta');
+        const descuentoTotalEl = document.getElementById('descuentoTotal');
+        if (!pct || !subtotalEl || !descuentoTotalEl) return;
+        const subtotal = parseFloat(subtotalEl.value) || 0;
+        const porcentaje = parseFloat(pct.value) || 0;
+        if (porcentaje > 0 && subtotal > 0) {
+            descuentoTotalEl.value = (subtotal * porcentaje / 100).toFixed(2);
+        }
+        recalcularTotales();
+    }
+
+    function agregarFilaItem() {
+        const tbody = document.getElementById('itemsBody');
+        const filas = tbody.querySelectorAll('tr');
+        if (filas.length === 0) return;
+        const ultima = filas[filas.length - 1];
+        const nueva = ultima.cloneNode(true);
+        const idx = filas.length;
+        nueva.querySelectorAll('[name]').forEach(function (el) {
+            const n = el.getAttribute('name');
+            if (n && n.indexOf('items[') === 0 && n.indexOf('].') > 0) {
+                const suf = n.substring(n.indexOf('].') + 1);
+                el.setAttribute('name', 'items[' + idx + '].' + suf);
+            }
+        });
+        var sel = nueva.querySelector('select.select-producto') || nueva.querySelector('select');
+        if (sel) sel.value = '';
+        nueva.querySelectorAll('input').forEach(function (inp) {
+            if (inp.type === 'number') inp.value = '';
+        });
+        nueva.querySelector('.subtotal-item').textContent = '0.00';
+        tbody.appendChild(nueva);
+        nueva.querySelector('.quitar-fila').addEventListener('click', function () { quitarFila(nueva); });
+        recalcularTotales();
+    }
+
+    function quitarFila(fila) {
+        const tbody = document.getElementById('itemsBody');
+        if (tbody.querySelectorAll('tr').length <= 1) return;
+        fila.remove();
+        recalcularTotales();
+    }
+
+    const STORAGE_VENTAS_OFFLINE = 'ventasOffline';
+
+    function getVentasPendientes() {
+        try {
+            const raw = localStorage.getItem(STORAGE_VENTAS_OFFLINE);
+            return raw ? JSON.parse(raw) : [];
+        } catch (e) {
+            return [];
+        }
+    }
+
+    function setVentasPendientes(arr) {
+        localStorage.setItem(STORAGE_VENTAS_OFFLINE, JSON.stringify(arr));
+        actualizarBarraPendientes();
+    }
+
+    function actualizarBarraPendientes() {
+        const pendientes = getVentasPendientes();
+        const bar = document.getElementById('pendientesBar');
+        const countEl = document.getElementById('pendientesCount');
+        if (bar && countEl) {
+            if (pendientes.length > 0) {
+                bar.style.display = 'block';
+                countEl.textContent = pendientes.length;
+            } else {
+                bar.style.display = 'none';
+            }
+        }
+    }
+
+    function buildVentaPayload() {
+        const clienteId = document.querySelector('select[name="clienteId"]');
+        const nombreClienteVenta = document.querySelector('input[name="nombreClienteVenta"]');
+        const descuentoTotal = document.querySelector('input[name="descuentoTotal"]');
+        const cajaTurnoIdEl = document.getElementById('cajaTurnoId');
+
+        const items = [];
+        document.querySelectorAll('#itemsBody tr').forEach(function (tr) {
+            const productoId = tr.querySelector('select[name$=".productoId"]');
+            const cantidad = tr.querySelector('input[name$=".cantidad"]');
+            const precioUnitario = tr.querySelector('input[name$=".precioUnitario"]');
+            const descuento = tr.querySelector('input[name$=".descuento"]');
+            if (productoId && productoId.value && cantidad && cantidad.value && parseInt(cantidad.value, 10) >= 1) {
+                items.push({
+                    productoId: parseInt(productoId.value, 10),
+                    cantidad: parseInt(cantidad.value, 10),
+                    precioUnitario: parseFloat(precioUnitario && precioUnitario.value ? precioUnitario.value : 0) || 0,
+                    descuento: descuento && descuento.value ? parseFloat(descuento.value) : 0
+                });
+            }
+        });
+
+        if (items.length === 0) return null;
+
+        const tipoComprobanteEl = document.getElementById('tipoComprobante');
+        const tipoComprobante = (tipoComprobanteEl && tipoComprobanteEl.value) ? tipoComprobanteEl.value : 'BOL';
+
+        const totalVenta = parseFloat(document.getElementById('totalVenta').value) || 0;
+        const payload = {
+            clienteId: clienteId && clienteId.value ? parseInt(clienteId.value, 10) : null,
+            nombreClienteVenta: nombreClienteVenta && nombreClienteVenta.value ? nombreClienteVenta.value : '',
+            tipoComprobante: tipoComprobante,
+            items: items,
+            descuentoTotal: descuentoTotal && descuentoTotal.value ? parseFloat(descuentoTotal.value) : 0,
+            pagos: []
+        };
+
+        const filasPago = document.querySelectorAll('#pagosBody tr.fila-pago');
+        filasPago.forEach(function (tr) {
+            const medio = tr.querySelector('.medio-pago');
+            const montoInput = tr.querySelector('.monto-pago');
+            if (!medio) return;
+            var montoVal = montoInput && montoInput.value !== '' ? parseFloat(montoInput.value) : NaN;
+            if (isNaN(montoVal) || montoVal <= 0) {
+                if (filasPago.length === 1 && totalVenta > 0) {
+                    montoVal = totalVenta;
+                } else {
+                    return;
+                }
+            }
+            var medioVal = (medio.value && medio.value.trim()) ? medio.value.trim() : 'EFECTIVO';
+            payload.pagos.push({
+                medioPago: medioVal,
+                monto: montoVal
+            });
+        });
+
+        if (cajaTurnoIdEl && cajaTurnoIdEl.value) {
+            payload.cajaTurnoId = parseInt(cajaTurnoIdEl.value, 10);
+        }
+        return payload;
+    }
+
+    document.getElementById('formVenta').addEventListener('submit', function (e) {
+        e.preventDefault();
+        var self = this;
+        nexoS.confirm('¿Registrar venta?').then(function (ok) {
+            if (!ok) return;
+
+            var payload = buildVentaPayload();
+            if (!payload || !payload.clienteId) {
+                nexoS.toast({ type: 'warning', message: 'Seleccione cliente y al menos un ítem.' });
+                return;
+            }
+            if (!payload.pagos || payload.pagos.length === 0) {
+                nexoS.toast({ type: 'warning', message: 'Indique al menos un medio de pago y el monto en la tabla.' });
+                return;
+            }
+            var totalVenta = parseFloat(document.getElementById('totalVenta').value) || 0;
+            var sumaPagos = payload.pagos.reduce(function (s, p) { return s + (p.monto || 0); }, 0);
+            if (sumaPagos <= 0) {
+                nexoS.toast({ type: 'warning', message: 'Indique al menos un pago con monto mayor a cero.' });
+                return;
+            }
+            // Se permite pago parcial: si sumaPagos < total, el saldo queda como cuenta por cobrar (crédito).
+            if (sumaPagos < totalVenta - 0.01) {
+                nexoS.toast({ type: 'info', message: 'Saldo pendiente S/ ' + (totalVenta - sumaPagos).toFixed(2) + ' quedará como cuenta por cobrar.', duration: 3000 });
+            }
+
+            fetch('/api/ventas', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            })
+                .then(function (resp) {
+                    if (resp.ok) {
+                        nexoS.toast({ type: 'success', message: 'Venta registrada correctamente.', duration: 2000 });
+                        setTimeout(function () { window.location.href = '/web/ventas'; }, 800);
+                        return;
+                    }
+                    return resp.json().then(function (body) {
+                        var msg = (body && body.error) ? body.error : ('Error ' + resp.status);
+                        nexoS.toast({ type: 'error', message: msg });
+                        throw new Error(msg);
+                    }).catch(function (e) {
+                        if (e.message && e.message.startsWith('Error')) throw e;
+                        nexoS.toast({ type: 'error', message: 'Error al registrar la venta. Verifique los datos.' });
+                        throw e;
+                    });
+                })
+                .catch(function (err) {
+                    if (err.message && !err.message.includes('Failed to fetch') && typeof err.message === 'string') return;
+                    var pendientes = getVentasPendientes();
+                    pendientes.push(payload);
+                    setVentasPendientes(pendientes);
+                    document.getElementById('offlineAlert').style.display = 'block';
+                    nexoS.toast({ type: 'info', message: 'Venta guardada para enviar cuando haya conexión.' });
+                });
+        });
+    });
+
+    document.getElementById('codigoBarras').addEventListener('keydown', function (e) {
+        if (e.key === 'Enter') {
+            e.preventDefault();
+            buscarYAgregarProducto();
+        }
+    });
+
+    // Filtro de búsqueda rápida: filtra las opciones de los combos de producto
+    function aplicarFiltroProducto() {
+        const inputFiltro = document.getElementById('filtroProducto');
+        const filtro = (inputFiltro && inputFiltro.value ? inputFiltro.value : '').trim().toLowerCase();
+        var primerSelect = null;
+        document.querySelectorAll('#itemsBody .select-producto').forEach(function (select) {
+            if (!primerSelect) primerSelect = select;
+            const options = select.querySelectorAll('option');
+            options.forEach(function (opt) {
+                if (!opt.value || opt.value === '') {
+                    opt.style.display = '';
+                    return;
+                }
+                var texto = (opt.getAttribute('data-nombre') || opt.textContent || opt.innerText || '').trim();
+                if (!texto) {
+                    opt.style.display = '';
+                    return;
+                }
+                opt.style.display = texto.toLowerCase().indexOf(filtro) >= 0 ? '' : 'none';
+            });
+            var selected = select.options[select.selectedIndex];
+            if (selected && selected.style.display === 'none') {
+                select.value = '';
+            }
+        });
+
+        // Si hay filtro activo: 1 resultado = seleccionar en el combo; varios = desplegar combo para elegir
+        if (!primerSelect || !filtro) return;
+        var opcionesVisibles = [];
+        var opts = primerSelect.querySelectorAll('option');
+        for (var i = 0; i < opts.length; i++) {
+            if (opts[i].value && opts[i].style.display !== 'none') opcionesVisibles.push(opts[i]);
+        }
+        if (opcionesVisibles.length === 1) {
+            primerSelect.value = opcionesVisibles[0].value;
+            onProductoChange(primerSelect);
+            var fila = primerSelect.closest('tr');
+            var cantidadInput = fila ? fila.querySelector('input[name$=".cantidad"]') : null;
+            if (cantidadInput) {
+                cantidadInput.focus();
+                cantidadInput.select();
+            }
+        } else if (opcionesVisibles.length > 1) {
+            primerSelect.focus();
+            try {
+                primerSelect.click();
+            } catch (e) {}
+        } else if (opcionesVisibles.length === 0 && filtro.length > 0 && typeof nexoS !== 'undefined' && nexoS.toast) {
+            nexoS.toast({ type: 'info', message: 'No hay productos que coincidan con "' + filtro + '".' });
+        }
+    }
+
+    function limpiarFiltroProducto() {
+        var inputFiltro = document.getElementById('filtroProducto');
+        if (inputFiltro) {
+            inputFiltro.value = '';
+            aplicarFiltroProducto();
+        }
+    }
+
+    document.getElementById('filtroProducto').addEventListener('input', aplicarFiltroProducto);
+    document.getElementById('filtroProducto').addEventListener('keydown', function (e) {
+        if (e.key === 'Enter') {
+            e.preventDefault();
+            aplicarFiltroProducto();
+        }
+        if (e.key === 'Escape') {
+            limpiarFiltroProducto();
+            this.blur();
+        }
+    });
+    document.getElementById('btnFiltrarProducto').addEventListener('click', aplicarFiltroProducto);
+    document.getElementById('btnLimpiarFiltroProducto').addEventListener('click', limpiarFiltroProducto);
+
+    document.getElementById('btnAgregarItem').addEventListener('click', function () {
+        agregarFilaItem();
+        aplicarFiltroProducto();
+    });
+    document.querySelectorAll('.quitar-fila').forEach(function (btn) {
+        btn.addEventListener('click', function () { quitarFila(btn.closest('tr')); });
+    });
+
+    function agregarFilaPago() {
+        const tbody = document.getElementById('pagosBody');
+        const filas = tbody.querySelectorAll('tr.fila-pago');
+        const ultima = filas[filas.length - 1];
+        const nueva = ultima.cloneNode(true);
+        nueva.querySelector('.monto-pago').value = '';
+        tbody.appendChild(nueva);
+        inicializarBotonesPago(nueva);
+    }
+
+    function quitarFilaPago(btn) {
+        const fila = btn.closest('tr');
+        const tbody = document.getElementById('pagosBody');
+        const filas = tbody.querySelectorAll('tr.fila-pago');
+        if (filas.length <= 1) {
+            fila.querySelector('.monto-pago').value = '';
+            return;
+        }
+        fila.remove();
+        recalcularTotales();
+    }
+
+    function inicializarBotonesPago(scope) {
+        const root = scope || document;
+        const btnAgregar = root.querySelector('#btnAgregarPago');
+        if (btnAgregar && !btnAgregar._bound) {
+            btnAgregar.addEventListener('click', agregarFilaPago);
+            btnAgregar._bound = true;
+        }
+        root.querySelectorAll('.btnQuitarPago').forEach(function (btn) {
+            if (!btn._bound) {
+                btn.addEventListener('click', function () { quitarFilaPago(btn); });
+                btn._bound = true;
+            }
+        });
+        root.querySelectorAll('.monto-pago').forEach(function (inp) {
+            if (!inp._bound) {
+                inp.addEventListener('change', recalcularTotales);
+                inp._bound = true;
+            }
+        });
+    }
+
+    function actualizarIndicadorOffline() {
+        const el = document.getElementById('offlineIndicator');
+        if (el) el.style.display = navigator.onLine ? 'none' : 'block';
+    }
+    actualizarIndicadorOffline();
+    inicializarBotonesPago();
+    window.addEventListener('online', actualizarIndicadorOffline);
+    window.addEventListener('offline', actualizarIndicadorOffline);
+
+    document.getElementById('btnSincronizar').addEventListener('click', function () {
+        const pendientes = getVentasPendientes();
+        if (pendientes.length === 0) {
+            actualizarBarraPendientes();
+            return;
+        }
+        const restantes = [];
+        let procesadas = 0;
+        const btn = this;
+        btn.disabled = true;
+
+        function siguiente(i) {
+            if (i >= pendientes.length) {
+                setVentasPendientes(restantes);
+                btn.disabled = false;
+                if (restantes.length === 0) {
+                    window.location.reload();
+                } else {
+                    nexoS.toast({ type: 'info', message: 'Sincronizadas ' + procesadas + '. ' + restantes.length + ' no se pudieron enviar.' });
+                }
+                return;
+            }
+            const p = pendientes[i];
+            fetch('/api/ventas', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(p)
+            })
+                .then(function (resp) {
+                    if (resp.ok) {
+                        procesadas++;
+                    } else {
+                        restantes.push(p);
+                    }
+                    siguiente(i + 1);
+                })
+                .catch(function () {
+                    restantes.push(p);
+                    siguiente(i + 1);
+                });
+        }
+        siguiente(0);
+    });
+
+    function actualizarAvisoFactura() {
+        const tipoSelect = document.getElementById('tipoComprobante');
+        const aviso = document.getElementById('facturaRequisito');
+        if (tipoSelect && aviso) aviso.style.display = (tipoSelect.value === 'FAC') ? 'block' : 'none';
+    }
+    function validarFacturaAntesEnviar() {
+        const tipoSelect = document.getElementById('tipoComprobante');
+        if (!tipoSelect || tipoSelect.value !== 'FAC') return true;
+        const selectCliente = document.getElementById('selectCliente');
+        if (!selectCliente || !selectCliente.selectedIndex || selectCliente.selectedIndex <= 0) return true;
+        const opt = selectCliente.options[selectCliente.selectedIndex];
+        const tipoDoc = (opt && opt.getAttribute('data-tipo-doc')) ? opt.getAttribute('data-tipo-doc').toUpperCase() : '';
+        if (tipoDoc !== 'RUC') {
+            alert('Para emitir una Factura el cliente debe tener RUC (11 d\u00edgitos). Seleccione un cliente con RUC o reg\u00edstrelo en Clientes.');
+            if (selectCliente) selectCliente.focus();
+            return false;
+        }
+        return true;
+    }
+
+    function getVentasSeleccionadosIds() {
+        const checks = document.querySelectorAll('.venta-check:checked');
+        const ids = [];
+        checks.forEach(function (c) { if (c.value) ids.push(parseInt(c.value, 10)); });
+        return ids;
+    }
+
+    document.addEventListener('DOMContentLoaded', function () {
+        const tipoComprobanteEl = document.getElementById('tipoComprobante');
+        if (tipoComprobanteEl) {
+            tipoComprobanteEl.addEventListener('change', actualizarAvisoFactura);
+            actualizarAvisoFactura();
+        }
+        const formVenta = document.getElementById('formVenta');
+        if (formVenta) {
+            formVenta.addEventListener('submit', function (e) {
+                if (!validarFacturaAntesEnviar()) e.preventDefault();
+            });
+        }
+        actualizarBarraPendientes();
+
+        var selectAll = document.getElementById('ventasSelectAll');
+        if (selectAll) {
+            selectAll.addEventListener('click', function () {
+                document.querySelectorAll('.venta-check').forEach(function (c) { c.checked = selectAll.checked; });
+            });
+        }
+        var btnExcel = document.getElementById('btnExportExcel');
+        if (btnExcel) {
+            btnExcel.addEventListener('click', function (e) {
+                var ids = getVentasSeleccionadosIds();
+                var url = btnExcel.getAttribute('href') || '/web/ventas/excel';
+                if (ids.length > 0) url += (url.indexOf('?') >= 0 ? '&' : '?') + 'ids=' + ids.join(',');
+                window.location.href = url;
+                e.preventDefault();
+            });
+        }
+        var btnPdf = document.getElementById('btnExportPdf');
+        if (btnPdf) {
+            btnPdf.addEventListener('click', function (e) {
+                var ids = getVentasSeleccionadosIds();
+                var url = btnPdf.getAttribute('href') || '/web/ventas/pdf';
+                if (ids.length > 0) url += (url.indexOf('?') >= 0 ? '&' : '?') + 'ids=' + ids.join(',');
+                window.location.href = url;
+                e.preventDefault();
+            });
+        }
+        var btnVerComprobante = document.getElementById('btnVerComprobante');
+        if (btnVerComprobante) {
+            btnVerComprobante.addEventListener('click', function (e) {
+                var ids = getVentasSeleccionadosIds();
+                if (ids.length !== 1) {
+                    alert(ids.length === 0 ? 'Seleccione una venta para ver la factura o comprobante.' : 'Seleccione solo una venta para ver el comprobante.');
+                    return;
+                }
+                window.open('/web/ventas/' + ids[0] + '/comprobante', '_blank');
+            });
+        }
+        var formDevolucion = document.getElementById('formDevolucion');
+        var btnDevolucion = document.getElementById('btnDevolucion');
+        if (formDevolucion && btnDevolucion) {
+            btnDevolucion.addEventListener('click', function () {
+                var ids = getVentasSeleccionadosIds();
+                if (ids.length !== 1) {
+                    alert(ids.length === 0 ? 'Seleccione una venta para realizar la devoluci\u00f3n.' : 'Seleccione solo una venta para devoluci\u00f3n.');
+                    return;
+                }
+                var tr = document.querySelector('tr.venta-row[data-venta-id="' + ids[0] + '"]');
+                var estado = tr ? tr.getAttribute('data-estado') : '';
+                if (estado === 'ANULADA') {
+                    alert('Esta venta ya est\u00e1 anulada.');
+                    return;
+                }
+                if (!confirm('¿Devolución total? Los productos volverán al almacén y la boleta/factura quedará anulada.')) return;
+                formDevolucion.action = '/web/ventas/' + ids[0] + '/devolucion';
+                formDevolucion.submit();
+            });
+        }
+
+        function actualizarCardVentaSeleccionada(fila) {
+            if (!fila || !fila.getAttribute('data-venta-id')) return;
+            const id = fila.getAttribute('data-venta-id') || '-';
+            const cliente = fila.getAttribute('data-cliente') || 'Sin cliente';
+            const fecha = fila.getAttribute('data-fecha') || '-';
+            const items = fila.getAttribute('data-items') || '-';
+            const total = fila.getAttribute('data-total') || '0.00';
+            const comprobante = fila.getAttribute('data-comprobante') || '-';
+            const tipo = fila.getAttribute('data-tipo') || 'BOL';
+            const descuento = fila.getAttribute('data-descuento') || '0.00';
+            const pagos = fila.getAttribute('data-pagos') || '-';
+            const estado = fila.getAttribute('data-estado') || 'EMITIDA';
+            const itemsDetalle = fila.getAttribute('data-items-detalle') || '—';
+
+            const idEl = document.getElementById('vs-id');
+            const clienteEl = document.getElementById('vs-cliente');
+            const fechaEl = document.getElementById('vs-fecha');
+            const itemsEl = document.getElementById('vs-items');
+            const totalEl = document.getElementById('vs-total');
+            const card = document.getElementById('cardVentaSeleccionada');
+            if (idEl) idEl.textContent = id;
+            if (clienteEl) clienteEl.textContent = cliente;
+            if (fechaEl) fechaEl.textContent = fecha;
+            if (itemsEl) itemsEl.textContent = items;
+            if (totalEl) totalEl.textContent = total;
+            const comprobanteEl = document.getElementById('vs-comprobante');
+            if (comprobanteEl) comprobanteEl.textContent = comprobante;
+            const tipoEl = document.getElementById('vs-tipo');
+            if (tipoEl) tipoEl.textContent = tipo === 'FAC' ? 'Factura' : 'Boleta';
+            const docLabel = document.getElementById('vs-doc-label');
+            if (docLabel) docLabel.textContent = tipo === 'FAC' ? 'Factura:' : 'Comprobante:';
+            const btnComprobanteText = document.getElementById('btn-comprobante-text');
+            if (btnComprobanteText) btnComprobanteText.textContent = tipo === 'FAC' ? 'Factura' : 'Comprobante';
+            const descuentoEl = document.getElementById('vs-descuento');
+            if (descuentoEl) descuentoEl.textContent = descuento;
+            const pagosEl = document.getElementById('vs-pagos');
+            const pagosWrap = document.getElementById('vs-pagos-wrap');
+            if (pagosEl) pagosEl.textContent = pagos;
+            if (pagosWrap) pagosWrap.style.display = pagos !== '-' ? 'block' : 'none';
+            const estadoWrap = document.getElementById('vs-estado-wrap');
+            const estadoEl = document.getElementById('vs-estado');
+            if (estadoWrap && estadoEl) {
+                if (estado === 'ANULADA') {
+                    estadoWrap.style.display = 'inline';
+                    estadoEl.textContent = 'Anulada';
+                    estadoEl.className = 'badge bg-secondary';
+                } else {
+                    estadoWrap.style.display = 'none';
+                }
+            }
+            const btnComprobante = document.getElementById('btn-comprobante');
+            if (btnComprobante) {
+                btnComprobante.style.display = 'inline-block';
+                btnComprobante.href = '/web/ventas/' + id + '/comprobante';
+                btnComprobante.title = tipo === 'FAC' ? 'Ver o imprimir factura' : 'Ver o imprimir comprobante';
+            }
+            const btnNc = document.getElementById('btn-nc');
+            if (btnNc) {
+                if (estado === 'ANULADA') {
+                    btnNc.style.display = 'none';
+                } else {
+                    btnNc.style.display = 'inline-block';
+                    btnNc.href = '/web/ventas/' + id + '/nota-credito';
+                }
+            }
+            const productosWrap = document.getElementById('vs-productos-wrap');
+            const productosEl = document.getElementById('vs-productos');
+            const productosDevueltosEl = document.getElementById('vs-productos-devueltos');
+            if (productosWrap && productosEl) {
+                productosWrap.style.display = 'block';
+                productosEl.textContent = itemsDetalle;
+            }
+            if (productosDevueltosEl) {
+                productosDevueltosEl.style.display = estado === 'ANULADA' ? 'block' : 'none';
+            }
+            if (card) card.style.borderLeftColor = 'var(--primary, #3b82f6)';
+
+            const todasFilas = document.querySelectorAll('tr[data-venta-id]');
+            todasFilas.forEach(function (f) { f.classList.remove('table-active'); });
+            fila.classList.add('table-active');
+        }
+
+        const filas = document.querySelectorAll('tr[data-venta-id]');
+        filas.forEach(function (fila) {
+            fila.addEventListener('click', function (e) {
+                if (e.target.closest('.venta-check')) return;
+                actualizarCardVentaSeleccionada(this);
+            });
+        });
+
+        document.querySelectorAll('.venta-check').forEach(function (cb) {
+            cb.addEventListener('change', function () {
+                var row = this.closest('tr');
+                if (this.checked && row) {
+                    actualizarCardVentaSeleccionada(row);
+                }
+            });
+        });
+        var ventasSelectAll = document.getElementById('ventasSelectAll');
+        if (ventasSelectAll) {
+            ventasSelectAll.addEventListener('change', function () {
+                var checks = document.querySelectorAll('.venta-check');
+                checks.forEach(function (c) { c.checked = ventasSelectAll.checked; });
+                if (ventasSelectAll.checked && checks.length > 0) {
+                    var firstRow = checks[0].closest('tr');
+                    if (firstRow) actualizarCardVentaSeleccionada(firstRow);
+                }
+            });
+        }
+
+        (function initModalDraggable() {
+            var modalEl = document.getElementById('modalVentasRecientes');
+            if (!modalEl) return;
+            var dialog = modalEl.querySelector('.modal-dialog');
+            var header = modalEl.querySelector('.modal-header');
+            if (!dialog || !header) return;
+            header.style.cursor = 'move';
+            header.setAttribute('title', 'Arrastre para mover el modal');
+            var drag = { active: false, startX: 0, startY: 0, startLeft: 0, startTop: 0 };
+            function onDown(e) {
+                if (e.target.closest('.btn-close')) return;
+                drag.active = true;
+                drag.startX = e.clientX;
+                drag.startY = e.clientY;
+                var rect = dialog.getBoundingClientRect();
+                drag.startLeft = rect.left;
+                drag.startTop = rect.top;
+                dialog.style.position = 'fixed';
+                dialog.style.left = drag.startLeft + 'px';
+                dialog.style.top = drag.startTop + 'px';
+                dialog.style.right = 'auto';
+                dialog.style.margin = '0';
+                dialog.style.transform = 'none';
+            }
+            function onMove(e) {
+                if (!drag.active) return;
+                var dx = e.clientX - drag.startX;
+                var dy = e.clientY - drag.startY;
+                dialog.style.left = (drag.startLeft + dx) + 'px';
+                dialog.style.top = (drag.startTop + dy) + 'px';
+            }
+            function onUp() {
+                drag.active = false;
+                document.removeEventListener('mousemove', onMove);
+                document.removeEventListener('mouseup', onUp);
+            }
+            header.addEventListener('mousedown', function (e) {
+                if (e.target.closest('.btn-close')) return;
+                e.preventDefault();
+                onDown(e);
+                document.addEventListener('mousemove', onMove);
+                document.addEventListener('mouseup', onUp);
+            });
+        })();
+    });
+</script>
+</body>
+</html>

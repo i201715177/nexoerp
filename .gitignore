@@ -1,0 +1,24 @@
+# Local mail config: no subir (contiene contraseña de aplicación)
+application-local.properties
+
+# Build
+target/
+!.mvn/wrapper/maven-wrapper.jar
+
+# IDE
+.idea/
+*.iml
+*.ipr
+*.iws
+.vscode/
+*.swp
+*.swo
+
+# Logs y datos locales
+logs/
+*.log
+data/
+
+# OS
+.DS_Store
+Thumbs.db

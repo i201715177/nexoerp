@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="es" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="description" content="Solicite su suscripción a NexoERP: gestión integral para su negocio. Inventario, ventas, clientes y más en una sola plataforma.">
+    <title>Solicitar suscripción · NexoERP</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+    <link rel="stylesheet" th:href="@{/css/solicitar-suscripcion.css}">
+</head>
+<body class="solicitar-page">
+<div class="sus-wrap">
+    <header class="sus-header">
+        <div class="sus-logo">
+            <i class="bi bi-diagram-3-fill"></i>
+        </div>
+        <h1 class="sus-brand">NexoERP</h1>
+        <p class="sus-tagline">Todo tu negocio en una sola plataforma. Solicite su suscripción y le contactamos en breve.</p>
+    </header>
+
+    <main class="sus-card">
+        <!-- Error -->
+        <div th:if="${error}" class="sus-alert sus-alert-success" style="background: rgba(239, 68, 68, 0.15); border-color: rgba(239, 68, 68, 0.3); color: #fca5a5;">
+            <i class="bi bi-exclamation-circle-fill"></i>
+            <span th:text="${error}">Error</span>
+        </div>
+        <!-- Mensaje de éxito tras enviar -->
+        <div th:if="${param.enviado != null and !#lists.isEmpty(param.enviado)}" class="sus-success-icon">
+            <i class="bi bi-check-lg"></i>
+        </div>
+        <div th:if="${param.enviado != null and !#lists.isEmpty(param.enviado)}" class="sus-alert sus-alert-success">
+            <i class="bi bi-check-circle-fill"></i>
+            <span th:if="${mensaje != null}" th:text="${mensaje}">Solicitud enviada.</span>
+            <span th:if="${mensaje == null}">Su solicitud fue enviada. Nos pondremos en contacto a la brevedad para activar su acceso.</span>
+        </div>
+
+        <!-- Formulario (oculto si ya se envió) -->
+        <div class="sus-form-block" th:if="${param.enviado == null or #lists.isEmpty(param.enviado)}">
+            <h2 class="sus-form-title">Solicitar suscripción</h2>
+            <p class="sus-subtitle">Complete sus datos y el plan de interés. Le responderemos pronto.</p>
+
+            <form th:action="@{/solicitar-suscripcion}" th:object="${solicitud}" method="post" class="sus-form" id="form-solicitud">
+                <div class="form-group">
+                    <label for="nombreContacto">Nombre del contacto *</label>
+                    <input type="text" id="nombreContacto" th:field="*{nombreContacto}" required maxlength="150" placeholder="Su nombre completo">
+                </div>
+                <div class="form-group">
+                    <label for="email">Correo electrónico *</label>
+                    <input type="email" id="email" th:field="*{email}" required maxlength="150" placeholder="correo@ejemplo.com">
+                </div>
+                <div class="form-group">
+                    <label for="telefono">Teléfono</label>
+                    <input type="text" id="telefono" th:field="*{telefono}" maxlength="30" placeholder="Opcional (ej. WhatsApp)">
+                </div>
+                <div class="form-group form-group-inline">
+                    <div class="form-group-half">
+                    <label for="tipoDocumento">Tipo de documento</label>
+                    <select id="tipoDocumento" th:field="*{tipoDocumento}">
+                            <option value="">Seleccione tipo</option>
+                            <option value="DNI">DNI</option>
+                            <option value="RUC">RUC</option>
+                        </select>
+                    </div>
+                    <div class="form-group-half">
+                    <label for="numeroDocumento">N&uacute;mero de documento</label>
+                    <input type="text" id="numeroDocumento" th:field="*{numeroDocumento}" maxlength="20"
+                           placeholder="Ej. 12345678 o 20123456789"
+                           pattern="\\d{8}|\\d{11}"
+                           title="Para DNI use 8 dígitos, para RUC 11 dígitos numéricos.">
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label for="nombreEmpresa">Nombre de la empresa o negocio *</label>
+                    <input type="text" id="nombreEmpresa" th:field="*{nombreEmpresa}" required maxlength="150" placeholder="Razón social o nombre comercial">
+                </div>
+                <div class="form-group" th:if="${planes != null and !planes.isEmpty()}">
+                    <label for="planDeseado">Plan de interés</label>
+                    <select id="planDeseado" th:field="*{planDeseado}">
+                        <option value="">Seleccione un plan</option>
+                        <option th:each="p : ${planes}" th:value="${p.nombre}" th:text="${p.nombre + ' — ' + (p.descripcion != null ? p.descripcion : '')}">Plan</option>
+                    </select>
+                </div>
+                <div class="form-group" th:if="${planes == null or planes.isEmpty()}">
+                    <label for="planDeseado">Plan de interés</label>
+                    <input type="text" id="planDeseado" th:field="*{planDeseado}" placeholder="Ej. Básico o Profesional" maxlength="50">
+                </div>
+                <div class="form-group">
+                    <label for="mensaje">Mensaje o comentarios</label>
+                    <textarea id="mensaje" th:field="*{mensaje}" rows="3" maxlength="500" placeholder="Cuéntanos sobre su negocio o preguntas..."></textarea>
+                </div>
+                <button type="submit" class="sus-btn">
+                    <i class="bi bi-send-fill"></i> Enviar solicitud
+                </button>
+            </form>
+        </div>
+
+        <footer class="sus-card-footer" th:if="${param.enviado == null or #lists.isEmpty(param.enviado)}">
+            <a th:href="@{/login}">Ya tengo cuenta → Iniciar sesión</a>
+            <span class="sus-copy">&copy; NexoERP · Todos los derechos reservados</span>
+        </footer>
+        <footer class="sus-card-footer" th:if="${param.enviado != null and !#lists.isEmpty(param.enviado)}">
+            <a th:href="@{/solicitar-suscripcion}">Enviar otra solicitud</a>
+            <span class="sus-copy">&copy; NexoERP</span>
+        </footer>
+    </main>
+
+    <div class="sus-benefits" th:if="${param.enviado == null or #lists.isEmpty(param.enviado)}">
+        <span class="sus-benefit"><i class="bi bi-shield-check"></i> Datos seguros</span>
+        <span class="sus-benefit"><i class="bi bi-lightning-charge"></i> Activación rápida</span>
+        <span class="sus-benefit"><i class="bi bi-headset"></i> Soporte incluido</span>
+    </div>
+</div>
+</body>
+</html>

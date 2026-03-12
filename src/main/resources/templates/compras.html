@@ -1,0 +1,431 @@
+<!DOCTYPE html>
+<html lang="es" xmlns:th="http://www.thymeleaf.org" xmlns:sec="http://www.thymeleaf.org/extras/spring-security">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Compras - NexoERP</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+    <link rel="stylesheet" th:href="@{/css/app.css}">
+</head>
+<body>
+<div class="app-layout">
+    <!-- Sidebar -->
+    <aside class="sidebar" id="sidebar">
+        <div class="sidebar-header">
+            <span class="sidebar-brand"><i class="bi bi-diagram-3"></i> NexoERP</span>
+            <button class="sidebar-toggle d-lg-none" onclick="toggleSidebar()"><i class="bi bi-x-lg"></i></button>
+        </div>
+        <nav class="sidebar-nav">
+            <div class="sidebar-section-title">Operaciones</div>
+            <a class="sidebar-link" href="/web/productos"><i class="bi bi-box-seam"></i> Productos</a>
+            <a class="sidebar-link" href="/web/clientes"><i class="bi bi-people"></i> Clientes</a>
+            <a class="sidebar-link" href="/web/proveedores" sec:authorize="hasAnyRole('ADMIN','SAAS_ADMIN')"><i class="bi bi-truck"></i> Proveedores</a>
+            <a class="sidebar-link active" href="/web/compras" sec:authorize="hasAnyRole('ADMIN','SAAS_ADMIN')"><i class="bi bi-cart-plus"></i> Compras</a>
+            <a class="sidebar-link" href="/web/ventas"><i class="bi bi-receipt"></i> Ventas</a>
+            <a class="sidebar-link" href="/web/caja"><i class="bi bi-cash-stack"></i> Caja</a>
+            <div class="sidebar-section-title">Gesti&oacute;n</div>
+            <a class="sidebar-link" href="/web/finanzas" sec:authorize="hasAnyRole('ADMIN','SAAS_ADMIN')"><i class="bi bi-graph-up"></i> Finanzas</a>
+            <a class="sidebar-link" href="/web/inventario"><i class="bi bi-clipboard-data"></i> Inventario</a>
+            <a class="sidebar-link" href="/web/reportes"><i class="bi bi-file-earmark-bar-graph"></i> Reportes</a>
+            <a class="sidebar-link" href="/web/sucursales" sec:authorize="hasAnyRole('ADMIN','SAAS_ADMIN')"><i class="bi bi-building"></i> Sucursales</a>
+            <div class="sidebar-section-title">Sistema</div>
+            <a class="sidebar-link" href="/web/auditoria" sec:authorize="hasAnyRole('ADMIN','SAAS_ADMIN')"><i class="bi bi-shield-check"></i> Auditor&iacute;a</a>
+            <a class="sidebar-link" href="/web/admin/empresas" sec:authorize="hasRole('SAAS_ADMIN')"><i class="bi bi-gear"></i> Admin SaaS</a>
+        </nav>
+        <div class="sidebar-footer">
+            <div sec:authorize="hasRole('SAAS_ADMIN')">
+                <form th:if="${empresasTodas != null and !#lists.isEmpty(empresasTodas)}"
+                      th:action="@{/web/empresas/cambiar}" method="post" class="mb-2">
+                    <select name="tenantId" class="form-select form-select-sm"
+                            onchange="this.form.submit()" style="background:#243656; color:#c8d6e5; border-color:rgba(255,255,255,.12); font-size:12px;">
+                        <option th:each="e : ${empresasTodas}" th:value="${e.id}"
+                                th:selected="${empresaActual != null and e.id == empresaActual.id}"
+                                th:text="${e.nombre}">Empresa</option>
+                    </select>
+                    <input type="hidden" name="redirect" value="/web/compras">
+                </form>
+            </div>
+        </div>
+    </aside>
+    <div id="sidebarBackdrop" class="sidebar-backdrop"></div>
+
+    <!-- Main -->
+    <div class="main-wrapper">
+        <header class="topbar">
+            <button class="btn-sidebar-toggle" onclick="toggleSidebar()"><i class="bi bi-list"></i></button>
+            <h1 class="topbar-title">&Oacute;rdenes de compra</h1>
+            <div class="topbar-actions">
+                <a class="btn btn-sm btn-outline-secondary" th:href="@{/web/compras/cuentas-pagar}">
+                    <i class="bi bi-wallet2 me-1"></i>Cuentas por pagar
+                </a>
+            </div>
+            <div class="topbar-user" th:if="${usuarioActual != null}">
+                <div class="topbar-user-avatar" th:text="${#strings.toUpperCase(#strings.substring(usuarioActual,0,1))}">A</div>
+                <div>
+                    <span class="topbar-user-name" th:text="${usuarioActual}">admin</span>
+                    <div class="topbar-user-empresa" th:text="${empresaActual != null ? empresaActual.nombre : ''}"></div>
+                </div>
+                <form th:action="@{/logout}" method="post">
+                    <button type="submit" class="btn-logout-top"><i class="bi bi-box-arrow-left"></i> Salir</button>
+                </form>
+            </div>
+        </header>
+
+        <main class="main-content">
+            <div th:if="${mensaje}" class="alert alert-success alert-dismissible fade show mb-3">
+                <i class="bi bi-check-circle me-1"></i> <span th:text="${mensaje}"></span>
+                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            </div>
+            <div th:if="${error}" class="alert alert-danger alert-dismissible fade show mb-3">
+                <i class="bi bi-exclamation-triangle me-1"></i> <span th:text="${error}"></span>
+                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            </div>
+
+            <!-- KPIs -->
+            <div class="kpi-row"
+                 th:with="totalOrdenes=${ordenes != null ? #lists.size(ordenes) : 0},
+                          emitidas=${ordenes != null ? #lists.size(ordenes.?[estado == 'EMITIDA']) : 0},
+                          recibidas=${ordenes != null ? #lists.size(ordenes.?[estado == 'RECIBIDA']) : 0},
+                          sugeridas=${sugerenciasCompra != null ? #lists.size(sugerenciasCompra) : 0}">
+                <div class="kpi-card">
+                    <div class="kpi-icon blue"><i class="bi bi-cart-plus"></i></div>
+                    <div class="kpi-body">
+                        <div class="kpi-label">Total &oacute;rdenes</div>
+                        <div class="kpi-value" th:text="${totalOrdenes}">0</div>
+                    </div>
+                </div>
+                <div class="kpi-card">
+                    <div class="kpi-icon yellow"><i class="bi bi-hourglass-split"></i></div>
+                    <div class="kpi-body">
+                        <div class="kpi-label">Emitidas</div>
+                        <div class="kpi-value" th:text="${emitidas}">0</div>
+                    </div>
+                </div>
+                <div class="kpi-card">
+                    <div class="kpi-icon green"><i class="bi bi-box-arrow-in-down"></i></div>
+                    <div class="kpi-body">
+                        <div class="kpi-label">Recibidas</div>
+                        <div class="kpi-value" th:text="${recibidas}">0</div>
+                    </div>
+                </div>
+                <div class="kpi-card">
+                    <div class="kpi-icon red"><i class="bi bi-exclamation-triangle"></i></div>
+                    <div class="kpi-body">
+                        <div class="kpi-label">Sugerencias stock</div>
+                        <div class="kpi-value" th:text="${sugeridas}">0</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Content grid: Orders table + New order form -->
+            <div class="content-grid cols-7-5">
+                <!-- Orders Table -->
+                <div class="content-card">
+                    <div class="content-card-header">
+                        <h3><i class="bi bi-table me-2"></i>Historial de compras</h3>
+                    </div>
+                    <div class="content-card-body no-padding">
+                        <div class="export-bar">
+                            <a th:href="@{/web/compras/excel}" class="btn-export btn-export-excel"><i class="bi bi-file-earmark-excel"></i> Excel</a>
+                            <a th:href="@{/web/compras/pdf}" class="btn-export btn-export-pdf"><i class="bi bi-file-earmark-pdf"></i> PDF</a>
+                        </div>
+                        <table class="data-table data-table-compact">
+                            <thead>
+                            <tr>
+                                <th class="text-center" style="width:3rem;">#</th>
+                                <th style="width:7rem;">Fecha</th>
+                                <th style="min-width:10rem;">Proveedor</th>
+                                <th style="min-width:10rem;">Producto</th>
+                                <th class="text-end" style="width:4rem;">Cant.</th>
+                                <th class="text-end" style="width:6rem;">Total</th>
+                                <th class="text-center" style="width:6rem;">Estado</th>
+                                <th class="text-center" style="width:10rem;">Acciones</th>
+                            </tr>
+                            </thead>
+                            <tbody>
+                            <tr th:each="o : ${ordenes}"
+                                th:data-orden-id="${o.id}"
+                                th:data-proveedor-id="${o.proveedor != null ? o.proveedor.id : null}"
+                                th:data-producto-id="${(o.items != null and !o.items.isEmpty() and o.items[0].producto != null) ? o.items[0].producto.id : null}"
+                                th:data-cantidad="${(o.items != null and !o.items.isEmpty()) ? o.items[0].cantidad : 1}"
+                                th:data-precio="${(o.items != null and !o.items.isEmpty()) ? o.items[0].precioUnitario : ''}"
+                                th:data-fecha-esperada="${o.fechaEsperada != null ? #temporals.format(o.fechaEsperada, 'yyyy-MM-dd') : ''}"
+                                th:data-observaciones="${o.observaciones != null ? o.observaciones : ''}">
+                                <td class="text-center"><span class="badge-tag" th:text="${o.id}">1</span></td>
+                                <td th:text="${#temporals.format(o.fechaEmision, 'dd/MM/yyyy HH:mm')}">01/01/2026</td>
+                                <td class="fw-700" th:text="${o.proveedor != null ? o.proveedor.razonSocial : '-'}">Proveedor</td>
+                                <td th:text="${(o.items != null and !o.items.isEmpty() and o.items[0].producto != null) ? o.items[0].producto.nombre : '—'}">—</td>
+                                <td class="text-end" th:text="${(o.items != null and !o.items.isEmpty()) ? #aggregates.sum(o.items.![cantidad]) : '—'}">—</td>
+                                <td class="text-end" th:text="${'S/ ' + o.total}">0.00</td>
+                                <td class="text-center">
+                                    <span class="badge-status"
+                                          th:classappend="${o.estado == 'EMITIDA'} ? 'warning' : (${o.estado == 'RECIBIDA'} ? 'success' : 'secondary')"
+                                          th:text="${o.estado}">EMITIDA</span>
+                                </td>
+                                <td class="text-center">
+                                    <form th:if="${o.estado == 'EMITIDA'}"
+                                          th:action="@{/web/compras/recibir}" method="post" class="d-inline"
+                                          onsubmit="event.preventDefault(); nexoS.confirmSubmit(event, '¿Marcar como recibida e ingresar al inventario?'); return false;">
+                                        <input type="hidden" name="ordenId" th:value="${o.id}">
+                                        <button class="btn-action success" type="submit" title="Recibir">
+                                            <i class="bi bi-check2-circle"></i>
+                                        </button>
+                                    </form>
+                                    <button th:if="${o.estado == 'EMITIDA'}" type="button" class="btn-action primary ms-1" title="Modificar"
+                                            onclick="abrirModalEditar(this.closest('tr'))">
+                                        <i class="bi bi-pencil-square"></i>
+                                    </button>
+                                    <form th:action="@{/web/compras/eliminar}" method="post" class="d-inline ms-1"
+                                          onsubmit="event.preventDefault(); nexoS.confirmSubmit(event, '¿Eliminar esta orden de compra?'); return false;">
+                                        <input type="hidden" name="ordenId" th:value="${o.id}">
+                                        <button class="btn-action danger" type="submit" title="Eliminar">
+                                            <i class="bi bi-trash"></i>
+                                        </button>
+                                    </form>
+                                </td>
+                            </tr>
+                            <tr th:if="${#lists.isEmpty(ordenes)}">
+                                <td colspan="8">
+                                    <div class="empty-state">
+                                        <i class="bi bi-inbox"></i>
+                                        <p>No hay &oacute;rdenes registradas.</p>
+                                    </div>
+                                </td>
+                            </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- New Order Form -->
+                <div class="content-card">
+                    <div class="content-card-header">
+                        <h3><i class="bi bi-plus-circle me-2"></i>Nueva orden de compra</h3>
+                    </div>
+                    <div class="content-card-body">
+                        <form th:action="@{/web/compras}" method="post"
+                              onsubmit="event.preventDefault(); nexoS.confirmSubmit(event, '¿Registrar orden de compra?'); return false;">
+                            <div class="row g-3">
+                                <div class="col-12 form-section">
+                                    <label class="form-label">Proveedor *</label>
+                                    <select name="proveedorId" class="form-select" required>
+                                        <option value="">Seleccione...</option>
+                                        <option th:each="p : ${proveedores}" th:value="${p.id}"
+                                                th:text="${p.razonSocial}">Proveedor</option>
+                                    </select>
+                                </div>
+                                <div class="col-12 form-section">
+                                    <label class="form-label">Producto *</label>
+                                    <select name="productoId" class="form-select" required>
+                                        <option value="">Seleccione...</option>
+                                        <option th:each="p : ${productos}" th:value="${p.id}"
+                                                th:text="${p.nombre}">Producto</option>
+                                    </select>
+                                </div>
+                                <div class="col-4 form-section">
+                                    <label class="form-label">Cantidad *</label>
+                                    <input type="number" name="cantidad" class="form-control" min="1" value="1" required>
+                                </div>
+                                <div class="col-4 form-section">
+                                    <label class="form-label">Precio unit. *</label>
+                                    <input type="number" name="precioUnitario" step="0.01" min="0.01"
+                                           class="form-control" required>
+                                </div>
+                                <div class="col-4 form-section">
+                                    <label class="form-label">Fecha esperada</label>
+                                    <input type="date" name="fechaEsperada" class="form-control">
+                                </div>
+                                <div class="col-12 form-section">
+                                    <label class="form-label">Observaciones</label>
+                                    <input type="text" name="observaciones" class="form-control">
+                                </div>
+                                <div class="col-12 d-flex gap-2">
+                                    <button type="submit" class="btn btn-primary">
+                                        <i class="bi bi-check-lg"></i> Guardar orden
+                                    </button>
+                                </div>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Second row: Comparison + Suggestions -->
+            <div class="content-grid cols-6-6 mt-4">
+                <!-- Supplier comparison -->
+                <div class="content-card">
+                    <div class="content-card-header">
+                        <h3><i class="bi bi-arrow-left-right me-2"></i>Comparaci&oacute;n de proveedores</h3>
+                    </div>
+                    <div class="content-card-body">
+                        <form method="get" th:action="@{/web/compras}" class="row g-2 mb-3">
+                            <div class="col-9 form-section">
+                                <label class="form-label">Producto</label>
+                                <select name="productoComparacionId" class="form-select form-select-sm"
+                                        onchange="this.form.submit()">
+                                    <option value="">Seleccione producto...</option>
+                                    <option th:each="p : ${productos}" th:value="${p.id}"
+                                            th:text="${p.nombre}"
+                                            th:selected="${productoComparacionId != null and productoComparacionId == p.id}">-</option>
+                                </select>
+                            </div>
+                            <div class="col-3 d-flex align-items-end">
+                                <button type="submit" class="btn btn-sm btn-outline-primary w-100">Comparar</button>
+                            </div>
+                        </form>
+                        <div class="table-responsive">
+                            <table class="data-table" th:if="${comparacionProveedores != null}">
+                                <thead>
+                                <tr>
+                                    <th>Proveedor</th>
+                                    <th class="text-end">Cantidad</th>
+                                    <th class="text-end">&Uacute;ltimo precio</th>
+                                    <th>&Uacute;ltima compra</th>
+                                </tr>
+                                </thead>
+                                <tbody>
+                                <tr th:each="c : ${comparacionProveedores}">
+                                    <td class="fw-700" th:text="${c.proveedorNombre}">Proveedor</td>
+                                    <td class="text-end" th:text="${c.cantidad != null ? c.cantidad : '-'}">-</td>
+                                    <td class="text-end" th:text="${'S/ ' + c.ultimoPrecio}">0.00</td>
+                                    <td th:text="${c.fechaUltimaCompra != null ? #temporals.format(c.fechaUltimaCompra, 'dd/MM/yyyy HH:mm') : '-'}">-</td>
+                                </tr>
+                                <tr th:if="${comparacionProveedores == null || #lists.isEmpty(comparacionProveedores)}">
+                                    <td colspan="4">
+                                        <div class="empty-state">
+                                            <i class="bi bi-search"></i>
+                                            <p>Seleccione un producto para ver la comparaci&oacute;n.</p>
+                                        </div>
+                                    </td>
+                                </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Purchase suggestions -->
+                <div class="content-card">
+                    <div class="content-card-header">
+                        <h3><i class="bi bi-lightbulb me-2"></i>Sugerencias de compras</h3>
+                    </div>
+                    <div class="content-card-body no-padding">
+                        <table class="data-table">
+                            <thead>
+                            <tr>
+                                <th>Producto</th>
+                                <th class="text-end">Stock</th>
+                                <th class="text-end">M&iacute;n.</th>
+                                <th class="text-end">M&aacute;x.</th>
+                                <th class="text-end">Sugerido</th>
+                            </tr>
+                            </thead>
+                            <tbody>
+                            <tr th:each="s : ${sugerenciasCompra}" class="row-warning">
+                                <td class="fw-700" th:text="${s.productoNombre}">Prod</td>
+                                <td class="text-end" th:text="${s.stockActual}">0</td>
+                                <td class="text-end" th:text="${s.stockMinimo}">0</td>
+                                <td class="text-end" th:text="${s.stockMaximo}">0</td>
+                                <td class="text-end">
+                                    <span class="badge-status warning" th:text="${s.cantidadSugerida}">0</span>
+                                </td>
+                            </tr>
+                            <tr th:if="${sugerenciasCompra == null || #lists.isEmpty(sugerenciasCompra)}">
+                                <td colspan="5">
+                                    <div class="empty-state">
+                                        <i class="bi bi-check-all"></i>
+                                        <p>Ning&uacute;n producto est&aacute; por debajo del m&iacute;nimo.</p>
+                                    </div>
+                                </td>
+                            </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Modal Modificar orden -->
+            <div class="modal fade" id="modalEditarOrden" tabindex="-1" aria-labelledby="modalEditarOrdenLabel" aria-hidden="true">
+                <div class="modal-dialog">
+                    <div class="modal-content">
+                        <div class="modal-header">
+                            <h5 class="modal-title" id="modalEditarOrdenLabel"><i class="bi bi-pencil-square me-2"></i>Modificar orden de compra</h5>
+                            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+                        </div>
+                        <form th:action="@{/web/compras/actualizar}" method="post">
+                            <div class="modal-body">
+                                <input type="hidden" name="ordenId" id="editarOrdenId">
+                                <div class="mb-3">
+                                    <label class="form-label">Proveedor *</label>
+                                    <select name="proveedorId" id="editarProveedorId" class="form-select" required>
+                                        <option value="">Seleccione...</option>
+                                        <option th:each="p : ${proveedores}" th:value="${p.id}" th:text="${p.razonSocial}">Proveedor</option>
+                                    </select>
+                                </div>
+                                <div class="mb-3">
+                                    <label class="form-label">Producto *</label>
+                                    <select name="productoId" id="editarProductoId" class="form-select" required>
+                                        <option value="">Seleccione...</option>
+                                        <option th:each="p : ${productos}" th:value="${p.id}" th:text="${p.nombre}">Producto</option>
+                                    </select>
+                                </div>
+                                <div class="row g-2">
+                                    <div class="col-6">
+                                        <label class="form-label">Cantidad *</label>
+                                        <input type="number" name="cantidad" id="editarCantidad" class="form-control" min="1" required>
+                                    </div>
+                                    <div class="col-6">
+                                        <label class="form-label">Precio unit. *</label>
+                                        <input type="number" name="precioUnitario" id="editarPrecioUnitario" step="0.01" min="0.01" class="form-control" required>
+                                    </div>
+                                </div>
+                                <div class="mb-3 mt-2">
+                                    <label class="form-label">Fecha esperada</label>
+                                    <input type="date" name="fechaEsperada" id="editarFechaEsperada" class="form-control">
+                                </div>
+                                <div class="mb-3">
+                                    <label class="form-label">Observaciones</label>
+                                    <input type="text" name="observaciones" id="editarObservaciones" class="form-control">
+                                </div>
+                            </div>
+                            <div class="modal-footer">
+                                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cerrar</button>
+                                <button type="submit" class="btn btn-primary"><i class="bi bi-check-lg me-1"></i>Guardar cambios</button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+<script th:src="@{/js/app.js}"></script>
+<script>
+(function() {
+    function abrirModalEditar(tr) {
+        if (!tr) return;
+        var ordenId = tr.getAttribute('data-orden-id');
+        var proveedorId = tr.getAttribute('data-proveedor-id');
+        var productoId = tr.getAttribute('data-producto-id');
+        var cantidad = tr.getAttribute('data-cantidad');
+        var precio = tr.getAttribute('data-precio');
+        var fechaEsperada = tr.getAttribute('data-fecha-esperada');
+        var observaciones = tr.getAttribute('data-observaciones') || '';
+        document.getElementById('editarOrdenId').value = ordenId || '';
+        document.getElementById('editarProveedorId').value = proveedorId || '';
+        document.getElementById('editarProductoId').value = productoId || '';
+        document.getElementById('editarCantidad').value = cantidad || '1';
+        document.getElementById('editarPrecioUnitario').value = precio || '';
+        document.getElementById('editarFechaEsperada').value = (fechaEsperada && fechaEsperada.length >= 10) ? fechaEsperada.substring(0, 10) : '';
+        document.getElementById('editarObservaciones').value = observaciones;
+        var modal = new bootstrap.Modal(document.getElementById('modalEditarOrden'));
+        modal.show();
+    }
+    window.abrirModalEditar = abrirModalEditar;
+})();
+</script>
+</body>
+</html>

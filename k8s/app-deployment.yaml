@@ -1,0 +1,36 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: sistema-farmacia
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: sistema-farmacia
+  template:
+    metadata:
+      labels:
+        app: sistema-farmacia
+    spec:
+      containers:
+        - name: app
+          image: sistema-farmacia:latest
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 8080
+          env:
+            - name: SPRING_PROFILES_ACTIVE
+              value: docker
+          readinessProbe:
+            httpGet:
+              path: /actuator/health
+              port: 8080
+            initialDelaySeconds: 20
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /actuator/health
+              port: 8080
+            initialDelaySeconds: 40
+            periodSeconds: 20
+

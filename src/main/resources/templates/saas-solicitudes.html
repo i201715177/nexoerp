@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="es" xmlns:th="http://www.thymeleaf.org" xmlns:sec="http://www.thymeleaf.org/extras/spring-security">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Solicitudes de suscripci&oacute;n - NexoERP</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+    <link rel="stylesheet" th:href="@{/css/app.css}">
+</head>
+<body>
+<div class="app-layout">
+    <aside class="sidebar" id="sidebar">
+        <div class="sidebar-header">
+            <span class="sidebar-brand"><i class="bi bi-diagram-3"></i> NexoERP</span>
+            <button class="sidebar-toggle d-lg-none" onclick="toggleSidebar()"><i class="bi bi-x-lg"></i></button>
+        </div>
+        <nav class="sidebar-nav">
+            <div class="sidebar-section-title">Operaciones</div>
+            <a class="sidebar-link" href="/web/productos"><i class="bi bi-box-seam"></i> Productos</a>
+            <a class="sidebar-link" href="/web/clientes"><i class="bi bi-people"></i> Clientes</a>
+            <a class="sidebar-link" href="/web/proveedores" sec:authorize="hasAnyRole('ADMIN','SAAS_ADMIN')"><i class="bi bi-truck"></i> Proveedores</a>
+            <a class="sidebar-link" href="/web/compras" sec:authorize="hasAnyRole('ADMIN','SAAS_ADMIN')"><i class="bi bi-cart-plus"></i> Compras</a>
+            <a class="sidebar-link" href="/web/ventas"><i class="bi bi-receipt"></i> Ventas</a>
+            <a class="sidebar-link" href="/web/caja"><i class="bi bi-cash-stack"></i> Caja</a>
+            <div class="sidebar-section-title">Gesti&oacute;n</div>
+            <a class="sidebar-link" href="/web/finanzas" sec:authorize="hasAnyRole('ADMIN','SAAS_ADMIN')"><i class="bi bi-graph-up"></i> Finanzas</a>
+            <a class="sidebar-link" href="/web/inventario"><i class="bi bi-clipboard-data"></i> Inventario</a>
+            <a class="sidebar-link" href="/web/reportes"><i class="bi bi-file-earmark-bar-graph"></i> Reportes</a>
+            <a class="sidebar-link" href="/web/sucursales" sec:authorize="hasAnyRole('ADMIN','SAAS_ADMIN')"><i class="bi bi-building"></i> Sucursales</a>
+            <div class="sidebar-section-title">Sistema</div>
+            <a class="sidebar-link" href="/web/auditoria" sec:authorize="hasAnyRole('ADMIN','SAAS_ADMIN')"><i class="bi bi-shield-check"></i> Auditor&iacute;a</a>
+            <a class="sidebar-link" href="/web/admin/empresas" sec:authorize="hasAnyRole('SAAS_ADMIN','GERENTE')"><i class="bi bi-gear"></i> Admin SaaS</a>
+            <a class="sidebar-link" href="/web/admin/facturacion" sec:authorize="hasAnyRole('SAAS_ADMIN','GERENTE')"><i class="bi bi-credit-card"></i> Facturaci&oacute;n</a>
+            <a class="sidebar-link active" href="/web/admin/solicitudes" sec:authorize="hasAnyRole('SAAS_ADMIN','GERENTE')"><i class="bi bi-inbox"></i> Solicitudes</a>
+        </nav>
+    </aside>
+    <div id="sidebarBackdrop" class="sidebar-backdrop"></div>
+
+    <div class="main-wrapper">
+        <header class="topbar">
+            <button class="btn-sidebar-toggle" onclick="toggleSidebar()"><i class="bi bi-list"></i></button>
+            <h1 class="topbar-title">Solicitudes de suscripci&oacute;n</h1>
+            <div class="topbar-actions"></div>
+            <div class="topbar-user" th:if="${usuarioActual != null}">
+                <div class="topbar-user-avatar" th:text="${#strings.toUpperCase(#strings.substring(usuarioActual,0,1))}">A</div>
+                <div>
+                    <span class="topbar-user-name" th:text="${usuarioActual}">admin</span>
+                </div>
+                <form th:action="@{/logout}" method="post">
+                    <button type="submit" class="btn-logout-top"><i class="bi bi-box-arrow-left"></i> Salir</button>
+                </form>
+            </div>
+        </header>
+
+        <main class="main-content">
+            <div th:if="${mensaje}" class="alert alert-success alert-dismissible fade show">
+                <i class="bi bi-check-circle me-1"></i> <span th:text="${mensaje}">OK</span>
+                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            </div>
+            <div th:if="${error}" class="alert alert-danger alert-dismissible fade show">
+                <i class="bi bi-exclamation-triangle me-1"></i> <span th:text="${error}">Error</span>
+                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            </div>
+
+            <div class="alert alert-info alert-dismissible fade show">
+                <i class="bi bi-info-circle me-1"></i>
+                <strong>Cada vez que alguien se registra</strong> en la p&aacute;gina p&uacute;blica (<a th:href="@{/solicitar-suscripcion}" target="_blank">Solicitar suscripci&oacute;n</a>), la solicitud aparece aqu&iacute; en esta tabla y, adem&aacute;s, el sistema intenta enviarte un correo de aviso. Si no te llega el correo a tu bandeja, revisa la configuraci&oacute;n SMTP (correo) en <code>application.properties</code>; con Gmail suele funcionar bien.
+                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            </div>
+
+            <div class="kpi-row" th:if="${pendientesCount != null and pendientesCount > 0}">
+                <div class="kpi-card">
+                    <div class="kpi-icon blue"><i class="bi bi-inbox"></i></div>
+                    <div class="kpi-body">
+                        <div class="kpi-label">Pendientes de atender</div>
+                        <div class="kpi-value" th:text="${pendientesCount}">0</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="content-card mt-4">
+                <div class="content-card-header d-flex justify-content-between align-items-center">
+                    <h3><i class="bi bi-inbox me-2"></i>Solicitudes recibidas</h3>
+                    <a th:href="@{/solicitar-suscripcion}" target="_blank" class="btn btn-sm btn-outline-primary">
+                        <i class="bi bi-box-arrow-up-right"></i> Ver p&aacute;gina p&uacute;blica
+                    </a>
+                </div>
+                <div class="content-card-body no-padding">
+                    <table class="data-table">
+                        <thead>
+                        <tr>
+                            <th>Fecha</th>
+                            <th>Contacto</th>
+                            <th>Empresa / Doc.</th>
+                            <th>Plan deseado</th>
+                            <th>Estado</th>
+                            <th class="text-center">Acciones</th>
+                        </tr>
+                        </thead>
+                        <tbody>
+                        <tr th:each="s : ${solicitudes}">
+                            <td th:text="${#temporals.format(s.fechaSolicitud, 'dd/MM/yyyy HH:mm')}">—</td>
+                            <td>
+                                <span class="fw-700" th:text="${s.nombreContacto}">—</span><br>
+                                <small th:text="${s.email}">—</small>
+                                <small th:if="${s.telefono != null and !s.telefono.isEmpty()}" th:text="' | ' + ${s.telefono}">—</small>
+                            </td>
+                            <td>
+                                <div th:text="${s.nombreEmpresa}">—</div>
+                                <small class="text-muted" th:if="${s.tipoDocumento != null and s.numeroDocumento != null and !s.numeroDocumento.isEmpty()}"
+                                       th:text="${s.tipoDocumento + ': ' + s.numeroDocumento}"></small>
+                            </td>
+                            <td><span class="badge-tag" th:text="${s.planDeseado != null ? s.planDeseado : '—'}">—</span></td>
+                            <td>
+                                <span class="badge-status"
+                                      th:classappend="${s.estado == 'PENDIENTE'} ? 'warning' : (${s.estado == 'CONVERTIDA'} ? 'success' : (${s.estado == 'RECHAZADA'} ? 'danger' : 'secondary'))"
+                                      th:text="${s.estado}">—</span>
+                            </td>
+                            <td class="text-center">
+                                <div class="btn-group btn-group-sm">
+                                    <form th:if="${s.estado != 'CONTACTADO'}" th:action="@{/web/admin/solicitudes/estado}" method="post" class="d-inline">
+                                        <input type="hidden" name="id" th:value="${s.id}">
+                                        <input type="hidden" name="estado" value="CONTACTADO">
+                                        <button type="submit" class="btn btn-outline-secondary btn-sm" title="Marcar como contactado">Contactado</button>
+                                    </form>
+                                    <form th:if="${s.estado != 'CONVERTIDA'}" th:action="@{/web/admin/solicitudes/estado}" method="post" class="d-inline-flex align-items-center gap-1 flex-wrap">
+                                        <input type="hidden" name="id" th:value="${s.id}">
+                                        <input type="hidden" name="estado" value="CONVERTIDA">
+                                        <select name="empresaId" class="form-select form-select-sm" style="width:auto; min-width:140px;" title="Si elige una empresa, su &uacute;ltima factura pendiente se marcar&aacute; como pagada">
+                                            <option value="">Solo estado</option>
+                                            <option th:each="e : ${empresas}" th:value="${e.id}" th:text="${e.nombre}">Empresa</option>
+                                        </select>
+                                        <button type="submit" class="btn btn-outline-success btn-sm" title="Marcar como convertida y opcionalmente factura como pagada">Convertida</button>
+                                    </form>
+                                    <form th:if="${s.estado != 'RECHAZADA'}" th:action="@{/web/admin/solicitudes/estado}" method="post" class="d-inline">
+                                        <input type="hidden" name="id" th:value="${s.id}">
+                                        <input type="hidden" name="estado" value="RECHAZADA">
+                                        <button type="submit" class="btn btn-outline-danger btn-sm" title="Rechazar">Rechazar</button>
+                                    </form>
+                                    <form th:action="@{/web/admin/solicitudes/eliminar}" method="post" class="d-inline" onsubmit="return confirm('¿Eliminar esta solicitud?');">
+                                        <input type="hidden" name="id" th:value="${s.id}">
+                                        <button type="submit" class="btn btn-outline-secondary btn-sm" title="Eliminar solicitud"><i class="bi bi-trash"></i> Eliminar</button>
+                                    </form>
+                                </div>
+                            </td>
+                        </tr>
+                        <tr th:if="${#lists.isEmpty(solicitudes)}">
+                            <td colspan="6">
+                                <div class="empty-state">
+                                    <i class="bi bi-inbox"></i>
+                                    <p>No hay solicitudes. Los interesados pueden usar <a th:href="@{/solicitar-suscripcion}">/solicitar-suscripcion</a>.</p>
+                                </div>
+                            </td>
+                        </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <div class="content-card mt-3">
+                <div class="content-card-body">
+                    <h6 class="text-muted">Flujo recomendado</h6>
+                    <ol class="small mb-0">
+                        <li>El interesado llena el formulario en <strong>/solicitar-suscripcion</strong> (p&aacute;gina p&uacute;blica).</li>
+                        <li>Usted ve la solicitud aqu&iacute; y contacta al cliente (correo/tel&eacute;fono).</li>
+                        <li>Marque <strong>Contactado</strong> cuando haya hablado con &eacute;l.</li>
+                        <li>En <a th:href="@{/web/admin/empresas}">Admin SaaS</a> cree la empresa, asigne plan y cree el usuario; genere la factura en <a th:href="@{/web/admin/facturacion}">Facturaci&oacute;n</a>.</li>
+                        <li>Cuando el cliente pague: en <strong>Convertida</strong> elija la empresa creada para esta solicitud y pulse el bot&oacute;n; la factura pendiente de esa empresa pasar&aacute; a <strong>Pagada</strong> en Facturaci&oacute;n. Si no elige empresa, solo se actualiza el estado.</li>
+                    </ol>
+                </div>
+            </div>
+        </main>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+<script th:src="@{/js/app.js}"></script>
+</body>
+</html>

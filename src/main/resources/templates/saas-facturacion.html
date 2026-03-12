@@ -1,0 +1,240 @@
+<!DOCTYPE html>
+<html lang="es" xmlns:th="http://www.thymeleaf.org" xmlns:sec="http://www.thymeleaf.org/extras/spring-security">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Facturaci&oacute;n SaaS - NexoERP</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+    <link rel="stylesheet" th:href="@{/css/app.css}">
+</head>
+<body>
+<div class="app-layout">
+    <aside class="sidebar" id="sidebar">
+        <div class="sidebar-header">
+            <span class="sidebar-brand"><i class="bi bi-diagram-3"></i> NexoERP</span>
+            <button class="sidebar-toggle d-lg-none" onclick="toggleSidebar()"><i class="bi bi-x-lg"></i></button>
+        </div>
+        <nav class="sidebar-nav">
+            <div class="sidebar-section-title">Operaciones</div>
+            <a class="sidebar-link" href="/web/productos"><i class="bi bi-box-seam"></i> Productos</a>
+            <a class="sidebar-link" href="/web/clientes"><i class="bi bi-people"></i> Clientes</a>
+            <a class="sidebar-link" href="/web/proveedores" sec:authorize="hasAnyRole('ADMIN','SAAS_ADMIN')"><i class="bi bi-truck"></i> Proveedores</a>
+            <a class="sidebar-link" href="/web/compras" sec:authorize="hasAnyRole('ADMIN','SAAS_ADMIN')"><i class="bi bi-cart-plus"></i> Compras</a>
+            <a class="sidebar-link" href="/web/ventas"><i class="bi bi-receipt"></i> Ventas</a>
+            <a class="sidebar-link" href="/web/caja"><i class="bi bi-cash-stack"></i> Caja</a>
+            <div class="sidebar-section-title">Gesti&oacute;n</div>
+            <a class="sidebar-link" href="/web/finanzas" sec:authorize="hasAnyRole('ADMIN','SAAS_ADMIN')"><i class="bi bi-graph-up"></i> Finanzas</a>
+            <a class="sidebar-link" href="/web/inventario"><i class="bi bi-clipboard-data"></i> Inventario</a>
+            <a class="sidebar-link" href="/web/reportes"><i class="bi bi-file-earmark-bar-graph"></i> Reportes</a>
+            <a class="sidebar-link" href="/web/sucursales" sec:authorize="hasAnyRole('ADMIN','SAAS_ADMIN')"><i class="bi bi-building"></i> Sucursales</a>
+            <div class="sidebar-section-title">Sistema</div>
+            <a class="sidebar-link" href="/web/auditoria" sec:authorize="hasAnyRole('ADMIN','SAAS_ADMIN')"><i class="bi bi-shield-check"></i> Auditor&iacute;a</a>
+            <a class="sidebar-link" href="/web/admin/empresas" sec:authorize="hasAnyRole('SAAS_ADMIN','GERENTE')"><i class="bi bi-gear"></i> Admin SaaS</a>
+            <a class="sidebar-link active" href="/web/admin/facturacion" sec:authorize="hasAnyRole('SAAS_ADMIN','GERENTE')"><i class="bi bi-credit-card"></i> Facturaci&oacute;n</a>
+            <a class="sidebar-link" href="/web/admin/solicitudes" sec:authorize="hasAnyRole('SAAS_ADMIN','GERENTE')"><i class="bi bi-inbox"></i> Solicitudes</a>
+        </nav>
+        <div class="sidebar-footer">
+            <div sec:authorize="hasAnyRole('SAAS_ADMIN','GERENTE')">
+                <form th:if="${empresasTodas != null and !#lists.isEmpty(empresasTodas)}"
+                      th:action="@{/web/empresas/cambiar}" method="post" class="mb-2">
+                    <select name="tenantId" class="form-select form-select-sm"
+                            onchange="this.form.submit()" style="background:#243656; color:#c8d6e5; border-color:rgba(255,255,255,.12); font-size:12px;">
+                        <option th:each="e : ${empresasTodas}" th:value="${e.id}"
+                                th:selected="${empresaActual != null and e.id == empresaActual.id}"
+                                th:text="${e.nombre}">Empresa</option>
+                    </select>
+                    <input type="hidden" name="redirect" value="/web/admin/facturacion">
+                </form>
+            </div>
+        </div>
+    </aside>
+    <div id="sidebarBackdrop" class="sidebar-backdrop"></div>
+
+    <div class="main-wrapper">
+        <header class="topbar">
+            <button class="btn-sidebar-toggle" onclick="toggleSidebar()"><i class="bi bi-list"></i></button>
+            <h1 class="topbar-title">Facturaci&oacute;n SaaS</h1>
+            <div class="topbar-actions"></div>
+            <div class="topbar-user" th:if="${usuarioActual != null}">
+                <div class="topbar-user-avatar" th:text="${#strings.toUpperCase(#strings.substring(usuarioActual,0,1))}">A</div>
+                <div>
+                    <span class="topbar-user-name" th:text="${usuarioActual}">admin</span>
+                    <div class="topbar-user-empresa" th:text="${empresaActual != null ? empresaActual.nombre : ''}"></div>
+                </div>
+                <form th:action="@{/logout}" method="post">
+                    <button type="submit" class="btn-logout-top"><i class="bi bi-box-arrow-left"></i> Salir</button>
+                </form>
+            </div>
+        </header>
+
+        <main class="main-content">
+            <div th:if="${mensaje}" class="alert alert-success alert-dismissible fade show">
+                <i class="bi bi-check-circle me-1"></i> <span th:text="${mensaje}">OK</span>
+                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            </div>
+            <div th:if="${error}" class="alert alert-danger alert-dismissible fade show">
+                <i class="bi bi-exclamation-triangle me-1"></i> <span th:text="${error}">Error</span>
+                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            </div>
+
+            <!-- Recordatorios vencimiento -->
+            <div th:if="${facturasVencidasCount != null and facturasVencidasCount > 0}" class="alert alert-danger alert-dismissible fade show">
+                <i class="bi bi-exclamation-octagon me-1"></i>
+                <strong>Facturas vencidas:</strong> <span th:text="${facturasVencidasCount}">0</span> factura(s) pendiente(s) con fecha de vencimiento pasada.
+                <a href="#tabla-facturas" class="alert-link ms-1">Ver listado</a>
+                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            </div>
+            <div th:if="${facturasPorVencerCount != null and facturasPorVencerCount > 0 and (facturasVencidasCount == null or facturasVencidasCount == 0)}" class="alert alert-warning alert-dismissible fade show">
+                <i class="bi bi-clock-history me-1"></i>
+                <strong>Por vencer:</strong> <span th:text="${facturasPorVencerCount}">0</span> factura(s) vencen en los pr&oacute;ximos 7 d&iacute;as.
+                <a href="#tabla-facturas" class="alert-link ms-1">Ver listado</a>
+                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            </div>
+
+            <div class="content-grid cols-7-5">
+                <div class="content-card">
+                    <div class="content-card-header d-flex flex-wrap justify-content-between align-items-center gap-2">
+                        <h3><i class="bi bi-receipt-cutoff me-2"></i>Facturas de suscripci&oacute;n</h3>
+                        <div class="d-flex gap-2 flex-wrap align-items-center">
+                            <form th:action="@{/web/admin/facturacion}" method="get" class="d-flex gap-2 align-items-center">
+                                <select name="empresaId" class="form-select form-select-sm" style="width:auto; min-width:180px;"
+                                        onchange="this.form.submit()">
+                                    <option value="">Todas las empresas</option>
+                                    <option th:each="e : ${empresas}" th:value="${e.id}"
+                                            th:selected="${empresaFiltroId != null and empresaFiltroId == e.id}"
+                                            th:text="${e.nombre}">Empresa</option>
+                                </select>
+                            </form>
+                            <div class="btn-group btn-group-sm" role="group" aria-label="Exportar facturas">
+                                <a class="btn btn-outline-success"
+                                   th:href="@{/web/admin/facturacion/excel(empresaId=${empresaFiltroId})}"
+                                   title="Exportar a Excel">
+                                    <i class="bi bi-file-earmark-excel"></i>
+                                </a>
+                                <a class="btn btn-outline-danger"
+                                   th:href="@{/web/admin/facturacion/pdf(empresaId=${empresaFiltroId})}"
+                                   title="Exportar a PDF">
+                                    <i class="bi bi-file-earmark-pdf"></i>
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="content-card-body no-padding">
+                        <table class="data-table" id="tabla-facturas">
+                            <thead>
+                            <tr>
+                                <th>N&ordm;</th>
+                                <th>Empresa</th>
+                                <th>Plan</th>
+                                <th>Periodo</th>
+                                <th class="text-end">Monto</th>
+                                <th>Estado</th>
+                                <th>Vencimiento</th>
+                                <th>Emisi&oacute;n</th>
+                                <th>Pago</th>
+                                <th class="text-center">Acciones</th>
+                            </tr>
+                            </thead>
+                            <tbody>
+                            <tr th:each="f : ${facturas}"
+                                th:classappend="${f.estado.name() == 'VENCIDA'} ? 'table-danger' : ''">
+                                <td><span class="badge-tag" th:text="${f.numeroFactura != null ? f.numeroFactura : '—'}">—</span></td>
+                                <td>
+                                    <span class="fw-700" th:text="${f.empresa.nombre}">Empresa</span>
+                                    <span class="badge-tag ms-1" th:text="${f.empresa.codigo}">COD</span>
+                                </td>
+                                <td><span class="badge-tag" th:text="${f.plan.nombre}">Plan</span></td>
+                                <td th:text="${#temporals.format(f.periodoDesde) + ' - ' + #temporals.format(f.periodoHasta)}">—</td>
+                                <td class="text-end fw-700" th:text="${#numbers.formatDecimal(f.monto, 1, 'COMMA', 2, 'POINT')}">0.00</td>
+                                <td>
+                                    <span class="badge-status"
+                                          th:classappend="${f.estado.name() == 'PAGADA' ? 'success' : (f.estado.name() == 'PENDIENTE' ? 'warning' : 'danger')}"
+                                          th:text="${f.estado.name() == 'PAGADA' ? 'Pagada' : (f.estado.name() == 'PENDIENTE' ? 'Pendiente' : (f.estado.name() == 'VENCIDA' ? 'Vencida' : 'Cancelada'))}">Estado</span>
+                                </td>
+                                <td>
+                                    <span th:if="${f.fechaVencimiento != null}" th:text="${#temporals.format(f.fechaVencimiento)}">—</span>
+                                    <span th:if="${f.fechaVencimiento == null}">—</span>
+                                </td>
+                                <td th:text="${f.fechaEmision != null ? #temporals.format(f.fechaEmision) : '—'}">—</td>
+                                <td th:text="${f.fechaPago != null ? #temporals.format(f.fechaPago) : '—'}">—</td>
+                                <td class="text-center">
+                                    <div class="d-flex flex-column align-items-center gap-1">
+                                        <form th:if="${f.estado.name() != 'PAGADA' and f.estado.name() != 'CANCELADA'}"
+                                              th:action="@{/web/admin/facturacion/pagar}" method="post"
+                                              class="d-inline-flex align-items-center gap-1">
+                                            <input type="hidden" name="facturaId" th:value="${f.id}">
+                                            <input type="date" name="fechaPago" class="form-control form-control-sm"
+                                                   style="width:auto; min-width:130px;" title="Fecha de pago (opcional)">
+                                            <button type="submit" class="btn-action" title="Marcar como pagada">
+                                                <i class="bi bi-check-circle"></i>
+                                            </button>
+                                        </form>
+                                        <form th:if="${f.estado.name() != 'PAGADA' and f.estado.name() != 'CANCELADA'}"
+                                              th:action="@{/web/admin/facturacion/cancelar}" method="post"
+                                              class="d-inline"
+                                              onsubmit="return confirm('¿Cancelar esta factura?');">
+                                            <input type="hidden" name="facturaId" th:value="${f.id}">
+                                            <button type="submit" class="btn-action text-danger" title="Cancelar factura">
+                                                <i class="bi bi-x-circle"></i>
+                                            </button>
+                                        </form>
+                                        <div th:if="${f.estado.name() == 'PAGADA'}" class="d-flex flex-column align-items-center gap-1">
+                                            <span class="text-success small">
+                                                <i class="bi bi-check-circle"></i> Pagada
+                                            </span>
+                                            <a th:href="@{/web/admin/facturacion/comprobante(facturaId=${f.id})}"
+                                               class="btn-action"
+                                               title="Imprimir comprobante">
+                                                <i class="bi bi-printer"></i>
+                                            </a>
+                                        </div>
+                                        <span th:if="${f.estado.name() == 'CANCELADA'}" class="text-muted small">
+                                            <i class="bi bi-x-circle"></i> Cancelada
+                                        </span>
+                                    </div>
+                                </td>
+                            </tr>
+                            <tr th:if="${#lists.isEmpty(facturas)}">
+                                <td colspan="10">
+                                    <div class="empty-state">
+                                        <i class="bi bi-receipt"></i>
+                                        <p>No hay facturas. Genere una factura para una empresa con plan asignado.</p>
+                                    </div>
+                                </td>
+                            </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <div class="content-card">
+                    <div class="content-card-header">
+                        <h3><i class="bi bi-plus-circle me-2"></i>Generar factura</h3>
+                    </div>
+                    <div class="content-card-body">
+                        <p class="text-muted small">Genera la factura del siguiente periodo para la empresa seleccionada (seg&uacute;n su plan y tipo mensual/anual).</p>
+                        <form th:action="@{/web/admin/facturacion/generar}" method="post">
+                            <div class="mb-3">
+                                <label class="form-label">Empresa *</label>
+                                <select name="empresaId" class="form-select" required>
+                                    <option value="">Seleccione empresa</option>
+                                    <option th:each="e : ${empresas}" th:value="${e.id}"
+                                            th:text="${e.nombre + (e.plan != null ? ' (' + e.plan.nombre + ')' : ' (sin plan)')}">Empresa</option>
+                                </select>
+                            </div>
+                            <button type="submit" class="btn btn-primary">
+                                <i class="bi bi-file-earmark-plus"></i> Generar factura
+                            </button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+<script th:src="@{/js/app.js}"></script>
+</body>
+</html>

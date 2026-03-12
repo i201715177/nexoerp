@@ -1,0 +1,356 @@
+<!DOCTYPE html>
+<html lang="es" xmlns:th="http://www.thymeleaf.org" xmlns:sec="http://www.thymeleaf.org/extras/spring-security">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Caja - NexoERP</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+    <link rel="stylesheet" th:href="@{/css/app.css}">
+</head>
+<body>
+<div class="app-layout">
+    <!-- Sidebar -->
+    <aside class="sidebar" id="sidebar">
+        <div class="sidebar-header">
+            <span class="sidebar-brand"><i class="bi bi-diagram-3"></i> NexoERP</span>
+            <button class="sidebar-toggle d-lg-none" onclick="toggleSidebar()"><i class="bi bi-x-lg"></i></button>
+        </div>
+        <nav class="sidebar-nav">
+            <div class="sidebar-section-title">Operaciones</div>
+            <a class="sidebar-link" href="/web/productos"><i class="bi bi-box-seam"></i> Productos</a>
+            <a class="sidebar-link" href="/web/clientes"><i class="bi bi-people"></i> Clientes</a>
+            <a class="sidebar-link" href="/web/proveedores" sec:authorize="hasAnyRole('ADMIN','SAAS_ADMIN')"><i class="bi bi-truck"></i> Proveedores</a>
+            <a class="sidebar-link" href="/web/compras" sec:authorize="hasAnyRole('ADMIN','SAAS_ADMIN')"><i class="bi bi-cart-plus"></i> Compras</a>
+            <a class="sidebar-link" href="/web/ventas"><i class="bi bi-receipt"></i> Ventas</a>
+            <a class="sidebar-link active" href="/web/caja"><i class="bi bi-cash-stack"></i> Caja</a>
+            <a class="sidebar-link" href="/web/requerimientos"><i class="bi bi-box-arrow-in-down"></i> Requerimientos</a>
+            <div class="sidebar-section-title">Gesti&oacute;n</div>
+            <a class="sidebar-link" href="/web/finanzas" sec:authorize="hasAnyRole('ADMIN','SAAS_ADMIN')"><i class="bi bi-graph-up"></i> Finanzas</a>
+            <a class="sidebar-link" href="/web/inventario"><i class="bi bi-clipboard-data"></i> Inventario</a>
+            <a class="sidebar-link" href="/web/reportes"><i class="bi bi-file-earmark-bar-graph"></i> Reportes</a>
+            <a class="sidebar-link" href="/web/sucursales" sec:authorize="hasAnyRole('ADMIN','SAAS_ADMIN')"><i class="bi bi-building"></i> Sucursales</a>
+            <div class="sidebar-section-title">Sistema</div>
+            <a class="sidebar-link" href="/web/auditoria" sec:authorize="hasAnyRole('ADMIN','SAAS_ADMIN')"><i class="bi bi-shield-check"></i> Auditor&iacute;a</a>
+            <a class="sidebar-link" href="/web/admin/empresas" sec:authorize="hasRole('SAAS_ADMIN')"><i class="bi bi-gear"></i> Admin SaaS</a>
+        </nav>
+        <div class="sidebar-footer">
+            <div sec:authorize="hasRole('SAAS_ADMIN')">
+                <form th:if="${empresasTodas != null and !#lists.isEmpty(empresasTodas)}"
+                      th:action="@{/web/empresas/cambiar}" method="post" class="mb-2">
+                    <select name="tenantId" class="form-select form-select-sm"
+                            onchange="this.form.submit()" style="background:#243656; color:#c8d6e5; border-color:rgba(255,255,255,.12); font-size:12px;">
+                        <option th:each="e : ${empresasTodas}" th:value="${e.id}"
+                                th:selected="${empresaActual != null and e.id == empresaActual.id}"
+                                th:text="${e.nombre}">Empresa</option>
+                    </select>
+                    <input type="hidden" name="redirect" value="/web/caja">
+                </form>
+            </div>
+        </div>
+    </aside>
+    <div id="sidebarBackdrop" class="sidebar-backdrop"></div>
+
+    <!-- Main -->
+    <div class="main-wrapper">
+        <header class="topbar">
+            <button class="btn-sidebar-toggle" onclick="toggleSidebar()"><i class="bi bi-list"></i></button>
+            <h1 class="topbar-title">Control de Caja</h1>
+            <div class="topbar-actions">
+                <form method="get" th:action="@{/web/caja}" class="d-flex align-items-center gap-2">
+                    <label class="form-label mb-0 small">Ver sucursal:</label>
+                    <select name="sucursalId" class="form-select form-select-sm" style="width:auto; min-width:140px;" onchange="this.form.submit()">
+                        <option value="">Todas</option>
+                        <option th:each="s : ${sucursales}" th:value="${s.id}" th:text="${s.nombre}"
+                                th:selected="${sucursalFiltroId != null and s.id == sucursalFiltroId}">Sucursal</option>
+                    </select>
+                </form>
+            </div>
+            <div class="topbar-user" th:if="${usuarioActual != null}">
+                <div class="topbar-user-avatar" th:text="${#strings.toUpperCase(#strings.substring(usuarioActual,0,1))}">A</div>
+                <div>
+                    <span class="topbar-user-name" th:text="${usuarioActual}">admin</span>
+                    <div class="topbar-user-empresa" th:text="${empresaActual != null ? empresaActual.nombre : ''}"></div>
+                </div>
+                <form th:action="@{/logout}" method="post">
+                    <button type="submit" class="btn-logout-top"><i class="bi bi-box-arrow-left"></i> Salir</button>
+                </form>
+            </div>
+        </header>
+
+        <main class="main-content">
+            <div th:if="${mensaje}" class="alert alert-success"><i class="bi bi-check-circle me-1"></i> <span th:text="${mensaje}">OK</span></div>
+            <div th:if="${error}" class="alert alert-danger"><i class="bi bi-exclamation-triangle me-1"></i> <span th:text="${error}">Error</span></div>
+
+            <!-- KPIs -->
+            <div class="kpi-row">
+                <div class="kpi-card">
+                    <div class="kpi-icon" th:classappend="${cajaAbierta != null ? 'green' : 'red'}">
+                        <i class="bi" th:classappend="${cajaAbierta != null ? 'bi-unlock' : 'bi-lock'}"></i>
+                    </div>
+                    <div class="kpi-body">
+                        <div class="kpi-label">Estado de caja</div>
+                        <div class="kpi-value" th:text="${cajaAbierta != null ? 'Abierta' : 'Cerrada'}">Cerrada</div>
+                    </div>
+                </div>
+                <div class="kpi-card">
+                    <div class="kpi-icon blue"><i class="bi bi-cash-coin"></i></div>
+                    <div class="kpi-body">
+                        <div class="kpi-label">Monto inicial</div>
+                        <div class="kpi-value" th:text="${cajaAbierta != null ? 'S/ ' + cajaAbierta.montoInicial : 'S/ 0.00'}">S/ 0.00</div>
+                    </div>
+                </div>
+                <div class="kpi-card">
+                    <div class="kpi-icon green"><i class="bi bi-cart-check"></i></div>
+                    <div class="kpi-body">
+                        <div class="kpi-label">Ventas del turno</div>
+                        <div class="kpi-value" th:text="${'S/ ' + (totalVentasTurno != null ? totalVentasTurno : '0.00')}">S/ 0.00</div>
+                    </div>
+                </div>
+                <div class="kpi-card">
+                    <div class="kpi-icon yellow"><i class="bi bi-wallet2"></i></div>
+                    <div class="kpi-body">
+                        <div class="kpi-label">Monto esperado</div>
+                        <div class="kpi-value" th:text="${'S/ ' + (montoEsperadoCaja != null ? montoEsperadoCaja : '0.00')}">S/ 0.00</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Transferencias pendientes de recepción para esta sucursal -->
+            <div th:if="${pendientesRecepcion != null and !pendientesRecepcion.isEmpty()}" class="content-card transferencias-pendientes-card mb-4" style="border-left: 4px solid #f59e0b;">
+                <div class="content-card-header d-flex align-items-center gap-2">
+                    <h3 class="mb-0"><i class="bi bi-inbox-fill text-warning me-2"></i>Transferencias por confirmar</h3>
+                    <span class="badge bg-warning text-dark fs-6" th:text="${#lists.size(pendientesRecepcion)} + ' pendiente(s)'">0</span>
+                </div>
+                <div class="content-card-body">
+                    <p class="text-muted small mb-2">
+                        <i class="bi bi-info-circle me-1"></i> Los siguientes productos fueron enviados a su sucursal. Confirme la recepci&oacute;n cuando la mercanc&iacute;a llegue f&iacute;sicamente.
+                    </p>
+                    <div class="table-responsive">
+                        <table class="data-table">
+                            <thead>
+                                <tr>
+                                    <th>Desde</th>
+                                    <th>Producto</th>
+                                    <th class="text-center">Cantidad</th>
+                                    <th>Referencia</th>
+                                    <th>Fecha env&iacute;o</th>
+                                    <th>Enviado por</th>
+                                    <th class="text-end">Acci&oacute;n</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr th:each="t : ${pendientesRecepcion}">
+                                    <td><span class="fw-bold" th:text="${t.almacenOrigen != null ? t.almacenOrigen.nombre + (t.almacenOrigen.sucursal != null ? ' (' + t.almacenOrigen.sucursal.nombre + ')' : '') : '-'}">-</span></td>
+                                    <td th:text="${t.producto != null ? t.producto.nombre : '-'}">-</td>
+                                    <td class="text-center"><span class="badge bg-primary" th:text="${t.cantidad}">0</span></td>
+                                    <td class="text-muted small" th:text="${t.referencia != null and !t.referencia.isEmpty() ? t.referencia : '—'}">—</td>
+                                    <td th:text="${t.fechaEnvio != null ? #temporals.format(t.fechaEnvio, 'dd/MM/yyyy HH:mm') : '-'}">-</td>
+                                    <td th:text="${t.usuarioEnvio != null ? t.usuarioEnvio : '-'}">-</td>
+                                    <td class="text-end">
+                                        <form th:action="@{/web/caja/confirmar-recepcion/{id}(id=${t.id})}" method="post" class="d-inline"
+                                              onsubmit="event.preventDefault(); if(confirm('¿Confirmar que recibió físicamente esta mercancía?')) { this.submit(); } return false;">
+                                            <input type="hidden" name="sucursalId" th:value="${sucursalFiltroId}">
+                                            <button type="submit" class="btn btn-success btn-sm"><i class="bi bi-check-lg me-1"></i> Confirmar recepci&oacute;n</button>
+                                        </form>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Content grid -->
+            <div class="content-grid cols-5-7">
+                <!-- Estado actual (compacto) -->
+                <div class="content-card caja-estado-compact">
+                    <div class="content-card-header py-2">
+                        <h3 class="mb-0 fs-6"><i class="bi bi-cash-stack me-2"></i>Estado actual del turno</h3>
+                    </div>
+                    <div class="content-card-body py-3">
+                        <div th:if="${cajaAbierta != null}">
+                            <div class="alert alert-success py-2 mb-2 small"><i class="bi bi-unlock me-1"></i> <strong>Caja abierta</strong></div>
+                            <div class="row g-2 mb-2 small">
+                                <div class="col-6"><span class="text-muted">Vendedor:</span> <span class="fw-700" th:text="${cajaAbierta.nombreVendedor != null and !cajaAbierta.nombreVendedor.isEmpty() ? cajaAbierta.nombreVendedor : cajaAbierta.usuario}">-</span></div>
+                                <div class="col-6"><span class="text-muted">Sucursal:</span> <span th:text="${cajaAbierta.sucursal != null ? cajaAbierta.sucursal.nombre : 'Central'}">Central</span></div>
+                                <div class="col-6"><span class="text-muted">Turno #</span> <span th:text="${cajaAbierta.id}">-</span></div>
+                                <div class="col-6"><span class="text-muted">Apertura:</span> <span th:text="${#temporals.format(cajaAbierta.fechaApertura, 'dd/MM HH:mm')}">-</span></div>
+                            </div>
+                            <hr class="my-2">
+                            <h6 class="mb-2 small"><i class="bi bi-door-closed me-1"></i> Cerrar caja</h6>
+                            <form th:action="@{/web/caja/cerrar}" method="post" class="row g-2"
+                                  onsubmit="event.preventDefault(); nexoS.confirmSubmit(event, '¿Cerrar caja?'); return false;">
+                                <input type="hidden" name="turnoId" th:value="${cajaAbierta.id}">
+                                <input type="hidden" name="sucursalId" th:value="${sucursalFiltroId}">
+                                <div class="col-12"><small class="text-muted">Monto esperado: <strong>S/ <span th:text="${montoEsperadoCaja}">0.00</span></strong></small></div>
+                                <div class="col-6"><label class="form-label form-label-sm mb-0">Monto cierre (S/)</label><input type="number" step="0.01" name="montoCierre" class="form-control form-control-sm" th:placeholder="${montoEsperadoCaja != null ? montoEsperadoCaja : cajaAbierta.montoInicial}"></div>
+                                <div class="col-6"><label class="form-label form-label-sm mb-0">Observaciones</label><input type="text" name="observaciones" class="form-control form-control-sm"></div>
+                                <div class="col-12"><button type="submit" class="btn btn-warning btn-sm"><i class="bi bi-lock me-1"></i> Cerrar caja</button></div>
+                            </form>
+                            <hr class="my-2">
+                            <h6 class="mb-2 small"><i class="bi bi-wallet2 me-1"></i> Resumen por medio de pago</h6>
+                            <div th:if="${resumenPorMedioPago != null and !#lists.isEmpty(resumenPorMedioPago)}" class="table-responsive">
+                                <table class="table table-sm table-bordered mb-0 small">
+                                    <thead class="table-light"><tr><th>Medio</th><th class="text-center">Cant.</th><th class="text-end">Total</th></tr></thead>
+                                    <tbody>
+                                    <tr th:each="r : ${resumenPorMedioPago}"><td th:text="${r.medio}">-</td><td class="text-center" th:text="${r.cantidad}">0</td><td class="text-end" th:text="${#numbers.formatDecimal(r.total, 1, 2)}">0.00</td></tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                            <p th:if="${resumenPorMedioPago == null or #lists.isEmpty(resumenPorMedioPago)}" class="small text-muted mb-0">Sin pagos en este turno.</p>
+                        </div>
+                        <div th:if="${cajaAbierta == null}">
+                            <div class="small text-muted mb-2">No hay caja abierta.</div>
+                            <hr class="my-2">
+                            <h6 class="mb-2 small"><i class="bi bi-unlock me-1"></i> Abrir caja</h6>
+                            <form th:action="@{/web/caja/abrir}" method="post" class="row g-2">
+                                <div class="col-6"><label class="form-label form-label-sm mb-0">Monto inicial (S/)</label><input type="number" step="0.01" min="0" name="montoInicial" class="form-control form-control-sm" value="0" required></div>
+                                <div class="col-6"><label class="form-label form-label-sm mb-0">Sucursal</label><select name="sucursalId" class="form-select form-select-sm" required><option value="">...</option><option th:each="s : ${sucursales}" th:value="${s.id}" th:text="${s.nombre}">Suc</option></select></div>
+                                <div class="col-12"><label class="form-label form-label-sm mb-0">Vendedor</label><input type="text" name="nombreVendedor" class="form-control form-control-sm" required></div>
+                                <div class="col-12"><button type="submit" class="btn btn-success btn-sm"><i class="bi bi-unlock me-1"></i> Abrir caja</button></div>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Historial de turnos -->
+                <div class="content-card">
+                    <div class="content-card-header">
+                        <h3><i class="bi bi-clock-history me-2"></i>Historial de turnos</h3>
+                    </div>
+                    <div class="content-card-body no-padding">
+                        <div class="export-bar">
+                            <a th:href="@{/web/caja/excel(sucursalId=${sucursalFiltroId})}" class="btn-export btn-export-excel"><i class="bi bi-file-earmark-excel"></i> Excel</a>
+                            <a th:href="@{/web/caja/pdf(sucursalId=${sucursalFiltroId})}" class="btn-export btn-export-pdf"><i class="bi bi-file-earmark-pdf"></i> PDF</a>
+                        </div>
+                        <table class="data-table">
+                            <thead>
+                            <tr>
+                                <th>#</th>
+                                <th>Apertura</th>
+                                <th>Sucursal</th>
+                                <th>Vendedor</th>
+                                <th>Cierre</th>
+                                <th class="text-end">M. asignado</th>
+                                <th class="text-end">Ventas</th>
+                                <th class="text-end">M. cierre</th>
+                                <th class="text-center">Estado</th>
+                                <th class="text-center">Ver</th>
+                                <th class="text-center">Eliminar</th>
+                            </tr>
+                            </thead>
+                            <tbody>
+                            <tr th:each="t : ${turnos}">
+                                <td><span class="badge-tag" th:text="${t.id}">1</span></td>
+                                <td th:text="${#temporals.format(t.fechaApertura, 'dd/MM HH:mm')}">-</td>
+                                <td th:text="${t.sucursal != null ? t.sucursal.nombre : 'Central'}">Suc</td>
+                                <td th:text="${t.nombreVendedor != null and !t.nombreVendedor.isEmpty() ? t.nombreVendedor : (t.usuario != null ? t.usuario : 'N/D')}">-</td>
+                                <td th:text="${t.fechaCierre != null ? #temporals.format(t.fechaCierre, 'dd/MM HH:mm') : '-'}">-</td>
+                                <td class="text-end" th:text="${t.montoInicial != null ? t.montoInicial : '0.00'}">0</td>
+                                <td class="text-end" th:text="${ventasPorTurno != null ? (ventasPorTurno[t.id] != null ? ventasPorTurno[t.id] : '0.00') : '0.00'}">0</td>
+                                <td class="text-end" th:text="${t.montoCierre != null ? t.montoCierre : '-'}">-</td>
+                                <td class="text-center">
+                                    <span class="badge-status" th:classappend="${t.estado == 'ABIERTO' ? 'success' : 'secondary'}" th:text="${t.estado}">-</span>
+                                </td>
+                                <td class="text-center">
+                                    <button type="button" class="btn btn-sm btn-outline-primary btn-ver-turno" th:data-turno-id="${t.id}" title="Ver detalle por medio de pago"><i class="bi bi-eye me-1"></i>Ver</button>
+                                </td>
+                                <td class="text-center">
+                                    <form th:if="${t.estado == 'CERRADO'}" th:action="${sucursalFiltroId != null} ? @{/web/caja/eliminar-del-historial(turnoId=${t.id}, sucursalId=${sucursalFiltroId})} : @{/web/caja/eliminar-del-historial(turnoId=${t.id})}" method="post" class="d-inline" onsubmit="return confirm('¿Quitar este turno del historial? Los datos seguirán en auditoría.');">
+                                        <button type="submit" class="btn btn-sm btn-outline-danger" title="Quitar del historial (auditoría se mantiene)"><i class="bi bi-trash me-1"></i>Eliminar</button>
+                                    </form>
+                                    <span th:if="${t.estado != 'CERRADO'}" class="text-muted small">—</span>
+                                </td>
+                            </tr>
+                            <tr th:if="${#lists.isEmpty(turnos)}">
+                                <td colspan="11">
+                                    <div class="empty-state">
+                                        <i class="bi bi-inbox"></i>
+                                        <p>No hay turnos registrados.</p>
+                                    </div>
+                                </td>
+                            </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+</div>
+
+<!-- Modal: Detalle del turno por medio de pago -->
+<div class="modal fade" id="modalDetalleTurno" tabindex="-1" aria-labelledby="modalDetalleTurnoLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header py-2">
+                <h5 class="modal-title" id="modalDetalleTurnoLabel"><i class="bi bi-wallet2 me-2"></i>Detalle del turno</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+            </div>
+            <div class="modal-body">
+                <div id="modalTurnoInfo" class="small text-muted mb-3"></div>
+                <h6 class="mb-2">Resumen por medio de pago</h6>
+                <div id="modalResumenTableWrap">
+                    <table class="table table-sm table-bordered">
+                        <thead class="table-light">
+                        <tr><th>Medio</th><th class="text-center">Cantidad</th><th class="text-end">Total (S/)</th></tr>
+                        </thead>
+                        <tbody id="modalResumenBody"></tbody>
+                    </table>
+                </div>
+                <p id="modalResumenEmpty" class="small text-muted mb-0" style="display:none;">No hay pagos registrados en este turno.</p>
+            </div>
+            <div class="modal-footer py-2">
+                <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Cerrar</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+<script th:src="@{/js/app.js}"></script>
+<script>
+(function() {
+    var modal = document.getElementById('modalDetalleTurno');
+    if (!modal) return;
+    var modalTurnoInfo = document.getElementById('modalTurnoInfo');
+    var modalResumenBody = document.getElementById('modalResumenBody');
+    var modalResumenTableWrap = document.getElementById('modalResumenTableWrap');
+    var modalResumenEmpty = document.getElementById('modalResumenEmpty');
+    document.querySelectorAll('.btn-ver-turno').forEach(function(btn) {
+        btn.addEventListener('click', function() {
+            var turnoId = this.getAttribute('data-turno-id');
+            if (!turnoId) return;
+            fetch('/web/caja/resumen-medio-pago?turnoId=' + encodeURIComponent(turnoId))
+                .then(function(r) { return r.json(); })
+                .then(function(data) {
+                    modalTurnoInfo.innerHTML = 'Turno #' + data.turnoId + ' &middot; ' + (data.vendedor || '-') +
+                        ' &middot; ' + (data.sucursal || 'Central') + '<br>Apertura: ' + (data.apertura || '-') +
+                        ' &middot; Cierre: ' + (data.cierre || '-') + ' &middot; Estado: ' + (data.estado || '-') +
+                        '<br>Total ventas turno: S/ ' + (data.totalVentas != null ? Number(data.totalVentas).toFixed(2) : '0.00');
+                    var resumen = data.resumen || [];
+                    modalResumenBody.innerHTML = '';
+                    if (resumen.length === 0) {
+                        modalResumenTableWrap.style.display = 'none';
+                        modalResumenEmpty.style.display = 'block';
+                    } else {
+                        modalResumenTableWrap.style.display = 'block';
+                        modalResumenEmpty.style.display = 'none';
+                        resumen.forEach(function(r) {
+                            var tr = document.createElement('tr');
+                            tr.innerHTML = '<td>' + (r.medio || '') + '</td><td class="text-center">' + (r.cantidad || 0) + '</td><td class="text-end">' + (r.total != null ? Number(r.total).toFixed(2) : '0.00') + '</td>';
+                            modalResumenBody.appendChild(tr);
+                        });
+                    }
+                    new bootstrap.Modal(modal).show();
+                })
+                .catch(function() {
+                    if (typeof nexoS !== 'undefined' && nexoS.toast) nexoS.toast({ type: 'error', message: 'No se pudo cargar el detalle del turno.' });
+                });
+        });
+    });
+})();
+</script>
+</body>
+</html>

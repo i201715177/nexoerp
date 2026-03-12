@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+<html lang="es" xmlns:th="http://www.thymeleaf.org" xmlns:sec="http://www.thymeleaf.org/extras/spring-security">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Sucursales - NexoERP</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+    <link rel="stylesheet" th:href="@{/css/app.css}">
+</head>
+<body>
+<div class="app-layout">
+    <!-- Sidebar -->
+    <aside class="sidebar" id="sidebar">
+        <div class="sidebar-header">
+            <span class="sidebar-brand"><i class="bi bi-diagram-3"></i> NexoERP</span>
+            <button class="sidebar-toggle d-lg-none" onclick="toggleSidebar()"><i class="bi bi-x-lg"></i></button>
+        </div>
+        <nav class="sidebar-nav">
+            <div class="sidebar-section-title">Operaciones</div>
+            <a class="sidebar-link" href="/web/productos"><i class="bi bi-box-seam"></i> Productos</a>
+            <a class="sidebar-link" href="/web/clientes"><i class="bi bi-people"></i> Clientes</a>
+            <a class="sidebar-link" href="/web/proveedores" sec:authorize="hasAnyRole('ADMIN','SAAS_ADMIN')"><i class="bi bi-truck"></i> Proveedores</a>
+            <a class="sidebar-link" href="/web/compras" sec:authorize="hasAnyRole('ADMIN','SAAS_ADMIN')"><i class="bi bi-cart-plus"></i> Compras</a>
+            <a class="sidebar-link" href="/web/ventas"><i class="bi bi-receipt"></i> Ventas</a>
+            <a class="sidebar-link" href="/web/caja"><i class="bi bi-cash-stack"></i> Caja</a>
+            <div class="sidebar-section-title">Gesti&oacute;n</div>
+            <a class="sidebar-link" href="/web/finanzas" sec:authorize="hasAnyRole('ADMIN','SAAS_ADMIN')"><i class="bi bi-graph-up"></i> Finanzas</a>
+            <a class="sidebar-link" href="/web/inventario"><i class="bi bi-clipboard-data"></i> Inventario</a>
+            <a class="sidebar-link" href="/web/reportes"><i class="bi bi-file-earmark-bar-graph"></i> Reportes</a>
+            <a class="sidebar-link active" href="/web/sucursales" sec:authorize="hasAnyRole('ADMIN','SAAS_ADMIN')"><i class="bi bi-building"></i> Sucursales</a>
+            <div class="sidebar-section-title">Sistema</div>
+            <a class="sidebar-link" href="/web/auditoria" sec:authorize="hasAnyRole('ADMIN','SAAS_ADMIN')"><i class="bi bi-shield-check"></i> Auditor&iacute;a</a>
+            <a class="sidebar-link" href="/web/admin/empresas" sec:authorize="hasRole('SAAS_ADMIN')"><i class="bi bi-gear"></i> Admin SaaS</a>
+        </nav>
+        <div class="sidebar-footer">
+            <div sec:authorize="hasRole('SAAS_ADMIN')">
+                <form th:if="${empresasTodas != null and !#lists.isEmpty(empresasTodas)}"
+                      th:action="@{/web/empresas/cambiar}" method="post" class="mb-2">
+                    <select name="tenantId" class="form-select form-select-sm"
+                            onchange="this.form.submit()" style="background:#243656; color:#c8d6e5; border-color:rgba(255,255,255,.12); font-size:12px;">
+                        <option th:each="e : ${empresasTodas}" th:value="${e.id}"
+                                th:selected="${empresaActual != null and e.id == empresaActual.id}"
+                                th:text="${e.nombre}">Empresa</option>
+                    </select>
+                    <input type="hidden" name="redirect" value="/web/sucursales">
+                </form>
+            </div>
+        </div>
+    </aside>
+    <div id="sidebarBackdrop" class="sidebar-backdrop"></div>
+
+    <!-- Main -->
+    <div class="main-wrapper">
+        <header class="topbar">
+            <button class="btn-sidebar-toggle" onclick="toggleSidebar()"><i class="bi bi-list"></i></button>
+            <h1 class="topbar-title">Sucursales</h1>
+            <div class="topbar-actions"></div>
+            <div class="topbar-user" th:if="${usuarioActual != null}">
+                <div class="topbar-user-avatar" th:text="${#strings.toUpperCase(#strings.substring(usuarioActual,0,1))}">A</div>
+                <div>
+                    <span class="topbar-user-name" th:text="${usuarioActual}">admin</span>
+                    <div class="topbar-user-empresa" th:text="${empresaActual != null ? empresaActual.nombre : ''}"></div>
+                </div>
+                <form th:action="@{/logout}" method="post">
+                    <button type="submit" class="btn-logout-top"><i class="bi bi-box-arrow-left"></i> Salir</button>
+                </form>
+            </div>
+        </header>
+
+        <main class="main-content">
+            <!-- KPIs -->
+            <div class="kpi-row"
+                 th:with="total=${sucursales != null ? #lists.size(sucursales) : 0},
+                          activas=${sucursales != null ? #lists.size(sucursales.?[activa]) : 0},
+                          inactivas=${sucursales != null ? total - activas : 0}">
+                <div class="kpi-card">
+                    <div class="kpi-icon blue"><i class="bi bi-building"></i></div>
+                    <div class="kpi-body">
+                        <div class="kpi-label">Total sucursales</div>
+                        <div class="kpi-value" th:text="${total}">0</div>
+                    </div>
+                </div>
+                <div class="kpi-card">
+                    <div class="kpi-icon green"><i class="bi bi-check-circle"></i></div>
+                    <div class="kpi-body">
+                        <div class="kpi-label">Activas</div>
+                        <div class="kpi-value" th:text="${activas}">0</div>
+                    </div>
+                </div>
+                <div class="kpi-card">
+                    <div class="kpi-icon red"><i class="bi bi-x-circle"></i></div>
+                    <div class="kpi-body">
+                        <div class="kpi-label">Inactivas</div>
+                        <div class="kpi-value" th:text="${inactivas}">0</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Content grid -->
+            <div class="content-grid cols-7-5">
+                <!-- Table -->
+                <div class="content-card">
+                    <div class="content-card-header">
+                        <h3><i class="bi bi-table me-2"></i>Gesti&oacute;n de sucursales</h3>
+                    </div>
+                    <div class="content-card-body no-padding">
+                        <table class="data-table">
+                            <thead>
+                            <tr>
+                                <th>C&oacute;digo</th>
+                                <th>Nombre</th>
+                                <th>Direcci&oacute;n</th>
+                                <th>Estado</th>
+                                <th class="text-center">Central</th>
+                                <th class="text-center">Inventario</th>
+                                <th class="text-center">Ventas</th>
+                            </tr>
+                            </thead>
+                            <tbody>
+                            <tr th:each="s : ${sucursales}">
+                                <td><span class="badge-tag" th:text="${s.codigo}">S01</span></td>
+                                <td class="fw-700" th:text="${s.nombre}">Sucursal</td>
+                                <td th:text="${s.direccion}">Direcci&oacute;n</td>
+                                <td>
+                                    <span class="badge-status"
+                                          th:classappend="${s.activa} ? 'success' : 'danger'"
+                                          th:text="${s.activa ? 'Activa' : 'Inactiva'}">Activa</span>
+                                </td>
+                                <td class="text-center">
+                                    <span th:if="${s.central}" class="badge-status success"><i class="bi bi-star-fill"></i> Central</span>
+                                    <form th:if="${!s.central}" th:action="@{/web/sucursales/marcar-central}" method="post" class="d-inline">
+                                        <input type="hidden" name="sucursalId" th:value="${s.id}">
+                                        <button type="submit" class="btn-action" title="Marcar como sucursal central"><i class="bi bi-star"></i></button>
+                                    </form>
+                                </td>
+                                <td class="text-center">
+                                    <a class="btn-action" th:href="@{/web/sucursales/inventario(sucursalId=${s.id})}" title="Ver inventario"><i class="bi bi-clipboard-data"></i></a>
+                                </td>
+                                <td class="text-center">
+                                    <a class="btn-action" th:href="@{/web/sucursales/ventas(sucursalId=${s.id})}" title="Ver ventas"><i class="bi bi-receipt"></i></a>
+                                </td>
+                            </tr>
+                            <tr th:if="${#lists.isEmpty(sucursales)}">
+                                <td colspan="7">
+                                    <div class="empty-state">
+                                        <i class="bi bi-inbox"></i>
+                                        <p>No hay sucursales registradas.</p>
+                                    </div>
+                                </td>
+                            </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- Form -->
+                <div class="content-card">
+                    <div class="content-card-header">
+                        <h3><i class="bi bi-plus-circle me-2"></i>Nueva sucursal</h3>
+                    </div>
+                    <div class="content-card-body">
+                        <form th:action="@{/web/sucursales}" method="post"
+                              onsubmit="event.preventDefault(); nexoS.confirmSubmit(event, '¿Registrar sucursal?'); return false;">
+                            <div class="row g-3">
+                                <div class="col-md-4 form-section">
+                                    <label class="form-label">C&oacute;digo *</label>
+                                    <input type="text" name="codigo" class="form-control" required placeholder="C&oacute;digo sucursal">
+                                </div>
+                                <div class="col-md-8 form-section">
+                                    <label class="form-label">Nombre *</label>
+                                    <input type="text" name="nombre" class="form-control" required placeholder="Nombre de la sucursal">
+                                </div>
+                                <div class="col-12 form-section">
+                                    <label class="form-label">Direcci&oacute;n</label>
+                                    <input type="text" name="direccion" class="form-control">
+                                </div>
+                                <div class="col-12 form-section">
+                                    <div class="form-check">
+                                        <input type="checkbox" name="central" value="true" id="central" class="form-check-input">
+                                        <label class="form-check-label" for="central">Es sucursal central (almac&eacute;n que abastece a las dem&aacute;s)</label>
+                                    </div>
+                                </div>
+                                <div class="col-12 d-flex gap-2">
+                                    <button type="submit" class="btn btn-primary">
+                                        <i class="bi bi-check-lg"></i> Guardar sucursal
+                                    </button>
+                                </div>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+<script th:src="@{/js/app.js}"></script>
+</body>
+</html>

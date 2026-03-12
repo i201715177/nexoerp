@@ -1,0 +1,298 @@
+<!DOCTYPE html>
+<html lang="es" xmlns:th="http://www.thymeleaf.org" xmlns:sec="http://www.thymeleaf.org/extras/spring-security">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Reportes - NexoERP</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+    <link rel="stylesheet" th:href="@{/css/app.css}">
+</head>
+<body>
+<div class="app-layout">
+    <!-- Sidebar -->
+    <aside class="sidebar" id="sidebar">
+        <div class="sidebar-header">
+            <span class="sidebar-brand"><i class="bi bi-diagram-3"></i> NexoERP</span>
+            <button class="sidebar-toggle d-lg-none" onclick="toggleSidebar()"><i class="bi bi-x-lg"></i></button>
+        </div>
+        <nav class="sidebar-nav">
+            <div class="sidebar-section-title">Operaciones</div>
+            <a class="sidebar-link" href="/web/productos"><i class="bi bi-box-seam"></i> Productos</a>
+            <a class="sidebar-link" href="/web/clientes"><i class="bi bi-people"></i> Clientes</a>
+            <a class="sidebar-link" href="/web/proveedores" sec:authorize="hasAnyRole('ADMIN','SAAS_ADMIN')"><i class="bi bi-truck"></i> Proveedores</a>
+            <a class="sidebar-link" href="/web/compras" sec:authorize="hasAnyRole('ADMIN','SAAS_ADMIN')"><i class="bi bi-cart-plus"></i> Compras</a>
+            <a class="sidebar-link" href="/web/ventas"><i class="bi bi-receipt"></i> Ventas</a>
+            <a class="sidebar-link" href="/web/caja"><i class="bi bi-cash-stack"></i> Caja</a>
+            <div class="sidebar-section-title">Gesti&oacute;n</div>
+            <a class="sidebar-link" href="/web/finanzas" sec:authorize="hasAnyRole('ADMIN','SAAS_ADMIN')"><i class="bi bi-graph-up"></i> Finanzas</a>
+            <a class="sidebar-link" href="/web/inventario"><i class="bi bi-clipboard-data"></i> Inventario</a>
+            <a class="sidebar-link active" href="/web/reportes"><i class="bi bi-file-earmark-bar-graph"></i> Reportes</a>
+            <a class="sidebar-link" href="/web/sucursales" sec:authorize="hasAnyRole('ADMIN','SAAS_ADMIN')"><i class="bi bi-building"></i> Sucursales</a>
+            <div class="sidebar-section-title">Sistema</div>
+            <a class="sidebar-link" href="/web/auditoria" sec:authorize="hasAnyRole('ADMIN','SAAS_ADMIN')"><i class="bi bi-shield-check"></i> Auditor&iacute;a</a>
+            <a class="sidebar-link" href="/web/admin/empresas" sec:authorize="hasRole('SAAS_ADMIN')"><i class="bi bi-gear"></i> Admin SaaS</a>
+        </nav>
+        <div class="sidebar-footer">
+            <div sec:authorize="hasRole('SAAS_ADMIN')">
+                <form th:if="${empresasTodas != null and !#lists.isEmpty(empresasTodas)}"
+                      th:action="@{/web/empresas/cambiar}" method="post" class="mb-2">
+                    <select name="tenantId" class="form-select form-select-sm"
+                            onchange="this.form.submit()" style="background:#243656; color:#c8d6e5; border-color:rgba(255,255,255,.12); font-size:12px;">
+                        <option th:each="e : ${empresasTodas}" th:value="${e.id}"
+                                th:selected="${empresaActual != null and e.id == empresaActual.id}"
+                                th:text="${e.nombre}">Empresa</option>
+                    </select>
+                    <input type="hidden" name="redirect" value="/web/reportes">
+                </form>
+            </div>
+        </div>
+    </aside>
+    <div id="sidebarBackdrop" class="sidebar-backdrop"></div>
+
+    <!-- Main -->
+    <div class="main-wrapper">
+        <header class="topbar">
+            <button class="btn-sidebar-toggle" onclick="toggleSidebar()"><i class="bi bi-list"></i></button>
+            <h1 class="topbar-title">Reportes Gerenciales</h1>
+            <div class="topbar-actions">
+                <form class="search-bar" method="get" th:action="@{/web/reportes}">
+                    <input type="date" class="form-control form-control-sm" name="desde" th:value="${desde}">
+                    <input type="date" class="form-control form-control-sm" name="hasta" th:value="${hasta}">
+                    <button class="btn btn-sm btn-primary" type="submit"><i class="bi bi-funnel"></i> Aplicar</button>
+                </form>
+            </div>
+            <div class="topbar-user" th:if="${usuarioActual != null}">
+                <div class="topbar-user-avatar" th:text="${#strings.toUpperCase(#strings.substring(usuarioActual,0,1))}">A</div>
+                <div>
+                    <span class="topbar-user-name" th:text="${usuarioActual}">admin</span>
+                    <div class="topbar-user-empresa" th:text="${empresaActual != null ? empresaActual.nombre : ''}"></div>
+                </div>
+                <form th:action="@{/logout}" method="post">
+                    <button type="submit" class="btn-logout-top"><i class="bi bi-box-arrow-left"></i> Salir</button>
+                </form>
+            </div>
+        </header>
+
+        <main class="main-content">
+            <!-- KPIs fila 1 -->
+            <div class="kpi-row">
+                <div class="kpi-card">
+                    <div class="kpi-icon blue"><i class="bi bi-cash-coin"></i></div>
+                    <div class="kpi-body">
+                        <div class="kpi-label">Ventas en el per&iacute;odo</div>
+                        <div class="kpi-value">S/ <span th:text="${ventasPeriodo}">0.00</span></div>
+                    </div>
+                </div>
+                <div class="kpi-card">
+                    <div class="kpi-icon green"><i class="bi bi-graph-up-arrow"></i></div>
+                    <div class="kpi-body">
+                        <div class="kpi-label">Utilidad bruta</div>
+                        <div class="kpi-value">S/ <span th:text="${utilidadPeriodo}">0.00</span></div>
+                    </div>
+                </div>
+                <div class="kpi-card">
+                    <div class="kpi-icon red"><i class="bi bi-credit-card"></i></div>
+                    <div class="kpi-body">
+                        <div class="kpi-label">Cuentas por pagar</div>
+                        <div class="kpi-value">S/ <span th:text="${cxpPendiente}">0.00</span></div>
+                    </div>
+                </div>
+                <div class="kpi-card">
+                    <div class="kpi-icon yellow"><i class="bi bi-receipt-cutoff"></i></div>
+                    <div class="kpi-body">
+                        <div class="kpi-label">Cuentas por cobrar</div>
+                        <div class="kpi-value">S/ <span th:text="${cxcPendiente}">0.00</span></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- KPIs fila 2 -->
+            <div class="kpi-row">
+                <div class="kpi-card">
+                    <div class="kpi-icon blue"><i class="bi bi-calendar-day"></i></div>
+                    <div class="kpi-body">
+                        <div class="kpi-label">Ventas del d&iacute;a</div>
+                        <div class="kpi-value">S/ <span th:text="${ventasDia}">0.00</span></div>
+                    </div>
+                </div>
+                <div class="kpi-card">
+                    <div class="kpi-icon green"><i class="bi bi-calendar-month"></i></div>
+                    <div class="kpi-body">
+                        <div class="kpi-label">Ventas del mes</div>
+                        <div class="kpi-value">S/ <span th:text="${ventasMes}">0.00</span></div>
+                    </div>
+                </div>
+                <div class="kpi-card">
+                    <div class="kpi-icon yellow"><i class="bi bi-calendar-range"></i></div>
+                    <div class="kpi-body">
+                        <div class="kpi-label">Ventas del a&ntilde;o</div>
+                        <div class="kpi-value">S/ <span th:text="${ventasAnio}">0.00</span></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Content grid: 3 tablas -->
+            <div class="content-grid" style="grid-template-columns: repeat(3, 1fr);">
+                <!-- Mas vendidos -->
+                <div class="content-card">
+                    <div class="content-card-header">
+                        <h3><i class="bi bi-trophy me-2"></i>M&aacute;s vendidos</h3>
+                    </div>
+                    <div class="content-card-body no-padding">
+                        <table class="data-table">
+                            <thead>
+                            <tr>
+                                <th>Producto</th>
+                                <th class="text-end">Cantidad</th>
+                            </tr>
+                            </thead>
+                            <tbody>
+                            <tr th:each="e : ${masVendidos}">
+                                <td class="fw-700" th:text="${e.key.nombre}">Producto</td>
+                                <td class="text-end" th:text="${e.value}">0</td>
+                            </tr>
+                            <tr th:if="${#lists.isEmpty(masVendidos)}">
+                                <td colspan="2">
+                                    <div class="empty-state">
+                                        <i class="bi bi-inbox"></i>
+                                        <p>Sin ventas en el per&iacute;odo.</p>
+                                    </div>
+                                </td>
+                            </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- Sin rotacion -->
+                <div class="content-card">
+                    <div class="content-card-header">
+                        <h3><i class="bi bi-pause-circle me-2"></i>Sin rotaci&oacute;n</h3>
+                    </div>
+                    <div class="content-card-body no-padding">
+                        <table class="data-table">
+                            <thead>
+                            <tr>
+                                <th>Producto</th>
+                                <th>Presentaci&oacute;n</th>
+                            </tr>
+                            </thead>
+                            <tbody>
+                            <tr th:each="p : ${sinRotacion}">
+                                <td class="fw-700" th:text="${p.nombre}">Producto</td>
+                                <td th:text="${p.presentacion}">Pres</td>
+                            </tr>
+                            <tr th:if="${#lists.isEmpty(sinRotacion)}">
+                                <td colspan="2">
+                                    <div class="empty-state">
+                                        <i class="bi bi-check-circle"></i>
+                                        <p>Todos los productos tuvieron ventas.</p>
+                                    </div>
+                                </td>
+                            </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- Utilidad por producto -->
+                <div class="content-card">
+                    <div class="content-card-header">
+                        <h3><i class="bi bi-bar-chart-line me-2"></i>Utilidad (top 5)</h3>
+                    </div>
+                    <div class="content-card-body no-padding">
+                        <table class="data-table">
+                            <thead>
+                            <tr>
+                                <th>Producto</th>
+                                <th class="text-end">Ventas</th>
+                                <th class="text-end">Margen</th>
+                                <th class="text-end">%</th>
+                            </tr>
+                            </thead>
+                            <tbody>
+                            <tr th:each="e : ${margenProductos}">
+                                <td class="fw-700" th:text="${e.key.nombre}">Producto</td>
+                                <td class="text-end" th:text="${e.value.totalVentas}">0.00</td>
+                                <td class="text-end" th:text="${e.value.totalMargen}">0.00</td>
+                                <td class="text-end"><span class="badge-tag" th:text="${e.value.margenPorcentaje} + ' %'">0 %</span></td>
+                            </tr>
+                            <tr th:if="${margenProductos == null or #lists.isEmpty(margenProductos)}">
+                                <td colspan="4">
+                                    <div class="empty-state">
+                                        <i class="bi bi-bar-chart"></i>
+                                        <p>No hay datos de margen.</p>
+                                    </div>
+                                </td>
+                            </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Fila inferior: Ranking + Exportacion -->
+            <div class="content-grid cols-7-5">
+                <!-- Ranking vendedores -->
+                <div class="content-card">
+                    <div class="content-card-header">
+                        <h3><i class="bi bi-people me-2"></i>Ranking de vendedores</h3>
+                    </div>
+                    <div class="content-card-body no-padding">
+                        <table class="data-table">
+                            <thead>
+                            <tr>
+                                <th>Vendedor</th>
+                                <th class="text-end">Ventas (S/)</th>
+                            </tr>
+                            </thead>
+                            <tbody>
+                            <tr th:each="e : ${rankingVendedores}">
+                                <td class="fw-700" th:text="${e.key}">vendedor</td>
+                                <td class="text-end" th:text="${e.value}">0.00</td>
+                            </tr>
+                            <tr th:if="${#lists.isEmpty(rankingVendedores)}">
+                                <td colspan="2">
+                                    <div class="empty-state">
+                                        <i class="bi bi-people"></i>
+                                        <p>No hay ventas registradas en el per&iacute;odo.</p>
+                                    </div>
+                                </td>
+                            </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- Exportacion -->
+                <div class="content-card">
+                    <div class="content-card-header">
+                        <h3><i class="bi bi-download me-2"></i>Exportaci&oacute;n</h3>
+                    </div>
+                    <div class="content-card-body">
+                        <p class="text-muted mb-3">Exporta los datos del per&iacute;odo actual a archivos descargables.</p>
+                        <div class="export-bar">
+                            <a class="btn-export btn-export-excel"
+                               th:href="@{/web/reportes/excel(desde=${desde}, hasta=${hasta})}">
+                                <i class="bi bi-file-earmark-excel"></i> Excel
+                            </a>
+                            <a class="btn-export btn-export-pdf"
+                               th:href="@{/web/reportes/pdf(desde=${desde}, hasta=${hasta})}">
+                                <i class="bi bi-file-earmark-pdf"></i> PDF
+                            </a>
+                        </div>
+                        <p class="text-muted small mb-0">
+                            Los archivos incluir&aacute;n el resumen financiero, productos m&aacute;s vendidos, productos sin rotaci&oacute;n y el ranking de vendedores.
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+<script th:src="@{/js/app.js}"></script>
+</body>
+</html>

@@ -1,0 +1,491 @@
+<!DOCTYPE html>
+<html lang="es" xmlns:th="http://www.thymeleaf.org" xmlns:sec="http://www.thymeleaf.org/extras/spring-security">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Productos - NexoERP</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+    <link rel="stylesheet" th:href="@{/css/app.css}">
+</head>
+<body>
+<div class="app-layout">
+    <!-- Sidebar -->
+    <aside class="sidebar" id="sidebar">
+        <div class="sidebar-header">
+            <span class="sidebar-brand"><i class="bi bi-diagram-3"></i> NexoERP</span>
+            <button class="sidebar-toggle d-lg-none" onclick="toggleSidebar()"><i class="bi bi-x-lg"></i></button>
+        </div>
+        <nav class="sidebar-nav">
+            <div class="sidebar-section-title">Operaciones</div>
+            <a class="sidebar-link active" href="/web/productos"><i class="bi bi-box-seam"></i> Productos</a>
+            <a class="sidebar-link" href="/web/clientes"><i class="bi bi-people"></i> Clientes</a>
+            <a class="sidebar-link" href="/web/proveedores" sec:authorize="hasAnyRole('ADMIN','SAAS_ADMIN')"><i class="bi bi-truck"></i> Proveedores</a>
+            <a class="sidebar-link" href="/web/compras" sec:authorize="hasAnyRole('ADMIN','SAAS_ADMIN')"><i class="bi bi-cart-plus"></i> Compras</a>
+            <a class="sidebar-link" href="/web/ventas"><i class="bi bi-receipt"></i> Ventas</a>
+            <a class="sidebar-link" href="/web/caja"><i class="bi bi-cash-stack"></i> Caja</a>
+            <a class="sidebar-link" href="/web/requerimientos"><i class="bi bi-box-arrow-in-down"></i> Requerimientos</a>
+            <div class="sidebar-section-title">Gestión</div>
+            <a class="sidebar-link" href="/web/finanzas" sec:authorize="hasAnyRole('ADMIN','SAAS_ADMIN')"><i class="bi bi-graph-up"></i> Finanzas</a>
+            <a class="sidebar-link" href="/web/inventario"><i class="bi bi-clipboard-data"></i> Inventario</a>
+            <a class="sidebar-link" href="/web/reportes"><i class="bi bi-file-earmark-bar-graph"></i> Reportes</a>
+            <a class="sidebar-link" href="/web/sucursales" sec:authorize="hasAnyRole('ADMIN','SAAS_ADMIN')"><i class="bi bi-building"></i> Sucursales</a>
+            <div class="sidebar-section-title">Sistema</div>
+            <a class="sidebar-link" href="/web/auditoria" sec:authorize="hasAnyRole('ADMIN','SAAS_ADMIN')"><i class="bi bi-shield-check"></i> Auditor&iacute;a</a>
+            <a class="sidebar-link" href="/web/admin/empresas" sec:authorize="hasRole('SAAS_ADMIN')"><i class="bi bi-gear"></i> Admin SaaS</a>
+        </nav>
+        <div class="sidebar-footer">
+            <div sec:authorize="hasRole('SAAS_ADMIN')">
+                <form th:if="${empresasTodas != null and !#lists.isEmpty(empresasTodas)}"
+                      th:action="@{/web/empresas/cambiar}" method="post" class="mb-2">
+                    <select name="tenantId" class="form-select form-select-sm"
+                            onchange="this.form.submit()" style="background:#243656; color:#c8d6e5; border-color:rgba(255,255,255,.12); font-size:12px;">
+                        <option th:each="e : ${empresasTodas}" th:value="${e.id}"
+                                th:selected="${empresaActual != null and e.id == empresaActual.id}"
+                                th:text="${e.nombre}">Empresa</option>
+                    </select>
+                    <input type="hidden" name="redirect" value="/web/productos">
+                </form>
+            </div>
+        </div>
+    </aside>
+    <div id="sidebarBackdrop" class="sidebar-backdrop"></div>
+
+    <!-- Main -->
+    <div class="main-wrapper">
+        <header class="topbar">
+            <button class="btn-sidebar-toggle" onclick="toggleSidebar()"><i class="bi bi-list"></i></button>
+            <h1 class="topbar-title">Productos</h1>
+            <div class="topbar-actions">
+                <form class="search-bar" method="get" th:action="@{/web/productos}">
+                    <input type="text" class="form-control form-control-sm" name="q" placeholder="Buscar producto..."
+                           th:value="${filtroNombre}">
+                    <button class="btn btn-sm btn-primary" type="submit"><i class="bi bi-search"></i></button>
+                    <a class="btn btn-sm btn-outline-secondary" th:href="@{/web/productos}">Limpiar</a>
+                </form>
+            </div>
+            <div class="topbar-user" th:if="${usuarioActual != null}">
+                <div class="topbar-user-avatar" th:text="${#strings.toUpperCase(#strings.substring(usuarioActual,0,1))}">A</div>
+                <div>
+                    <span class="topbar-user-name" th:text="${usuarioActual}">admin</span>
+                    <div class="topbar-user-empresa" th:text="${empresaActual != null ? empresaActual.nombre : ''}"></div>
+                    <div class="topbar-user-sucursal text-muted small" th:if="${sucursalNombreUsuario != null}" th:text="'Sucursal: ' + ${sucursalNombreUsuario}">Sucursal</div>
+                </div>
+                <form th:action="@{/logout}" method="post">
+                    <button type="submit" class="btn-logout-top"><i class="bi bi-box-arrow-left"></i> Salir</button>
+                </form>
+            </div>
+        </header>
+
+        <main class="main-content">
+            <!-- KPIs -->
+            <div class="kpi-row">
+                <div class="kpi-card">
+                    <div class="kpi-icon blue"><i class="bi bi-box-seam"></i></div>
+                    <div class="kpi-body">
+                        <div class="kpi-label">Total productos</div>
+                        <div class="kpi-value" th:text="${kpiTotalProductos}">0</div>
+                    </div>
+                </div>
+                <div class="kpi-card">
+                    <div class="kpi-icon yellow"><i class="bi bi-exclamation-triangle"></i></div>
+                    <div class="kpi-body">
+                        <div class="kpi-label">Stock bajo</div>
+                        <div class="kpi-value" th:text="${kpiStockBajo}">0</div>
+                    </div>
+                </div>
+                <div class="kpi-card">
+                    <div class="kpi-icon green"><i class="bi bi-check-circle"></i></div>
+                    <div class="kpi-body">
+                        <div class="kpi-label">Activos</div>
+                        <div class="kpi-value" th:text="${kpiActivos}">0</div>
+                    </div>
+                </div>
+                <div class="kpi-card">
+                    <div class="kpi-icon red"><i class="bi bi-arrow-up-circle"></i></div>
+                    <div class="kpi-body">
+                        <div class="kpi-label">Sobre stock máx.</div>
+                        <div class="kpi-value" th:text="${kpiSobreMax}">0</div>
+                    </div>
+                </div>
+
+            <!-- Alerta de stock mínimo para generar requerimientos -->
+            <div class="content-grid-full mt-2" th:if="${kpiStockBajo != null and kpiStockBajo > 0}">
+                <div class="alert alert-warning alert-dismissible fade show">
+                    <i class="bi bi-exclamation-triangle me-1"></i>
+                    Hay
+                    <strong th:text="${kpiStockBajo}">0</strong>
+                    productos con stock por debajo del mínimo. Puede generar un
+                    <a th:href="@{/web/requerimientos}" class="alert-link">requerimiento de reposición</a>.
+                    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                </div>
+            </div>
+            </div>
+
+            <!-- Content grid -->
+            <div class="content-grid cols-7-5">
+                <div th:if="${error != null}" class="content-grid-full">
+                    <div class="alert alert-warning alert-dismissible fade show">
+                        <i class="bi bi-info-circle me-1"></i> <span th:text="${error}">Mensaje</span>
+                        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                    </div>
+                </div>
+                <!-- Mensaje de error general (eliminar, etc.) -->
+                <div class="content-grid-full" th:if="${errorProducto != null}">
+                    <div class="alert alert-danger alert-dismissible fade show">
+                        <i class="bi bi-exclamation-triangle me-1"></i> <span th:text="${errorProducto}">Error</span>
+                        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                    </div>
+                </div>
+                <!-- Mensajes de importación (ancho completo arriba) -->
+                <div class="content-grid-full"
+                     th:if="${(importExito != null) or (importError != null) or (importErrores != null and !importErrores.isEmpty())}">
+                    <div th:if="${importExito != null}" class="alert alert-success alert-dismissible fade show">
+                        <i class="bi bi-check-circle me-1"></i> <span th:text="${importExito}">Exito</span>
+                        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                    </div>
+                    <div th:if="${importError != null}" class="alert alert-danger alert-dismissible fade show">
+                        <i class="bi bi-exclamation-triangle me-1"></i> <span th:text="${importError}">Error</span>
+                        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                    </div>
+                    <div th:if="${importErrores != null and !importErrores.isEmpty()}" class="alert alert-warning alert-dismissible fade show">
+                        <i class="bi bi-exclamation-circle me-1"></i> <strong>Errores encontrados:</strong>
+                        <ul class="mb-0 mt-1" style="max-height:150px; overflow-y:auto; font-size:13px;">
+                            <li th:each="err : ${importErrores}" th:text="${err}">Error</li>
+                        </ul>
+                        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                    </div>
+                </div>
+
+                <!-- Tabla -->
+                <div class="content-card">
+                    <div class="content-card-header d-flex justify-content-between align-items-center flex-wrap gap-2">
+                        <h3><i class="bi bi-table me-2"></i>Catálogo de productos</h3>
+                        <div class="d-flex gap-2 flex-wrap">
+                            <a th:href="@{/web/productos/excel/plantilla}" class="btn btn-sm btn-outline-success" title="Descargar plantilla Excel para carga masiva">
+                                <i class="bi bi-download me-1"></i> Plantilla
+                            </a>
+                            <button type="button" class="btn btn-sm btn-success" data-bs-toggle="modal" data-bs-target="#modalImportar" title="Importar productos desde Excel">
+                                <i class="bi bi-upload me-1"></i> Importar Excel
+                            </button>
+                            <a th:href="@{/web/productos/excel/exportar}" class="btn btn-sm btn-outline-primary" title="Exportar todos los productos a Excel">
+                                <i class="bi bi-file-earmark-excel me-1"></i> Exportar
+                            </a>
+                        </div>
+                    </div>
+                    <div class="content-card-body no-padding">
+                        <!-- Filtros de la grilla -->
+                        <div class="p-3 border-bottom" style="background:#f8f9fb;">
+                            <div class="row g-2 align-items-end">
+                                <div class="col-md-3">
+                                    <label class="form-label small mb-1 fw-bold"><i class="bi bi-search me-1"></i>Nombre / Código</label>
+                                    <input type="text" class="form-control form-control-sm" id="filtroTexto" placeholder="Buscar..." oninput="filtrarProductos()">
+                                </div>
+                                <div class="col-md-2">
+                                    <label class="form-label small mb-1 fw-bold"><i class="bi bi-tag me-1"></i>Categoría</label>
+                                    <select class="form-select form-select-sm" id="filtroCategoria" onchange="filtrarProductos()">
+                                        <option value="">Todas</option>
+                                    </select>
+                                </div>
+                                <div class="col-md-2">
+                                    <label class="form-label small mb-1 fw-bold"><i class="bi bi-bookmark me-1"></i>Marca</label>
+                                    <select class="form-select form-select-sm" id="filtroMarca" onchange="filtrarProductos()">
+                                        <option value="">Todas</option>
+                                    </select>
+                                </div>
+                                <div class="col-md-2">
+                                    <label class="form-label small mb-1 fw-bold"><i class="bi bi-box me-1"></i>Stock</label>
+                                    <select class="form-select form-select-sm" id="filtroStock" onchange="filtrarProductos()">
+                                        <option value="">Todos</option>
+                                        <option value="bajo">Stock bajo</option>
+                                        <option value="normal">Normal</option>
+                                        <option value="alto">Sobre máximo</option>
+                                    </select>
+                                </div>
+                                <div class="col-md-3 d-flex gap-2 align-items-end">
+                                    <button class="btn btn-sm btn-outline-secondary" onclick="limpiarFiltros()" title="Limpiar filtros">
+                                        <i class="bi bi-x-circle me-1"></i>Limpiar
+                                    </button>
+                                    <span class="text-muted small" id="contadorFiltro"></span>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="export-bar">
+                            <a th:href="@{/web/productos/excel/profesional}" class="btn-export btn-export-excel"><i class="bi bi-file-earmark-excel"></i> Excel</a>
+                            <a th:href="@{/web/productos/pdf}" class="btn-export btn-export-pdf"><i class="bi bi-file-earmark-pdf"></i> PDF</a>
+                        </div>
+                        <table class="data-table" id="tablaProductos">
+                            <thead>
+                            <tr>
+                                <th>Código</th>
+                                <th>Cód. barras</th>
+                                <th>Nombre</th>
+                                <th>Categoría</th>
+                                <th>Marca</th>
+                                <th>Unidad</th>
+                                <th class="text-end">Precio</th>
+                                <th class="text-end">Stock</th>
+                                <th class="text-center">Acciones</th>
+                            </tr>
+                            </thead>
+                            <tbody>
+                            <tr th:each="p : ${productos}" class="fila-producto" th:with="stockMostrar=${stockPorProducto != null ? (stockPorProducto.get(p.id) != null ? stockPorProducto.get(p.id) : 0) : p.stockActual}"
+                                th:data-nombre="${p.nombre}"
+                                th:data-codigo="${p.codigo}"
+                                th:data-categoria="${p.categoria}"
+                                th:data-marca="${p.marca}"
+                                th:data-stock-estado="${(p.stockMinimo != null and stockMostrar != null and stockMostrar lt p.stockMinimo) ? 'bajo' : ((p.stockMaximo != null and stockMostrar != null and stockMostrar gt p.stockMaximo) ? 'alto' : 'normal')}"
+                                th:classappend="${(p.stockMinimo != null and stockMostrar != null and stockMostrar lt p.stockMinimo) ? 'row-warning' : ((p.stockMaximo != null and stockMostrar != null and stockMostrar gt p.stockMaximo) ? 'row-danger' : '')}">
+                                <td><span class="badge-tag" th:text="${p.codigo}">COD</span></td>
+                                <td th:text="${p.codigoBarras}">BAR</td>
+                                <td class="fw-700" th:text="${p.nombre}">Nombre</td>
+                                <td th:text="${p.categoria}">Cat</td>
+                                <td th:text="${p.marca}">Marca</td>
+                                <td th:text="${p.unidadMedida}">Und</td>
+                                <td class="text-end" th:text="${'S/ ' + #numbers.formatDecimal(p.precioVenta, 1, 2)}">0.00</td>
+                                <td class="text-end">
+                                    <span th:text="${stockMostrar}">0</span>
+                                    <span th:if="${p.stockMinimo != null and stockMostrar != null and stockMostrar lt p.stockMinimo}"
+                                          class="badge-status warning ms-1">Bajo</span>
+                                    <span th:if="${p.stockMaximo != null and stockMostrar != null and stockMostrar gt p.stockMaximo}"
+                                          class="badge-status danger ms-1">Alto</span>
+                                </td>
+                                <td class="text-center">
+                                    <a class="btn-action me-1" th:href="@{/web/inventario/kardex(productoId=${p.id})}" title="Kardex"><i class="bi bi-journal-text"></i></a>
+                                    <a class="btn-action me-1" th:href="@{/web/productos(editId=${p.id}, q=${filtroNombre})}" title="Editar"><i class="bi bi-pencil"></i></a>
+                                    <form th:action="@{/web/productos/eliminar/{id}(id=${p.id})}" method="post" class="d-inline"
+                                          onsubmit="event.preventDefault(); nexoS.confirmSubmit(event, '¿Eliminar producto?'); return false;">
+                                        <button type="submit" class="btn-action danger" title="Eliminar"><i class="bi bi-trash"></i></button>
+                                    </form>
+                                </td>
+                            </tr>
+                            <tr th:if="${productos == null or #lists.isEmpty(productos)}">
+                                <td colspan="9">
+                                    <div class="empty-state">
+                                        <i class="bi bi-inbox"></i>
+                                        <p>No hay productos registrados.</p>
+                                    </div>
+                                </td>
+                            </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- Form (solo para ADMIN / SAAS_ADMIN) -->
+                <div class="content-card" sec:authorize="hasAnyRole('ADMIN','SAAS_ADMIN')">
+                    <div class="content-card-header">
+                        <h3><i class="bi bi-plus-circle me-2"></i><span th:text="${editando ? 'Editar producto' : 'Nuevo producto'}">Nuevo producto</span></h3>
+                    </div>
+                    <div class="content-card-body">
+                        <div th:if="${errorProducto}" class="alert alert-danger">
+                            <i class="bi bi-exclamation-triangle me-1"></i> <span th:text="${errorProducto}">Error</span>
+                        </div>
+                        <form th:action="@{/web/productos}" th:object="${producto}" method="post"
+                              onsubmit="event.preventDefault(); nexoS.confirmSubmit(event, '¿Guardar producto?'); return false;">
+                            <input type="hidden" th:field="*{id}">
+                            <input type="hidden" th:field="*{activo}">
+                            <div class="row g-3">
+                                <div class="col-12 form-section">
+                                    <label class="form-label">Nombre *</label>
+                                    <input type="text" class="form-control" th:field="*{nombre}" required>
+                                </div>
+                                <div class="col-6 form-section">
+                                    <label class="form-label">Laboratorio *</label>
+                                    <input type="text" class="form-control" th:field="*{laboratorio}" required>
+                                </div>
+                                <div class="col-6 form-section">
+                                    <label class="form-label">Presentación *</label>
+                                    <input type="text" class="form-control" th:field="*{presentacion}" required>
+                                </div>
+                                <div class="col-6 form-section">
+                                    <label class="form-label">Categoría</label>
+                                    <input type="text" class="form-control" th:field="*{categoria}">
+                                </div>
+                                <div class="col-6 form-section">
+                                    <label class="form-label">Marca</label>
+                                    <input type="text" class="form-control" th:field="*{marca}">
+                                </div>
+                                <div class="col-6 form-section">
+                                    <label class="form-label">Unidad medida</label>
+                                    <input type="text" class="form-control" th:field="*{unidadMedida}">
+                                </div>
+                                <div class="col-6 form-section">
+                                    <label class="form-label">Código barras</label>
+                                    <input type="text" class="form-control" th:field="*{codigoBarras}">
+                                </div>
+                                <div class="col-6 form-section">
+                                    <label class="form-label">Precio venta *</label>
+                                    <input type="number" step="0.01" min="0" class="form-control" th:field="*{precioVenta}" required>
+                                </div>
+                                <div class="col-6 form-section">
+                                    <label class="form-label">Costo unitario</label>
+                                    <input type="number" step="0.01" min="0" class="form-control" th:field="*{costoUnitario}">
+                                </div>
+                                <div class="col-4 form-section">
+                                    <label class="form-label">Stock actual *</label>
+                                    <input type="number" min="0" class="form-control" th:field="*{stockActual}" required>
+                                </div>
+                                <div class="col-4 form-section">
+                                    <label class="form-label">Stock mínimo *</label>
+                                    <input type="number" min="0" class="form-control" th:field="*{stockMinimo}" required>
+                                </div>
+                                <div class="col-4 form-section">
+                                    <label class="form-label">Stock máximo</label>
+                                    <input type="number" min="0" class="form-control" th:field="*{stockMaximo}">
+                                </div>
+                                <div class="col-12 form-section">
+                                    <label class="form-label">Descripción</label>
+                                    <textarea class="form-control" rows="2" th:field="*{descripcion}"></textarea>
+                                </div>
+                                <div class="col-12 d-flex gap-2">
+                                    <button type="submit" class="btn btn-primary">
+                                        <i class="bi bi-check-lg"></i>
+                                        <span th:text="${editando ? 'Actualizar' : 'Registrar'}">Registrar</span>
+                                    </button>
+                                    <a th:if="${editando}" class="btn btn-outline-secondary" th:href="@{/web/productos}">Cancelar</a>
+                                </div>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+
+                <!-- Mensaje para VENDEDOR sin permisos de edición -->
+                <div class="content-card" sec:authorize="hasRole('VENDEDOR')">
+                    <div class="content-card-header">
+                        <h3><i class="bi bi-info-circle me-2"></i>Productos de referencia</h3>
+                    </div>
+                    <div class="content-card-body">
+                        <p class="mb-1">
+                            Aquí puede consultar el catálogo de productos y su stock de <strong>sucursal</strong>.
+                        </p>
+                        <p class="mb-0 text-muted" style="font-size: 0.9rem;">
+                            La creación y edición de productos (precio, stock general, etc.) solo está disponible para usuarios con rol
+                            <strong>ADMIN</strong> o <strong>SAAS_ADMIN</strong>.
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+</div>
+
+<!-- Modal Importar Excel -->
+<div class="modal fade" id="modalImportar" tabindex="-1" aria-labelledby="modalImportarLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <form th:action="@{/web/productos/excel/importar}" method="post" enctype="multipart/form-data">
+                <div class="modal-header" style="background: linear-gradient(135deg, #1e3c72, #2a5298); color: white;">
+                    <h5 class="modal-title" id="modalImportarLabel">
+                        <i class="bi bi-file-earmark-excel me-2"></i>Importar productos desde Excel
+                    </h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="alert alert-info" style="font-size: 13px;">
+                        <i class="bi bi-info-circle me-1"></i>
+                        <strong>Instrucciones:</strong>
+                        <ol class="mb-0 mt-1">
+                            <li>Descargue la <a th:href="@{/web/productos/excel/plantilla}" class="fw-bold">plantilla Excel</a></li>
+                            <li>Llene los datos desde la fila 3 (filas 1-2 son encabezado)</li>
+                            <li>Campos obligatorios: Nombre, Laboratorio, Presentaci&oacute;n, Precio, Stock actual, Stock m&iacute;nimo</li>
+                            <li>Si el c&oacute;digo ya existe, el producto se <strong>actualiza</strong></li>
+                            <li>Guarde como .xlsx y s&uacute;balo aqu&iacute;</li>
+                        </ol>
+                    </div>
+                    <div class="mb-3">
+                        <label for="archivoExcel" class="form-label fw-bold">Seleccione archivo Excel (.xlsx)</label>
+                        <input type="file" class="form-control" id="archivoExcel" name="archivo"
+                               accept=".xlsx,.xls" required>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="submit" class="btn btn-success">
+                        <i class="bi bi-upload me-1"></i> Importar
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+<script th:src="@{/js/app.js}"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    poblarCombos();
+    actualizarContador();
+});
+
+function poblarCombos() {
+    var filas = document.querySelectorAll('.fila-producto');
+    var categorias = new Set();
+    var marcas = new Set();
+    filas.forEach(function(f) {
+        var cat = f.dataset.categoria;
+        var marca = f.dataset.marca;
+        if (cat && cat.trim()) categorias.add(cat.trim());
+        if (marca && marca.trim()) marcas.add(marca.trim());
+    });
+    var selCat = document.getElementById('filtroCategoria');
+    Array.from(categorias).sort().forEach(function(c) {
+        var opt = document.createElement('option');
+        opt.value = c;
+        opt.textContent = c;
+        selCat.appendChild(opt);
+    });
+    var selMarca = document.getElementById('filtroMarca');
+    Array.from(marcas).sort().forEach(function(m) {
+        var opt = document.createElement('option');
+        opt.value = m;
+        opt.textContent = m;
+        selMarca.appendChild(opt);
+    });
+}
+
+function filtrarProductos() {
+    var texto = (document.getElementById('filtroTexto').value || '').toLowerCase();
+    var categoria = document.getElementById('filtroCategoria').value;
+    var marca = document.getElementById('filtroMarca').value;
+    var stock = document.getElementById('filtroStock').value;
+
+    var filas = document.querySelectorAll('.fila-producto');
+    filas.forEach(function(f) {
+        var nombre = (f.dataset.nombre || '').toLowerCase();
+        var codigo = (f.dataset.codigo || '').toLowerCase();
+        var cat = f.dataset.categoria || '';
+        var mar = f.dataset.marca || '';
+        var stk = f.dataset.stockEstado || '';
+
+        var ok = true;
+        if (texto && nombre.indexOf(texto) < 0 && codigo.indexOf(texto) < 0) ok = false;
+        if (categoria && cat !== categoria) ok = false;
+        if (marca && mar !== marca) ok = false;
+        if (stock && stk !== stock) ok = false;
+
+        if (ok) { f.classList.remove('filter-hidden'); }
+        else    { f.classList.add('filter-hidden'); }
+    });
+    actualizarContador();
+    window.refreshPagination();
+}
+
+function limpiarFiltros() {
+    document.getElementById('filtroTexto').value = '';
+    document.getElementById('filtroCategoria').value = '';
+    document.getElementById('filtroMarca').value = '';
+    document.getElementById('filtroStock').value = '';
+    filtrarProductos();
+}
+
+function actualizarContador() {
+    var filas = document.querySelectorAll('.fila-producto');
+    var visibles = 0;
+    filas.forEach(function(f) { if (!f.classList.contains('filter-hidden')) visibles++; });
+    var el = document.getElementById('contadorFiltro');
+    if (el) el.textContent = visibles + ' de ' + filas.length;
+}
+</script>
+</body>
+</html>

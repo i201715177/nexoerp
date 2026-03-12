@@ -1,0 +1,238 @@
+<!DOCTYPE html>
+<html lang="es" xmlns:th="http://www.thymeleaf.org" xmlns:sec="http://www.thymeleaf.org/extras/spring-security">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Requerimientos - NexoERP</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+    <link rel="stylesheet" th:href="@{/css/app.css}">
+</head>
+<body>
+<div class="app-layout">
+    <aside class="sidebar" id="sidebar">
+        <div class="sidebar-header">
+            <span class="sidebar-brand"><i class="bi bi-diagram-3"></i> NexoERP</span>
+            <button class="sidebar-toggle d-lg-none" onclick="toggleSidebar()"><i class="bi bi-x-lg"></i></button>
+        </div>
+        <nav class="sidebar-nav">
+            <div class="sidebar-section-title">Operaciones</div>
+            <a class="sidebar-link" href="/web/productos"><i class="bi bi-box-seam"></i> Productos</a>
+            <a class="sidebar-link" href="/web/clientes"><i class="bi bi-people"></i> Clientes</a>
+            <a class="sidebar-link" href="/web/proveedores" sec:authorize="hasAnyRole('ADMIN','SAAS_ADMIN')"><i class="bi bi-truck"></i> Proveedores</a>
+            <a class="sidebar-link" href="/web/compras" sec:authorize="hasAnyRole('ADMIN','SAAS_ADMIN')"><i class="bi bi-cart-plus"></i> Compras</a>
+            <a class="sidebar-link" href="/web/ventas"><i class="bi bi-receipt"></i> Ventas</a>
+            <a class="sidebar-link" href="/web/caja"><i class="bi bi-cash-stack"></i> Caja</a>
+            <a class="sidebar-link active" href="/web/requerimientos"><i class="bi bi-box-arrow-in-down"></i> Requerimientos</a>
+            <div class="sidebar-section-title">Gesti&oacute;n</div>
+            <a class="sidebar-link" href="/web/finanzas" sec:authorize="hasAnyRole('ADMIN','SAAS_ADMIN')"><i class="bi bi-graph-up"></i> Finanzas</a>
+            <a class="sidebar-link" href="/web/inventario"><i class="bi bi-clipboard-data"></i> Inventario</a>
+            <a class="sidebar-link" href="/web/reportes"><i class="bi bi-file-earmark-bar-graph"></i> Reportes</a>
+            <a class="sidebar-link" href="/web/sucursales" sec:authorize="hasAnyRole('ADMIN','SAAS_ADMIN')"><i class="bi bi-building"></i> Sucursales</a>
+            <div class="sidebar-section-title">Sistema</div>
+            <a class="sidebar-link" href="/web/auditoria" sec:authorize="hasAnyRole('ADMIN','SAAS_ADMIN')"><i class="bi bi-shield-check"></i> Auditor&iacute;a</a>
+            <a class="sidebar-link" href="/web/admin/empresas" sec:authorize="hasRole('SAAS_ADMIN')"><i class="bi bi-gear"></i> Admin SaaS</a>
+        </nav>
+        <div class="sidebar-footer" sec:authorize="hasRole('SAAS_ADMIN')">
+            <form th:if="${empresasTodas != null and !#lists.isEmpty(empresasTodas)}" th:action="@{/web/empresas/cambiar}" method="post" class="mb-2">
+                <select name="tenantId" class="form-select form-select-sm" onchange="this.form.submit()" style="background:#243656; color:#c8d6e5; border-color:rgba(255,255,255,.12); font-size:12px;">
+                    <option th:each="e : ${empresasTodas}" th:value="${e.id}" th:selected="${empresaActual != null and e.id == empresaActual.id}" th:text="${e.nombre}">Empresa</option>
+                </select>
+                <input type="hidden" name="redirect" value="/web/requerimientos">
+            </form>
+        </div>
+    </aside>
+    <div id="sidebarBackdrop" class="sidebar-backdrop"></div>
+
+    <div class="main-wrapper">
+        <header class="topbar">
+            <button class="btn-sidebar-toggle" onclick="toggleSidebar()"><i class="bi bi-list"></i></button>
+            <h1 class="topbar-title">Requerimientos a central</h1>
+            <div class="topbar-user" th:if="${usuarioActual != null}">
+                <div class="topbar-user-avatar" th:text="${#strings.toUpperCase(#strings.substring(usuarioActual,0,1))}">A</div>
+                <div>
+                    <span class="topbar-user-name" th:text="${usuarioActual}">Usuario</span>
+                    <div class="topbar-user-empresa" th:text="${empresaActual != null ? empresaActual.nombre : ''}"></div>
+                </div>
+                <form th:action="@{/logout}" method="post">
+                    <button type="submit" class="btn-logout-top"><i class="bi bi-box-arrow-left"></i> Salir</button>
+                </form>
+            </div>
+        </header>
+
+        <main class="main-content">
+            <div th:if="${mensaje}" class="alert alert-success py-2 small mb-2" th:text="${mensaje}">Mensaje</div>
+            <div th:if="${error}" class="alert alert-danger py-2 small mb-2" th:text="${error}">Error</div>
+
+            <div class="content-card mb-4">
+                <div class="content-card-header">
+                    <h3><i class="bi bi-plus-circle me-2"></i>Nuevo requerimiento</h3>
+                </div>
+                <div class="content-card-body">
+                    <form th:action="@{/web/requerimientos}" method="post" id="formRequerimiento" onsubmit="return prevenirDobleEnvio(this);">
+                        <div th:if="${sucursalIdVendedor == null}" class="mb-3">
+                            <label class="form-label">Sucursal que solicita *</label>
+                            <select name="sucursalId" class="form-select" required th:if="${sucursales != null and !sucursales.isEmpty()}">
+                                <option value="">Seleccione sucursal</option>
+                                <option th:each="s : ${sucursales}" th:value="${s.id}" th:text="${s.nombre}">Sucursal</option>
+                            </select>
+                        </div>
+                        <input th:if="${sucursalIdVendedor != null}" type="hidden" name="sucursalId" th:value="${sucursalIdVendedor}">
+                        <div class="mb-2">
+                            <label class="form-label">Productos y cantidades</label>
+                            <p class="text-muted small mb-1">Filtre por marca y luego elija el producto exacto.</p>
+                            <table class="data-table data-table-compact">
+                                <thead>
+                                <tr>
+                                    <th style="min-width:140px;">Marca</th>
+                                    <th>Producto</th>
+                                    <th style="width:120px;">Cantidad</th>
+                                    <th style="width:50px;"></th>
+                                </tr>
+                                </thead>
+                                <tbody id="filasRequerimiento">
+                                <tr class="fila-req">
+                                    <td>
+                                        <select class="form-select form-select-sm filtro-marca-req" title="Filtrar por marca">
+                                            <option value="">Todas</option>
+                                            <option th:each="m : ${marcas}" th:value="${m}" th:text="${m}">Marca</option>
+                                        </select>
+                                    </td>
+                                    <td>
+                                        <select name="productoId" class="form-select form-select-sm select-producto-req" required>
+                                            <option value="">Seleccione marca y/o producto...</option>
+                                            <option th:each="p : ${productos}" th:value="${p.id}" th:attr="data-marca=${p.marca != null ? p.marca : ''}" th:text="${(p.nombre != null ? p.nombre : '') + ' (' + (p.codigo != null ? p.codigo : '') + ')' + (p.marca != null && !p.marca.isEmpty() ? ' - ' + p.marca : '')}">Producto</option>
+                                        </select>
+                                    </td>
+                                    <td><input type="number" name="cantidad" class="form-control form-control-sm" min="1" value="1" required></td>
+                                    <td><button type="button" class="btn-action danger quitar-fila-req" title="Quitar"><i class="bi bi-dash-lg"></i></button></td>
+                                </tr>
+                                </tbody>
+                            </table>
+                            <button type="button" class="btn btn-sm btn-outline-primary mt-1" id="btnAgregarFilaReq"><i class="bi bi-plus-lg me-1"></i>Agregar producto</button>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Observaciones</label>
+                            <textarea name="observaciones" class="form-control" rows="2" placeholder="Opcional"></textarea>
+                        </div>
+                        <button type="submit" class="btn btn-primary" id="btnEnviarRequerimiento"><i class="bi bi-check-lg me-1"></i>Enviar requerimiento</button>
+                    </form>
+                </div>
+            </div>
+
+            <div class="content-card">
+                <div class="content-card-header">
+                    <h3><i class="bi bi-list-ul me-2"></i>Historial</h3>
+                </div>
+                <div class="content-card-body table-responsive">
+                    <table class="data-table">
+                        <thead>
+                        <tr>
+                            <th style="width:3rem;">#</th>
+                            <th>Sucursal</th>
+                            <th style="width:10rem;">Fecha</th>
+                            <th style="width:8rem;">Estado</th>
+                            <th>Detalle</th>
+                            <th style="width:14rem;">Acciones</th>
+                        </tr>
+                        </thead>
+                        <tbody>
+                        <tr th:each="r : ${requerimientos}">
+                            <td th:text="${r.id}">1</td>
+                            <td th:text="${r.sucursal != null ? r.sucursal.nombre : '-'}">Sucursal</td>
+                            <td th:text="${r.fechaSolicitud != null ? #temporals.format(r.fechaSolicitud, 'dd/MM/yyyy HH:mm') : '-'}">-</td>
+                            <td>
+                                <span class="badge-tag" th:classappend="${(r.estado == 'PENDIENTE') ? 'warning' : ((r.estado == 'EN_CAMINO') ? 'info' : 'success')}" th:text="${r.estado}">PENDIENTE</span>
+                            </td>
+                            <td>
+                                <span th:each="item,iter : ${r.items}">
+                                    <span th:text="${(item.producto != null ? item.producto.nombre : '?') + (item.producto != null and item.producto.marca != null and !item.producto.marca.isEmpty() ? ' (' + item.producto.marca + ')' : '') + ' — ' + (item.cantidad != null ? item.cantidad : 0) + ' und.' + (iter.last ? '' : ', ')}">Detalle</span>
+                                </span>
+                                <span th:if="${r.items == null or r.items.isEmpty()}">—</span>
+                            </td>
+                            <td>
+                                <!-- Central/Admin: Aceptar (En camino) y Confirmar llegada (Recibido) -->
+                                <div sec:authorize="hasAnyRole('ADMIN','SAAS_ADMIN')">
+                                    <form th:if="${r.estado == 'PENDIENTE'}" th:action="@{/web/requerimientos/marcar-en-camino}" method="post" class="d-inline me-1">
+                                        <input type="hidden" name="id" th:value="${r.id}">
+                                        <button type="submit" class="btn btn-sm btn-outline-primary" title="Aceptar y marcar env&iacute;o en camino"><i class="bi bi-truck me-1"></i>Aceptar / En camino</button>
+                                    </form>
+                                    <form th:if="${r.estado == 'EN_CAMINO'}" th:action="@{/web/requerimientos/marcar-recibido}" method="post" class="d-inline">
+                                        <input type="hidden" name="id" th:value="${r.id}">
+                                        <button type="submit" class="btn btn-sm btn-success" title="Confirmar llegada y actualizar stock"><i class="bi bi-check-circle me-1"></i>Confirmar llegada</button>
+                                    </form>
+                                </div>
+                                <!-- Sucursal (vendedor): confirmar llegada cuando el pedido es de mi sucursal y est&aacute; en camino -->
+                                <div sec:authorize="!hasAnyRole('ADMIN','SAAS_ADMIN')">
+                                    <form th:if="${r.estado == 'EN_CAMINO' and r.sucursal != null and sucursalIdVendedor != null and r.sucursal.id == sucursalIdVendedor}" th:action="@{/web/requerimientos/marcar-recibido}" method="post" class="d-inline">
+                                        <input type="hidden" name="id" th:value="${r.id}">
+                                        <button type="submit" class="btn btn-sm btn-success" title="Confirmar que recib&iacute; el pedido"><i class="bi bi-check-circle me-1"></i>Confirmar llegada</button>
+                                    </form>
+                                    <span th:if="${r.estado != 'EN_CAMINO' or r.sucursal == null or sucursalIdVendedor == null or r.sucursal.id != sucursalIdVendedor}" class="text-muted small">—</span>
+                                </div>
+                            </td>
+                        </tr>
+                        <tr th:if="${requerimientos == null or #lists.isEmpty(requerimientos)}">
+                            <td colspan="6">No hay requerimientos.</td>
+                        </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </main>
+    </div>
+</div>
+<script th:src="@{/js/app.js}"></script>
+<script>
+function prevenirDobleEnvio(form) {
+    var btn = document.getElementById('btnEnviarRequerimiento');
+    if (btn && btn.disabled) return false;
+    if (btn) {
+        btn.disabled = true;
+        btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>Enviando...';
+    }
+    return true;
+}
+(function() {
+    function filtrarProductosPorMarca(fila) {
+        var marcaSelect = fila.querySelector('.filtro-marca-req');
+        var productoSelect = fila.querySelector('.select-producto-req');
+        if (!marcaSelect || !productoSelect) return;
+        var marca = (marcaSelect.value || '').trim();
+        var opts = productoSelect.querySelectorAll('option');
+        opts.forEach(function(opt) {
+            if (opt.value === '') { opt.hidden = false; return; }
+            var optMarca = (opt.getAttribute('data-marca') || '').trim();
+            opt.hidden = marca !== '' && optMarca !== marca;
+        });
+        productoSelect.value = '';
+    }
+    function bindFiltroMarca(fila) {
+        var marcaSelect = fila.querySelector('.filtro-marca-req');
+        if (marcaSelect) marcaSelect.addEventListener('change', function() { filtrarProductosPorMarca(fila); });
+    }
+    var tbody = document.getElementById('filasRequerimiento');
+    var btnAgregar = document.getElementById('btnAgregarFilaReq');
+    if (!tbody || !btnAgregar) return;
+    tbody.querySelectorAll('.fila-req').forEach(function(row) { bindFiltroMarca(row); });
+    btnAgregar.addEventListener('click', function() {
+        var tr = tbody.querySelector('tr.fila-req');
+        if (!tr) return;
+        var clon = tr.cloneNode(true);
+        clon.querySelector('.filtro-marca-req').value = '';
+        clon.querySelector('.select-producto-req').value = '';
+        clon.querySelector('input[name="cantidad"]').value = '1';
+        clon.querySelectorAll('.select-producto-req option').forEach(function(o) { o.hidden = false; });
+        tbody.appendChild(clon);
+        bindFiltroMarca(clon);
+        clon.querySelectorAll('.quitar-fila-req').forEach(function(btn) {
+            btn.onclick = function() { if (tbody.querySelectorAll('.fila-req').length > 1) clon.remove(); };
+        });
+    });
+    tbody.addEventListener('click', function(e) {
+        if (e.target.closest('.quitar-fila-req') && tbody.querySelectorAll('.fila-req').length > 1) e.target.closest('tr').remove();
+    });
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,400 @@
+<!DOCTYPE html>
+<html lang="es" xmlns:th="http://www.thymeleaf.org" xmlns:sec="http://www.thymeleaf.org/extras/spring-security">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Lotes - NexoERP</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+    <link rel="stylesheet" th:href="@{/css/app.css}">
+</head>
+<body>
+<div class="app-layout">
+    <!-- Sidebar -->
+    <aside class="sidebar" id="sidebar">
+        <div class="sidebar-header">
+            <span class="sidebar-brand"><i class="bi bi-diagram-3"></i> NexoERP</span>
+            <button class="sidebar-toggle d-lg-none" onclick="toggleSidebar()"><i class="bi bi-x-lg"></i></button>
+        </div>
+        <nav class="sidebar-nav">
+            <div class="sidebar-section-title">Operaciones</div>
+            <a class="sidebar-link" href="/web/productos"><i class="bi bi-box-seam"></i> Productos</a>
+            <a class="sidebar-link" href="/web/clientes"><i class="bi bi-people"></i> Clientes</a>
+            <a class="sidebar-link" href="/web/proveedores" sec:authorize="hasAnyRole('ADMIN','SAAS_ADMIN')"><i class="bi bi-truck"></i> Proveedores</a>
+            <a class="sidebar-link" href="/web/compras" sec:authorize="hasAnyRole('ADMIN','SAAS_ADMIN')"><i class="bi bi-cart-plus"></i> Compras</a>
+            <a class="sidebar-link" href="/web/ventas"><i class="bi bi-receipt"></i> Ventas</a>
+            <a class="sidebar-link" href="/web/caja"><i class="bi bi-cash-stack"></i> Caja</a>
+            <div class="sidebar-section-title">Gesti&oacute;n</div>
+            <a class="sidebar-link" href="/web/finanzas" sec:authorize="hasAnyRole('ADMIN','SAAS_ADMIN')"><i class="bi bi-graph-up"></i> Finanzas</a>
+            <a class="sidebar-link active" href="/web/inventario"><i class="bi bi-clipboard-data"></i> Inventario</a>
+            <a class="sidebar-link" href="/web/reportes"><i class="bi bi-file-earmark-bar-graph"></i> Reportes</a>
+            <a class="sidebar-link" href="/web/sucursales" sec:authorize="hasAnyRole('ADMIN','SAAS_ADMIN')"><i class="bi bi-building"></i> Sucursales</a>
+            <div class="sidebar-section-title">Sistema</div>
+            <a class="sidebar-link" href="/web/auditoria" sec:authorize="hasAnyRole('ADMIN','SAAS_ADMIN')"><i class="bi bi-shield-check"></i> Auditor&iacute;a</a>
+            <a class="sidebar-link" href="/web/admin/empresas" sec:authorize="hasRole('SAAS_ADMIN')"><i class="bi bi-gear"></i> Admin SaaS</a>
+        </nav>
+        <div class="sidebar-footer">
+            <div sec:authorize="hasRole('SAAS_ADMIN')">
+                <form th:if="${empresasTodas != null and !#lists.isEmpty(empresasTodas)}"
+                      th:action="@{/web/empresas/cambiar}" method="post" class="mb-2">
+                    <select name="tenantId" class="form-select form-select-sm"
+                            onchange="this.form.submit()" style="background:#243656; color:#c8d6e5; border-color:rgba(255,255,255,.12); font-size:12px;">
+                        <option th:each="e : ${empresasTodas}" th:value="${e.id}"
+                                th:selected="${empresaActual != null and e.id == empresaActual.id}"
+                                th:text="${e.nombre}">Empresa</option>
+                    </select>
+                    <input type="hidden" name="redirect" value="/web/inventario/lotes">
+                </form>
+            </div>
+        </div>
+    </aside>
+    <div id="sidebarBackdrop" class="sidebar-backdrop"></div>
+
+    <!-- Main -->
+    <div class="main-wrapper">
+        <header class="topbar">
+            <button class="btn-sidebar-toggle" onclick="toggleSidebar()"><i class="bi bi-list"></i></button>
+            <h1 class="topbar-title">Lotes y Vencimientos</h1>
+            <div class="topbar-actions">
+                <a class="btn btn-sm btn-outline-secondary" th:href="@{/web/inventario}"><i class="bi bi-arrow-left me-1"></i> Volver a inventario</a>
+            </div>
+            <div class="topbar-user" th:if="${usuarioActual != null}">
+                <div class="topbar-user-avatar" th:text="${#strings.toUpperCase(#strings.substring(usuarioActual,0,1))}">A</div>
+                <div>
+                    <span class="topbar-user-name" th:text="${usuarioActual}">admin</span>
+                    <div class="topbar-user-empresa" th:text="${empresaActual != null ? empresaActual.nombre : ''}"></div>
+                </div>
+                <form th:action="@{/logout}" method="post">
+                    <button type="submit" class="btn-logout-top"><i class="bi bi-box-arrow-left"></i> Salir</button>
+                </form>
+            </div>
+        </header>
+
+        <main class="main-content">
+            <div th:if="${mensaje}" class="alert alert-success"><i class="bi bi-check-circle me-1"></i> <span th:text="${mensaje}">OK</span></div>
+            <div th:if="${error}" class="alert alert-danger"><i class="bi bi-exclamation-triangle me-1"></i> <span th:text="${error}">Error</span></div>
+
+            <!-- Alerta: lotes por vencer (con números y fechas) -->
+            <div th:if="${lotesPorVencer != null and !#lists.isEmpty(lotesPorVencer)}" class="content-card mb-3 border-warning" style="border-left-width: 4px !important;">
+                <div class="content-card-body">
+                    <div class="d-flex align-items-start gap-2">
+                        <i class="bi bi-exclamation-triangle-fill text-warning fs-4"></i>
+                        <div class="flex-grow-1">
+                            <strong>Lotes por vencer (pr&oacute;ximos 60 d&iacute;as)</strong>
+                            <p class="mb-2 small text-muted">Hay <span th:text="${#lists.size(lotesPorVencer)}">0</span> lote(s). Detalle:</p>
+                            <ul class="mb-0 small list-unstyled">
+                                <li th:each="l, iterStat : ${lotesPorVencer}" th:if="${iterStat.index < 15}">
+                                    <span class="badge-tag me-1" th:text="${l.numeroLote}">-</span>
+                                    <span th:text="${l.producto != null ? l.producto.nombre : '-'}">-</span>
+                                    &rarr; vence <strong th:text="${#temporals.format(l.fechaVencimiento, 'dd/MM/yyyy')}">-</strong>
+                                    <span class="text-muted">(cant. <span th:text="${l.cantidadActual}">0</span>)</span>
+                                </li>
+                                <li th:if="${#lists.size(lotesPorVencer) > 15}" class="text-muted">... y <span th:text="${#lists.size(lotesPorVencer) - 15}">0</span> m&aacute;s (ver tabla inferior).</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Alerta: lotes vencidos -->
+            <div th:if="${lotesVencidos != null and !#lists.isEmpty(lotesVencidos)}" class="content-card mb-3 border-danger" style="border-left-width: 4px !important;">
+                <div class="content-card-body">
+                    <div class="d-flex align-items-center gap-2">
+                        <i class="bi bi-x-circle-fill text-danger fs-4"></i>
+                        <div>
+                            <strong>Lotes vencidos</strong>
+                            <p class="mb-0 small text-muted">Hay <span th:text="${#lists.size(lotesVencidos)}">0</span> lote(s) con fecha de vencimiento ya pasada. Revise la tabla inferior.</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Content grid -->
+            <div class="content-grid cols-7-5">
+                <!-- Lotes del producto + filtro -->
+                <div>
+                    <!-- Filtro producto y por número de lote -->
+                    <div class="content-card mb-3">
+                        <div class="content-card-header">
+                            <h3><i class="bi bi-search me-2"></i>Lotes del producto</h3>
+                        </div>
+                        <div class="content-card-body">
+                            <form method="get" action="/web/inventario/lotes" class="row g-2" id="formFiltroLotes">
+                                <div class="col-md-5">
+                                    <label class="form-label small">Producto</label>
+                                    <select name="productoId" class="form-select" id="selectProductoLotes">
+                                        <option value="">Seleccione producto...</option>
+                                        <option th:each="p : ${productos}" th:value="${p.id}" th:text="${p.nombre}" th:selected="${productoIdSeleccionado != null and productoIdSeleccionado.equals(p.id)}">-</option>
+                                    </select>
+                                </div>
+                                <div class="col-md-5">
+                                    <label class="form-label small">Filtrar por n&ordm; lote</label>
+                                    <input type="text" name="numeroLote" class="form-control" placeholder="N&uacute;mero de lote"
+                                           th:value="${filtroNumeroLote}" id="inputFiltroNumeroLote">
+                                </div>
+                                <div class="col-md-2 d-flex align-items-end">
+                                    <button type="submit" class="btn btn-outline-primary w-100"><i class="bi bi-search me-1"></i>Filtrar</button>
+                                </div>
+                            </form>
+                            <script>
+                                document.getElementById('selectProductoLotes') && document.getElementById('selectProductoLotes').addEventListener('change', function() {
+                                    document.getElementById('formFiltroLotes').submit();
+                                });
+                            </script>
+                        </div>
+                    </div>
+
+                    <!-- Tabla lotes producto -->
+                    <div class="content-card" th:if="${lotesProducto != null}">
+                        <div class="content-card-header">
+                            <h3><i class="bi bi-list-ul me-2"></i>Lotes registrados</h3>
+                        </div>
+                        <div class="content-card-body no-padding">
+                            <table class="data-table">
+                                <thead>
+                                <tr>
+                                    <th>N&ordm; lote</th>
+                                    <th>Vencimiento</th>
+                                    <th class="text-end">Cantidad</th>
+                                </tr>
+                                </thead>
+                                <tbody>
+                                <tr th:each="l : ${lotesProducto}">
+                                    <td><span class="badge-tag" th:text="${l.numeroLote}">-</span></td>
+                                    <td th:text="${#temporals.format(l.fechaVencimiento, 'dd/MM/yyyy')}">-</td>
+                                    <td class="text-end" th:text="${l.cantidadActual}">0</td>
+                                </tr>
+                                <tr th:if="${lotesProducto != null and #lists.isEmpty(lotesProducto)}">
+                                    <td colspan="3">
+                                        <div class="empty-state">
+                                            <i class="bi bi-inbox"></i>
+                                            <p>Sin lotes para este producto.</p>
+                                        </div>
+                                    </td>
+                                </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                    <div class="content-card" th:if="${lotesProducto == null}">
+                        <div class="content-card-body">
+                            <div class="empty-state">
+                                <i class="bi bi-box-seam"></i>
+                                <p>Seleccione un producto para ver sus lotes.</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Lotes por vencer -->
+                    <div class="content-card mt-3">
+                        <div class="content-card-header d-flex flex-wrap align-items-center justify-content-between gap-2">
+                            <h3 class="mb-0"><i class="bi bi-exclamation-triangle me-2"></i>Lotes por vencer (60 d&iacute;as)</h3>
+                            <div th:if="${lotesPorVencer != null and !#lists.isEmpty(lotesPorVencer)}" class="d-flex gap-2">
+                                <button type="button" class="btn btn-sm btn-outline-danger" id="btnEliminarLotes" disabled title="Eliminar lote(s) seleccionado(s)"><i class="bi bi-trash me-1"></i>Eliminar</button>
+                                <button type="button" class="btn btn-sm btn-outline-primary" id="btnActualizarLote" disabled title="Actualizar lote seleccionado (solo uno)"><i class="bi bi-pencil-square me-1"></i>Actualizar</button>
+                            </div>
+                        </div>
+                        <div class="content-card-body no-padding">
+                            <form method="post" th:action="@{/web/inventario/lotes/eliminar}" id="formEliminarLotes" th:if="${lotesPorVencer != null and !#lists.isEmpty(lotesPorVencer)}">
+                                <input type="hidden" name="productoId" th:value="${productoIdSeleccionado}">
+                                <input type="hidden" name="numeroLote" th:value="${filtroNumeroLote}">
+                                <table class="data-table">
+                                    <thead>
+                                    <tr>
+                                        <th class="text-center" style="width:2.5rem;"><input type="checkbox" id="checkTodosLotes" title="Seleccionar todos"></th>
+                                        <th>Producto</th>
+                                        <th>Lote</th>
+                                        <th>Vencimiento</th>
+                                        <th class="text-end">Cant.</th>
+                                    </tr>
+                                    </thead>
+                                    <tbody>
+                                    <tr th:each="l : ${lotesPorVencer}" th:data-id="${l.id}" th:data-fecha="${l.fechaVencimiento != null ? #temporals.format(l.fechaVencimiento, 'yyyy-MM-dd') : ''}" th:data-cantidad="${l.cantidadActual != null ? l.cantidadActual : 0}">
+                                        <td class="text-center"><input type="checkbox" name="loteIds" th:value="${l.id}" class="cb-lote"></td>
+                                        <td class="fw-700" th:text="${l.producto != null ? l.producto.nombre : '-'}">-</td>
+                                        <td><span class="badge-tag" th:text="${l.numeroLote}">-</span></td>
+                                        <td th:text="${#temporals.format(l.fechaVencimiento, 'dd/MM/yyyy')}">-</td>
+                                        <td class="text-end" th:text="${l.cantidadActual}">0</td>
+                                    </tr>
+                                    </tbody>
+                                </table>
+                            </form>
+                            <table class="data-table" th:if="${lotesPorVencer == null or #lists.isEmpty(lotesPorVencer)}">
+                                <thead><tr><th>Producto</th><th>Lote</th><th>Vencimiento</th><th class="text-end">Cant.</th></tr></thead>
+                                <tbody>
+                                <tr><td colspan="4">
+                                    <div class="empty-state"><i class="bi bi-check-circle"></i><p>Ninguno por vencer.</p></div>
+                                </td></tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <!-- Lotes vencidos -->
+                    <div class="content-card mt-3">
+                        <div class="content-card-header">
+                            <h3 class="mb-0"><i class="bi bi-x-circle me-2"></i>Lotes vencidos</h3>
+                        </div>
+                        <div class="content-card-body no-padding">
+                            <table class="data-table">
+                                <thead>
+                                <tr>
+                                    <th>Producto</th>
+                                    <th>Lote</th>
+                                    <th>Vencimiento</th>
+                                    <th class="text-end">Cant.</th>
+                                </tr>
+                                </thead>
+                                <tbody>
+                                <tr th:each="l : ${lotesVencidos}">
+                                    <td class="fw-700" th:text="${l.producto != null ? l.producto.nombre : '-'}">-</td>
+                                    <td><span class="badge-tag" th:text="${l.numeroLote}">-</span></td>
+                                    <td><span class="text-danger" th:text="${#temporals.format(l.fechaVencimiento, 'dd/MM/yyyy')}">-</span></td>
+                                    <td class="text-end" th:text="${l.cantidadActual}">0</td>
+                                </tr>
+                                <tr th:if="${lotesVencidos == null or #lists.isEmpty(lotesVencidos)}">
+                                    <td colspan="4">
+                                        <div class="empty-state"><i class="bi bi-check-circle text-success"></i><p>Ninguno vencido.</p></div>
+                                    </td>
+                                </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Form registrar lote -->
+                <div class="content-card">
+                    <div class="content-card-header">
+                        <h3><i class="bi bi-plus-circle me-2"></i>Registrar lote</h3>
+                    </div>
+                    <div class="content-card-body">
+                        <form th:action="@{/web/inventario/lotes}" method="post"
+                              onsubmit="event.preventDefault(); nexoS.confirmSubmit(event, '¿Registrar lote?'); return false;">
+                            <input type="hidden" name="numeroLoteFiltro" th:value="${filtroNumeroLote}">
+                            <div class="row g-3">
+                                <div class="col-12 form-section">
+                                    <label class="form-label">Producto</label>
+                                    <select name="productoId" class="form-select" required>
+                                        <option value="">Seleccione...</option>
+                                        <option th:each="p : ${productos}" th:value="${p.id}" th:text="${p.nombre}" th:selected="${productoIdSeleccionado != null and productoIdSeleccionado.equals(p.id)}">-</option>
+                                    </select>
+                                </div>
+                                <div class="col-12 form-section">
+                                    <p class="small text-muted mb-0"><i class="bi bi-upc-scan me-1"></i>El n&ordm; de lote se genera autom&aacute;ticamente (ej. LOTE-20260224-001).</p>
+                                </div>
+                                <div class="col-12 form-section">
+                                    <label class="form-label">Fecha vencimiento</label>
+                                    <input type="date" name="fechaVencimiento" class="form-control" required>
+                                </div>
+                                <div class="col-12 form-section">
+                                    <label class="form-label">Cantidad</label>
+                                    <input type="number" name="cantidad" class="form-control" min="1" required>
+                                </div>
+                                <div class="col-12">
+                                    <button type="submit" class="btn btn-primary"><i class="bi bi-check-lg me-1"></i> Registrar lote</button>
+                                </div>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+</div>
+
+<!-- Modal Actualizar lote -->
+<div class="modal fade" id="modalActualizarLote" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title"><i class="bi bi-pencil-square me-2"></i>Actualizar lote</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form method="post" th:action="@{/web/inventario/lotes/actualizar}" id="formActualizarLote">
+                <input type="hidden" name="loteId" id="modalLoteId">
+                <input type="hidden" name="productoId" th:value="${productoIdSeleccionado}">
+                <input type="hidden" name="numeroLote" th:value="${filtroNumeroLote}">
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="form-label">Fecha vencimiento</label>
+                        <input type="date" name="fechaVencimiento" id="modalFechaVencimiento" class="form-control" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Cantidad</label>
+                        <input type="number" name="cantidad" id="modalCantidad" class="form-control" min="0" required>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="submit" class="btn btn-primary"><i class="bi bi-check-lg me-1"></i>Guardar</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+<script th:src="@{/js/app.js}"></script>
+<script th:inline="javascript">
+(function() {
+    var formEliminar = document.getElementById('formEliminarLotes');
+    var formActualizar = document.getElementById('formActualizarLote');
+    var btnEliminar = document.getElementById('btnEliminarLotes');
+    var btnActualizar = document.getElementById('btnActualizarLote');
+    var checkTodos = document.getElementById('checkTodosLotes');
+    var cbs = document.querySelectorAll('.cb-lote');
+    var modal = document.getElementById('modalActualizarLote');
+    var modalLoteId = document.getElementById('modalLoteId');
+    var modalFecha = document.getElementById('modalFechaVencimiento');
+    var modalCantidad = document.getElementById('modalCantidad');
+
+    function getLoteDataFromRow(row) {
+        if (!row) return null;
+        return { id: row.dataset.id, fechaVencimiento: row.dataset.fecha || '', cantidadActual: parseInt(row.dataset.cantidad || '0', 10) };
+    }
+
+    function updateButtons() {
+        var checked = document.querySelectorAll('.cb-lote:checked');
+        if (btnEliminar) btnEliminar.disabled = checked.length === 0;
+        if (btnActualizar) btnActualizar.disabled = checked.length !== 1;
+        if (checkTodos) checkTodos.checked = cbs.length > 0 && checked.length === cbs.length;
+    }
+
+    if (checkTodos && cbs.length) {
+        checkTodos.addEventListener('change', function() {
+            cbs.forEach(function(cb) { cb.checked = checkTodos.checked; });
+            updateButtons();
+        });
+    }
+    cbs.forEach(function(cb) {
+        cb.addEventListener('change', updateButtons);
+    });
+
+    if (btnEliminar && formEliminar) {
+        btnEliminar.addEventListener('click', function() {
+            var n = document.querySelectorAll('.cb-lote:checked').length;
+            if (n === 0) return;
+            if (!confirm('¿Eliminar ' + n + ' lote(s) seleccionado(s)? Se descontar\u00e1 la cantidad del stock del producto.')) return;
+            formEliminar.submit();
+        });
+    }
+
+    if (btnActualizar && modal && formActualizar) {
+        btnActualizar.addEventListener('click', function() {
+            var checked = document.querySelectorAll('.cb-lote:checked');
+            if (checked.length !== 1) return;
+            var row = checked[0].closest('tr');
+            var lote = getLoteDataFromRow(row);
+            if (modalLoteId) modalLoteId.value = checked[0].value;
+            if (modalFecha) modalFecha.value = (lote && lote.fechaVencimiento) ? lote.fechaVencimiento : '';
+            if (modalCantidad) modalCantidad.value = (lote && lote.cantidadActual != null) ? lote.cantidadActual : 0;
+            var bsModal = bootstrap.Modal.getOrCreateInstance(modal);
+            bsModal.show();
+        });
+    }
+    updateButtons();
+})();
+</script>
+</body>
+</html>

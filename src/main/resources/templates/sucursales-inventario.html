@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html lang="es" xmlns:th="http://www.thymeleaf.org" xmlns:sec="http://www.thymeleaf.org/extras/spring-security">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Inventario por sede - NexoERP</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+    <link rel="stylesheet" th:href="@{/css/app.css}">
+</head>
+<body>
+<div class="app-layout">
+    <!-- Sidebar -->
+    <aside class="sidebar" id="sidebar">
+        <div class="sidebar-header">
+            <span class="sidebar-brand"><i class="bi bi-diagram-3"></i> NexoERP</span>
+            <button class="sidebar-toggle d-lg-none" onclick="toggleSidebar()"><i class="bi bi-x-lg"></i></button>
+        </div>
+        <nav class="sidebar-nav">
+            <div class="sidebar-section-title">Operaciones</div>
+            <a class="sidebar-link" href="/web/productos"><i class="bi bi-box-seam"></i> Productos</a>
+            <a class="sidebar-link" href="/web/clientes"><i class="bi bi-people"></i> Clientes</a>
+            <a class="sidebar-link" href="/web/proveedores" sec:authorize="hasAnyRole('ADMIN','SAAS_ADMIN')"><i class="bi bi-truck"></i> Proveedores</a>
+            <a class="sidebar-link" href="/web/compras" sec:authorize="hasAnyRole('ADMIN','SAAS_ADMIN')"><i class="bi bi-cart-plus"></i> Compras</a>
+            <a class="sidebar-link" href="/web/ventas"><i class="bi bi-receipt"></i> Ventas</a>
+            <a class="sidebar-link" href="/web/caja"><i class="bi bi-cash-stack"></i> Caja</a>
+            <div class="sidebar-section-title">Gesti&oacute;n</div>
+            <a class="sidebar-link" href="/web/finanzas" sec:authorize="hasAnyRole('ADMIN','SAAS_ADMIN')"><i class="bi bi-graph-up"></i> Finanzas</a>
+            <a class="sidebar-link" href="/web/inventario"><i class="bi bi-clipboard-data"></i> Inventario</a>
+            <a class="sidebar-link" href="/web/reportes"><i class="bi bi-file-earmark-bar-graph"></i> Reportes</a>
+            <a class="sidebar-link active" href="/web/sucursales" sec:authorize="hasAnyRole('ADMIN','SAAS_ADMIN')"><i class="bi bi-building"></i> Sucursales</a>
+            <div class="sidebar-section-title">Sistema</div>
+            <a class="sidebar-link" href="/web/auditoria" sec:authorize="hasAnyRole('ADMIN','SAAS_ADMIN')"><i class="bi bi-shield-check"></i> Auditor&iacute;a</a>
+            <a class="sidebar-link" href="/web/admin/empresas" sec:authorize="hasRole('SAAS_ADMIN')"><i class="bi bi-gear"></i> Admin SaaS</a>
+        </nav>
+        <div class="sidebar-footer">
+            <div sec:authorize="hasRole('SAAS_ADMIN')">
+                <form th:if="${empresasTodas != null and !#lists.isEmpty(empresasTodas)}"
+                      th:action="@{/web/empresas/cambiar}" method="post" class="mb-2">
+                    <select name="tenantId" class="form-select form-select-sm"
+                            onchange="this.form.submit()" style="background:#243656; color:#c8d6e5; border-color:rgba(255,255,255,.12); font-size:12px;">
+                        <option th:each="e : ${empresasTodas}" th:value="${e.id}"
+                                th:selected="${empresaActual != null and e.id == empresaActual.id}"
+                                th:text="${e.nombre}">Empresa</option>
+                    </select>
+                    <input type="hidden" name="redirect" value="/web/sucursales/inventario">
+                </form>
+            </div>
+        </div>
+    </aside>
+    <div id="sidebarBackdrop" class="sidebar-backdrop"></div>
+
+    <!-- Main -->
+    <div class="main-wrapper">
+        <header class="topbar">
+            <button class="btn-sidebar-toggle" onclick="toggleSidebar()"><i class="bi bi-list"></i></button>
+            <h1 class="topbar-title">Inventario por sede</h1>
+            <div class="topbar-actions">
+                <a class="btn btn-sm btn-outline-secondary" href="/web/sucursales"><i class="bi bi-arrow-left me-1"></i>Sucursales</a>
+            </div>
+        </header>
+
+        <main class="main-content">
+            <!-- Filter -->
+            <div class="content-card mb-3">
+                <div class="content-card-header">
+                    <h3><i class="bi bi-funnel me-2"></i>Seleccionar sucursal</h3>
+                </div>
+                <div class="content-card-body">
+                    <form class="row g-3 align-items-end" method="get" th:action="@{/web/sucursales/inventario}">
+                        <div class="col-md-6 form-section">
+                            <label class="form-label">Sucursal</label>
+                            <select class="form-select form-select-sm" name="sucursalId" onchange="this.form.submit()">
+                                <option value="">Seleccione...</option>
+                                <option th:each="s : ${sucursales}"
+                                        th:value="${s.id}"
+                                        th:text="${s.nombre}"
+                                        th:selected="${sucursalIdSeleccionada != null and sucursalIdSeleccionada == s.id}">
+                                </option>
+                            </select>
+                        </div>
+                        <div class="col-md-3">
+                            <button type="submit" class="btn btn-sm btn-primary w-100"><i class="bi bi-search me-1"></i>Ver</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            <div th:if="${sucursal != null}">
+                <!-- KPIs -->
+                <div class="kpi-row"
+                     th:with="totalProductos=${stockPorProducto != null ? #maps.size(stockPorProducto) : 0}">
+                    <div class="kpi-card">
+                        <div class="kpi-icon blue"><i class="bi bi-building"></i></div>
+                        <div class="kpi-body">
+                            <div class="kpi-label">Sucursal</div>
+                            <div class="kpi-value" th:text="${sucursal.nombre}">Sucursal</div>
+                        </div>
+                    </div>
+                    <div class="kpi-card">
+                        <div class="kpi-icon green"><i class="bi bi-box-seam"></i></div>
+                        <div class="kpi-body">
+                            <div class="kpi-label">Productos en stock</div>
+                            <div class="kpi-value" th:text="${totalProductos}">0</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Table -->
+                <div class="content-card">
+                    <div class="content-card-header">
+                        <h3><i class="bi bi-table me-2"></i>Inventario consolidado</h3>
+                    </div>
+                    <div class="content-card-body no-padding">
+                        <table class="data-table">
+                            <thead>
+                            <tr>
+                                <th>Producto</th>
+                                <th>Presentaci&oacute;n</th>
+                                <th class="text-end">Stock total</th>
+                            </tr>
+                            </thead>
+                            <tbody>
+                            <tr th:each="entry : ${stockPorProducto}">
+                                <td class="fw-700" th:text="${entry.key.nombre}">Producto</td>
+                                <td th:text="${entry.key.presentacion}">Pres</td>
+                                <td class="text-end">
+                                    <span th:text="${entry.value}">0</span>
+                                </td>
+                            </tr>
+                            <tr th:if="${#lists.isEmpty(stockPorProducto)}">
+                                <td colspan="3">
+                                    <div class="empty-state">
+                                        <i class="bi bi-inbox"></i>
+                                        <p>No hay stock registrado para esta sucursal.</p>
+                                    </div>
+                                </td>
+                            </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <div th:if="${sucursal == null}" class="content-card">
+                <div class="content-card-body">
+                    <div class="empty-state">
+                        <i class="bi bi-filter-circle"></i>
+                        <p>Seleccione una sucursal para ver su inventario consolidado.</p>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+<script th:src="@{/js/app.js}"></script>
+</body>
+</html>

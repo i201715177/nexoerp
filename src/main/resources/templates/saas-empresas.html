@@ -1,0 +1,417 @@
+<!DOCTYPE html>
+<html lang="es" xmlns:th="http://www.thymeleaf.org" xmlns:sec="http://www.thymeleaf.org/extras/spring-security">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Panel SaaS - NexoERP</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+    <link rel="stylesheet" th:href="@{/css/app.css}">
+</head>
+<body>
+<div class="app-layout">
+    <!-- Sidebar -->
+    <aside class="sidebar" id="sidebar">
+        <div class="sidebar-header">
+            <span class="sidebar-brand"><i class="bi bi-diagram-3"></i> NexoERP</span>
+            <button class="sidebar-toggle d-lg-none" onclick="toggleSidebar()"><i class="bi bi-x-lg"></i></button>
+        </div>
+        <nav class="sidebar-nav">
+            <div class="sidebar-section-title">Operaciones</div>
+            <a class="sidebar-link" href="/web/productos"><i class="bi bi-box-seam"></i> Productos</a>
+            <a class="sidebar-link" href="/web/clientes"><i class="bi bi-people"></i> Clientes</a>
+            <a class="sidebar-link" href="/web/proveedores" sec:authorize="hasAnyRole('ADMIN','SAAS_ADMIN')"><i class="bi bi-truck"></i> Proveedores</a>
+            <a class="sidebar-link" href="/web/compras" sec:authorize="hasAnyRole('ADMIN','SAAS_ADMIN')"><i class="bi bi-cart-plus"></i> Compras</a>
+            <a class="sidebar-link" href="/web/ventas"><i class="bi bi-receipt"></i> Ventas</a>
+            <a class="sidebar-link" href="/web/caja"><i class="bi bi-cash-stack"></i> Caja</a>
+            <div class="sidebar-section-title">Gesti&oacute;n</div>
+            <a class="sidebar-link" href="/web/finanzas" sec:authorize="hasAnyRole('ADMIN','SAAS_ADMIN')"><i class="bi bi-graph-up"></i> Finanzas</a>
+            <a class="sidebar-link" href="/web/inventario"><i class="bi bi-clipboard-data"></i> Inventario</a>
+            <a class="sidebar-link" href="/web/reportes"><i class="bi bi-file-earmark-bar-graph"></i> Reportes</a>
+            <a class="sidebar-link" href="/web/sucursales" sec:authorize="hasAnyRole('ADMIN','SAAS_ADMIN')"><i class="bi bi-building"></i> Sucursales</a>
+            <div class="sidebar-section-title">Sistema</div>
+            <a class="sidebar-link" href="/web/auditoria" sec:authorize="hasAnyRole('ADMIN','SAAS_ADMIN')"><i class="bi bi-shield-check"></i> Auditor&iacute;a</a>
+            <a class="sidebar-link active" href="/web/admin/empresas" sec:authorize="hasAnyRole('SAAS_ADMIN','GERENTE')"><i class="bi bi-gear"></i> Admin SaaS</a>
+            <a class="sidebar-link" href="/web/admin/facturacion" sec:authorize="hasAnyRole('SAAS_ADMIN','GERENTE')"><i class="bi bi-credit-card"></i> Facturaci&oacute;n</a>
+            <a class="sidebar-link" href="/web/admin/solicitudes" sec:authorize="hasAnyRole('SAAS_ADMIN','GERENTE')"><i class="bi bi-inbox"></i> Solicitudes</a>
+        </nav>
+        <div class="sidebar-footer">
+            <div sec:authorize="hasAnyRole('SAAS_ADMIN','GERENTE')">
+                <form th:if="${empresasTodas != null and !#lists.isEmpty(empresasTodas)}"
+                      th:action="@{/web/empresas/cambiar}" method="post" class="mb-2">
+                    <select name="tenantId" class="form-select form-select-sm"
+                            onchange="this.form.submit()" style="background:#243656; color:#c8d6e5; border-color:rgba(255,255,255,.12); font-size:12px;">
+                        <option th:each="e : ${empresasTodas}" th:value="${e.id}"
+                                th:selected="${empresaActual != null and e.id == empresaActual.id}"
+                                th:text="${e.nombre}">Empresa</option>
+                    </select>
+                    <input type="hidden" name="redirect" value="/web/admin/empresas">
+                </form>
+            </div>
+        </div>
+    </aside>
+    <div id="sidebarBackdrop" class="sidebar-backdrop"></div>
+
+    <!-- Main -->
+    <div class="main-wrapper">
+        <header class="topbar">
+            <button class="btn-sidebar-toggle" onclick="toggleSidebar()"><i class="bi bi-list"></i></button>
+            <h1 class="topbar-title">Panel SaaS - Empresas</h1>
+            <div class="topbar-actions"></div>
+            <div class="topbar-user" th:if="${usuarioActual != null}">
+                <div class="topbar-user-avatar" th:text="${#strings.toUpperCase(#strings.substring(usuarioActual,0,1))}">A</div>
+                <div>
+                    <span class="topbar-user-name" th:text="${usuarioActual}">admin</span>
+                    <div class="topbar-user-empresa" th:text="${empresaActual != null ? empresaActual.nombre : ''}"></div>
+                </div>
+                <form th:action="@{/logout}" method="post">
+                    <button type="submit" class="btn-logout-top"><i class="bi bi-box-arrow-left"></i> Salir</button>
+                </form>
+            </div>
+        </header>
+
+        <main class="main-content">
+            <div th:if="${mensaje}" class="alert alert-success alert-dismissible fade show">
+                <i class="bi bi-check-circle me-1"></i> <span th:text="${mensaje}">OK</span>
+                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            </div>
+            <div th:if="${error}" class="alert alert-danger alert-dismissible fade show">
+                <i class="bi bi-exclamation-triangle me-1"></i> <span th:text="${error}">Error</span>
+                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            </div>
+
+            <!-- KPIs -->
+            <div class="kpi-row"
+                 th:with="total=${empresasUso != null ? #lists.size(empresasUso) : 0},
+                          activas=${empresasUso != null ? #lists.size(empresasUso.?[activa]) : 0},
+                          suspendidas=${empresasUso != null ? total - activas : 0}">
+                <div class="kpi-card">
+                    <div class="kpi-icon blue"><i class="bi bi-briefcase"></i></div>
+                    <div class="kpi-body">
+                        <div class="kpi-label">Total empresas</div>
+                        <div class="kpi-value" th:text="${total}">0</div>
+                    </div>
+                </div>
+                <div class="kpi-card">
+                    <div class="kpi-icon green"><i class="bi bi-check-circle"></i></div>
+                    <div class="kpi-body">
+                        <div class="kpi-label">Activas</div>
+                        <div class="kpi-value" th:text="${activas}">0</div>
+                    </div>
+                </div>
+                <div class="kpi-card">
+                    <div class="kpi-icon red"><i class="bi bi-pause-circle"></i></div>
+                    <div class="kpi-body">
+                        <div class="kpi-label">Suspendidas</div>
+                        <div class="kpi-value" th:text="${suspendidas}">0</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Content grid -->
+            <div class="content-grid cols-7-5">
+                <!-- Table -->
+                <div class="content-card">
+                    <div class="content-card-header">
+                        <h3><i class="bi bi-table me-2"></i>Empresas registradas</h3>
+                    </div>
+                    <div class="content-card-body no-padding">
+                        <table class="data-table">
+                            <thead>
+                            <tr>
+                                <th>C&oacute;digo</th>
+                                <th>Nombre</th>
+                                <th>Plan</th>
+                                <th>Correo due&ntilde;o</th>
+                                <th class="text-end">Usuarios</th>
+                                <th>Estado</th>
+                                <th class="text-end">Clientes</th>
+                                <th class="text-end">Productos</th>
+                                <th class="text-end">Ventas</th>
+                                <th class="text-center">Acciones</th>
+                            </tr>
+                            </thead>
+                            <tbody>
+                            <tr th:each="e : ${empresasUso}">
+                                <td><span class="badge-tag" th:text="${e.codigo}">COD</span></td>
+                                <td class="fw-700" th:text="${e.nombre}">Empresa</td>
+                                <td>
+                                    <span th:if="${e.planCodigo != null}" class="badge-tag" th:text="${e.planNombre != null ? e.planNombre : e.planCodigo}">Plan</span>
+                                    <span th:if="${e.planCodigo == null}" class="text-muted">—</span>
+                                </td>
+                                <td style="max-width:200px;">
+                                    <form th:action="@{/web/admin/empresas/correo}" method="post" class="d-flex gap-1 align-items-center">
+                                        <input type="hidden" name="empresaId" th:value="${e.id}">
+                                        <input type="email" name="emailContacto" class="form-control form-control-sm" placeholder="dueño@empresa.com"
+                                               th:value="${e.emailContacto}" style="min-width:0;">
+                                        <button type="submit" class="btn btn-sm btn-outline-primary py-0" title="Guardar correo para recordatorios">OK</button>
+                                    </form>
+                                </td>
+                                <td class="text-end">
+                                    <span th:text="${e.usuarios}">0</span>
+                                    <span th:if="${e.maxUsuarios != null}" th:text="' / ' + ${e.maxUsuarios}">/ 0</span>
+                                </td>
+                                <td>
+                                    <span class="badge-status"
+                                          th:classappend="${e.activa} ? 'success' : 'danger'"
+                                          th:text="${e.activa ? 'Activa' : 'Suspendida'}">Activa</span>
+                                </td>
+                                <td class="text-end" th:text="${e.clientes}">0</td>
+                                <td class="text-end" th:text="${e.productos}">0</td>
+                                <td class="text-end" th:text="${e.ventas}">0</td>
+                                <td class="text-center">
+                                    <a th:href="@{/web/admin/empresas/usuarios(empresaId=${e.id})}"
+                                       class="btn-action" title="Usuarios">
+                                        <i class="bi bi-people"></i>
+                                    </a>
+                                    <form th:action="@{/web/admin/empresas/estado}" method="post" class="d-inline">
+                                        <input type="hidden" name="empresaId" th:value="${e.id}">
+                                        <input type="hidden" name="activa" th:value="${!e.activa}">
+                                        <button type="submit" class="btn-action"
+                                                th:classappend="${e.activa} ? 'danger' : ''"
+                                                th:title="${e.activa ? 'Suspender' : 'Activar'}">
+                                            <i class="bi" th:classappend="${e.activa} ? 'bi-pause-circle' : 'bi-play-circle'"></i>
+                                        </button>
+                                    </form>
+                                    <form th:action="@{/web/admin/empresas/eliminar}" method="post" class="d-inline"
+                                          onsubmit="event.preventDefault(); nexoS.confirmSubmit(event, '¿ELIMINAR esta empresa y todos sus datos? Esta acción no se puede deshacer.'); return false;">
+                                        <input type="hidden" name="empresaId" th:value="${e.id}">
+                                        <button type="submit" class="btn-action danger" title="Eliminar empresa">
+                                            <i class="bi bi-trash"></i>
+                                        </button>
+                                    </form>
+                                </td>
+                            </tr>
+                            <tr th:if="${#lists.isEmpty(empresasUso)}">
+                                <td colspan="10">
+                                    <div class="empty-state">
+                                        <i class="bi bi-inbox"></i>
+                                        <p>No hay empresas registradas.</p>
+                                    </div>
+                                </td>
+                            </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- Form -->
+                <div class="content-card">
+                    <div class="content-card-header">
+                        <h3><i class="bi bi-plus-circle me-2"></i>Registrar empresa</h3>
+                    </div>
+                    <div class="content-card-body">
+                        <form th:action="@{/web/admin/empresas}" method="post"
+                              onsubmit="event.preventDefault(); nexoS.confirmSubmit(event, '¿Registrar empresa?'); return false;">
+                            <div class="row g-3">
+                                <div class="col-md-4 form-section">
+                                    <label class="form-label">C&oacute;digo *</label>
+                                    <input type="text" name="codigo" class="form-control" required placeholder="C&oacute;digo empresa">
+                                </div>
+                                <div class="col-md-8 form-section">
+                                    <label class="form-label">Nombre *</label>
+                                    <input type="text" name="nombre" class="form-control" required placeholder="Nombre de la empresa">
+                                </div>
+                                <div class="col-md-4 form-section">
+                                    <label class="form-label">Tipo documento</label>
+                                    <select name="tipoDocumento" class="form-select">
+                                        <option value="">Seleccione tipo</option>
+                                        <option value="RUC">RUC</option>
+                                        <option value="DNI">DNI</option>
+                                    </select>
+                                </div>
+                                <div class="col-md-8 form-section">
+                                    <label class="form-label">N&uacute;mero documento</label>
+                                    <input type="text" name="ruc" class="form-control" placeholder="Ej. 20123456789 o 12345678">
+                                </div>
+                                <div class="col-md-6 form-section" th:if="${planes != null and !planes.isEmpty()}">
+                                    <label class="form-label">Plan</label>
+                                    <select name="planId" class="form-select">
+                                        <option value="">— Sin plan —</option>
+                                        <option th:each="p : ${planes}" th:value="${p.id}" th:text="${p.nombre + ' (' + p.codigo + ')'}">Plan</option>
+                                    </select>
+                                </div>
+                                <div class="col-md-6 form-section" th:if="${planes != null and !planes.isEmpty()}">
+                                    <label class="form-label">Tipo suscripci&oacute;n</label>
+                                    <select name="tipoSuscripcion" class="form-select">
+                                        <option value="MENSUAL">Mensual</option>
+                                        <option value="ANUAL">Anual</option>
+                                    </select>
+                                </div>
+                                <div class="col-12 form-section">
+                                    <label class="form-label">Correo del dueño (recordatorios de vencimiento)</label>
+                                    <input type="email" name="emailContacto" class="form-control" placeholder="ejemplo@empresa.com">
+                                    <small class="text-muted">Se enviar&aacute; un correo a este email cuando la suscripci&oacute;n est&eacute; por vencer.</small>
+                                </div>
+                                <div class="col-12 form-section">
+                                    <label class="form-label">Descripci&oacute;n</label>
+                                    <textarea name="descripcion" class="form-control" rows="2"></textarea>
+                                </div>
+                                <div class="col-12 d-flex gap-2">
+                                    <button type="submit" class="btn btn-primary">
+                                        <i class="bi bi-check-lg"></i> Guardar empresa
+                                    </button>
+                                </div>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Seccion: Usuarios de empresa seleccionada -->
+            <div th:if="${empresaSeleccionada != null}" class="mt-4">
+                <div class="content-grid cols-7-5">
+                    <div class="content-card">
+                        <div class="content-card-header">
+                            <h3><i class="bi bi-people me-2"></i>Usuarios de
+                                <span th:text="${empresaSeleccionada.nombre}">Empresa</span>
+                                <span class="badge-tag ms-2" th:text="${empresaSeleccionada.codigo}">COD</span>
+                                <span th:if="${maxUsuariosEmpresa != null}" class="text-muted ms-2" style="font-size:0.9rem; font-weight:normal;">
+                                    (<span th:text="${usuariosEmpresa != null ? #lists.size(usuariosEmpresa) : 0}">0</span> / <span th:text="${maxUsuariosEmpresa}">0</span> usuarios)
+                                </span>
+                            </h3>
+                        </div>
+                        <div class="content-card-body no-padding">
+                            <table class="data-table">
+                                <thead>
+                                <tr>
+                                    <th>Usuario</th>
+                                    <th>Nombre completo</th>
+                                    <th>Rol</th>
+                                    <th>Sucursal</th>
+                                    <th>Estado</th>
+                                    <th class="text-center">Acciones</th>
+                                </tr>
+                                </thead>
+                                <tbody>
+                                <tr th:each="u : ${usuariosEmpresa}">
+                                    <td class="fw-700" th:text="${u.username}">user</td>
+                                    <td th:text="${u.nombreCompleto}">Nombre</td>
+                                    <td><span class="badge-tag" th:text="${u.rol}">ROL</span></td>
+                                    <td>
+                                        <span th:text="${u.sucursalId != null and sucursalIdANombre != null ? sucursalIdANombre.get(u.sucursalId) : '—'}">—</span>
+                                        <form th:if="${sucursales != null and !sucursales.isEmpty()}" th:action="@{/web/admin/empresas/usuarios/sucursal}" method="post" class="d-inline-flex gap-1 align-items-center ms-1">
+                                            <input type="hidden" name="usuarioId" th:value="${u.id}">
+                                            <input type="hidden" name="empresaId" th:value="${empresaSeleccionada.id}">
+                                            <select name="sucursalId" class="form-select form-select-sm" style="width:auto; min-width:100px;">
+                                                <option value="">—</option>
+                                                <option th:each="s : ${sucursales}" th:value="${s.id}" th:text="${s.nombre}" th:selected="${u.sucursalId != null and u.sucursalId == s.id}">Sucursal</option>
+                                            </select>
+                                            <button type="submit" class="btn btn-sm btn-outline-primary py-0">Asignar</button>
+                                        </form>
+                                    </td>
+                                    <td>
+                                        <span class="badge-status"
+                                              th:classappend="${u.activo} ? 'success' : 'danger'"
+                                              th:text="${u.activo ? 'Activo' : 'Inactivo'}">Activo</span>
+                                    </td>
+                                    <td class="text-center">
+                                        <form th:action="@{/web/admin/empresas/usuarios/estado}" method="post" class="d-inline">
+                                            <input type="hidden" name="usuarioId" th:value="${u.id}">
+                                            <input type="hidden" name="empresaId" th:value="${empresaSeleccionada.id}">
+                                            <input type="hidden" name="activo" th:value="${!u.activo}">
+                                            <button type="submit" class="btn-action"
+                                                    th:classappend="${u.activo} ? 'danger' : ''"
+                                                    th:title="${u.activo ? 'Desactivar' : 'Activar'}">
+                                                <i class="bi" th:classappend="${u.activo} ? 'bi-person-dash' : 'bi-person-check'"></i>
+                                            </button>
+                                        </form>
+                                        <form th:action="@{/web/admin/empresas/usuarios/eliminar}" method="post" class="d-inline"
+                                              onsubmit="event.preventDefault(); nexoS.confirmSubmit(event, '¿Eliminar este usuario?'); return false;">
+                                            <input type="hidden" name="usuarioId" th:value="${u.id}">
+                                            <input type="hidden" name="empresaId" th:value="${empresaSeleccionada.id}">
+                                            <button type="submit" class="btn-action danger" title="Eliminar usuario">
+                                                <i class="bi bi-trash"></i>
+                                            </button>
+                                        </form>
+                                        <button type="button" class="btn-action" title="Reset password"
+                                                th:onclick="'document.getElementById(\'resetForm'+${u.id}+'\').classList.toggle(\'d-none\')'">
+                                            <i class="bi bi-key"></i>
+                                        </button>
+                                        <form th:id="'resetForm'+${u.id}" class="d-none d-inline-flex gap-1 ms-1"
+                                              th:action="@{/web/admin/empresas/usuarios/reset-password}" method="post">
+                                            <input type="hidden" name="usuarioId" th:value="${u.id}">
+                                            <input type="hidden" name="empresaId" th:value="${empresaSeleccionada.id}">
+                                            <input type="password" name="nuevoPassword" class="form-control form-control-sm"
+                                                   placeholder="Nueva clave" required style="width:130px;">
+                                            <button type="submit" class="btn btn-sm btn-primary">OK</button>
+                                        </form>
+                                    </td>
+                                </tr>
+                                <tr th:if="${#lists.isEmpty(usuariosEmpresa)}">
+                                    <td colspan="6">
+                                        <div class="empty-state">
+                                            <i class="bi bi-person-x"></i>
+                                            <p>No hay usuarios para esta empresa.</p>
+                                        </div>
+                                    </td>
+                                </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <!-- Formulario crear usuario -->
+                    <div class="content-card">
+                        <div class="content-card-header">
+                            <h3><i class="bi bi-person-plus me-2"></i>Crear usuario</h3>
+                        </div>
+                        <div class="content-card-body">
+                            <form th:action="@{/web/admin/empresas/usuarios}" method="post">
+                                <input type="hidden" name="empresaId" th:value="${empresaSeleccionada.id}">
+                                <div class="row g-3">
+                                    <div class="col-md-6 form-section">
+                                        <label class="form-label">Usuario *</label>
+                                        <input type="text" name="username" class="form-control" required
+                                               placeholder="Nombre de usuario">
+                                    </div>
+                                    <div class="col-md-6 form-section">
+                                        <label class="form-label">Contrase&ntilde;a *</label>
+                                        <input type="password" name="password" class="form-control" required
+                                               placeholder="M&iacute;nimo 4 caracteres">
+                                    </div>
+                                    <div class="col-md-6 form-section">
+                                        <label class="form-label">Nombre completo</label>
+                                        <input type="text" name="nombreCompleto" class="form-control"
+                                               placeholder="Nombre completo">
+                                    </div>
+                                    <div class="col-md-6 form-section">
+                                        <label class="form-label">Rol *</label>
+                                        <select name="rol" class="form-select" required>
+                                            <option value="ADMIN">ADMIN</option>
+                                            <option value="VENDEDOR" selected>VENDEDOR</option>
+                                            <option value="CAJERO">CAJERO</option>
+                                        </select>
+                                    </div>
+                                    <div class="col-md-6 form-section" th:if="${sucursales != null and !sucursales.isEmpty()}">
+                                        <label class="form-label">Sucursal (para vendedor)</label>
+                                        <select name="sucursalId" class="form-select">
+                                            <option value="">— Sin asignar —</option>
+                                            <option th:each="s : ${sucursales}" th:value="${s.id}" th:text="${s.nombre}">Sucursal</option>
+                                        </select>
+                                        <small class="text-muted">El vendedor solo ver&aacute; productos y stock de esta sucursal.</small>
+                                    </div>
+                                    <div class="col-12">
+                                        <button type="submit" class="btn btn-primary"
+                                                th:disabled="${maxUsuariosEmpresa != null and (usuariosEmpresa != null ? #lists.size(usuariosEmpresa) >= maxUsuariosEmpresa : false)}"
+                                                th:title="${maxUsuariosEmpresa != null and (usuariosEmpresa != null ? #lists.size(usuariosEmpresa) >= maxUsuariosEmpresa : false)} ? 'Límite de usuarios alcanzado' : ''">
+                                            <i class="bi bi-person-plus"></i> Crear usuario
+                                        </button>
+                                        <a th:href="@{/web/admin/empresas}" class="btn btn-outline-secondary ms-2">
+                                            <i class="bi bi-arrow-left"></i> Volver
+                                        </a>
+                                    </div>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+<script th:src="@{/js/app.js}"></script>
+</body>
+</html>

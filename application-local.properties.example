@@ -1,0 +1,8 @@
+# Copie este archivo como application-local.properties en la misma carpeta
+# desde donde ejecuta la aplicación (raíz del proyecto o junto al JAR).
+# Ponga aquí su contraseña de aplicación de Outlook y NO suba application-local.properties a Git.
+#
+# Cómo obtener contraseña de aplicación:
+# https://account.microsoft.com/security → Seguridad → Contraseñas de aplicación
+
+spring.mail.password=TU_CONTRASEÑA_DE_APLICACION_AQUI

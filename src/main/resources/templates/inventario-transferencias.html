@@ -1,0 +1,296 @@
+<!DOCTYPE html>
+<html lang="es" xmlns:th="http://www.thymeleaf.org" xmlns:sec="http://www.thymeleaf.org/extras/spring-security">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Transferencias - NexoERP</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+    <link rel="stylesheet" th:href="@{/css/app.css}">
+</head>
+<body>
+<div class="app-layout">
+    <!-- Sidebar -->
+    <aside class="sidebar" id="sidebar">
+        <div class="sidebar-header">
+            <span class="sidebar-brand"><i class="bi bi-diagram-3"></i> NexoERP</span>
+            <button class="sidebar-toggle d-lg-none" onclick="toggleSidebar()"><i class="bi bi-x-lg"></i></button>
+        </div>
+        <nav class="sidebar-nav">
+            <div class="sidebar-section-title">Operaciones</div>
+            <a class="sidebar-link" href="/web/productos"><i class="bi bi-box-seam"></i> Productos</a>
+            <a class="sidebar-link" href="/web/clientes"><i class="bi bi-people"></i> Clientes</a>
+            <a class="sidebar-link" href="/web/proveedores" sec:authorize="hasAnyRole('ADMIN','SAAS_ADMIN')"><i class="bi bi-truck"></i> Proveedores</a>
+            <a class="sidebar-link" href="/web/compras" sec:authorize="hasAnyRole('ADMIN','SAAS_ADMIN')"><i class="bi bi-cart-plus"></i> Compras</a>
+            <a class="sidebar-link" href="/web/ventas"><i class="bi bi-receipt"></i> Ventas</a>
+            <a class="sidebar-link" href="/web/caja"><i class="bi bi-cash-stack"></i> Caja</a>
+            <div class="sidebar-section-title">Gesti&oacute;n</div>
+            <a class="sidebar-link" href="/web/finanzas" sec:authorize="hasAnyRole('ADMIN','SAAS_ADMIN')"><i class="bi bi-graph-up"></i> Finanzas</a>
+            <a class="sidebar-link active" href="/web/inventario"><i class="bi bi-clipboard-data"></i> Inventario</a>
+            <a class="sidebar-link" href="/web/reportes"><i class="bi bi-file-earmark-bar-graph"></i> Reportes</a>
+            <a class="sidebar-link" href="/web/sucursales" sec:authorize="hasAnyRole('ADMIN','SAAS_ADMIN')"><i class="bi bi-building"></i> Sucursales</a>
+            <div class="sidebar-section-title">Sistema</div>
+            <a class="sidebar-link" href="/web/auditoria" sec:authorize="hasAnyRole('ADMIN','SAAS_ADMIN')"><i class="bi bi-shield-check"></i> Auditor&iacute;a</a>
+            <a class="sidebar-link" href="/web/admin/empresas" sec:authorize="hasRole('SAAS_ADMIN')"><i class="bi bi-gear"></i> Admin SaaS</a>
+        </nav>
+        <div class="sidebar-footer">
+            <div sec:authorize="hasRole('SAAS_ADMIN')">
+                <form th:if="${empresasTodas != null and !#lists.isEmpty(empresasTodas)}"
+                      th:action="@{/web/empresas/cambiar}" method="post" class="mb-2">
+                    <select name="tenantId" class="form-select form-select-sm"
+                            onchange="this.form.submit()" style="background:#243656; color:#c8d6e5; border-color:rgba(255,255,255,.12); font-size:12px;">
+                        <option th:each="e : ${empresasTodas}" th:value="${e.id}"
+                                th:selected="${empresaActual != null and e.id == empresaActual.id}"
+                                th:text="${e.nombre}">Empresa</option>
+                    </select>
+                    <input type="hidden" name="redirect" value="/web/inventario/transferencias">
+                </form>
+            </div>
+        </div>
+    </aside>
+    <div id="sidebarBackdrop" class="sidebar-backdrop"></div>
+
+    <!-- Main -->
+    <div class="main-wrapper">
+        <header class="topbar">
+            <button class="btn-sidebar-toggle" onclick="toggleSidebar()"><i class="bi bi-list"></i></button>
+            <h1 class="topbar-title">Transferencias entre Almacenes</h1>
+            <div class="topbar-actions">
+                <a class="btn btn-sm btn-outline-secondary" th:href="@{/web/inventario}"><i class="bi bi-arrow-left me-1"></i> Volver a inventario</a>
+            </div>
+            <div class="topbar-user" th:if="${usuarioActual != null}">
+                <div class="topbar-user-avatar" th:text="${#strings.toUpperCase(#strings.substring(usuarioActual,0,1))}">A</div>
+                <div>
+                    <span class="topbar-user-name" th:text="${usuarioActual}">admin</span>
+                    <div class="topbar-user-empresa" th:text="${empresaActual != null ? empresaActual.nombre : ''}"></div>
+                </div>
+                <form th:action="@{/logout}" method="post">
+                    <button type="submit" class="btn-logout-top"><i class="bi bi-box-arrow-left"></i> Salir</button>
+                </form>
+            </div>
+        </header>
+
+        <main class="main-content">
+            <div th:if="${mensaje}" class="alert alert-success"><i class="bi bi-check-circle me-1"></i> <span th:text="${mensaje}">OK</span></div>
+            <div th:if="${error}" class="alert alert-danger"><i class="bi bi-exclamation-triangle me-1"></i> <span th:text="${error}">Error</span></div>
+            <div th:if="${errorTransferencias}" class="alert alert-warning"><i class="bi bi-info-circle me-1"></i> <span th:text="${errorTransferencias}">Error</span></div>
+
+            <!-- Alerta: sucursal destino ya recibió -->
+            <div th:if="${historialTransferencias != null}" th:with="recibidas=${historialTransferencias.?[estado == 'RECIBIDO']}">
+                <div th:if="${recibidas != null and !recibidas.isEmpty()}" class="alert alert-info d-flex align-items-start gap-2 mb-3">
+                    <i class="bi bi-check-circle-fill fs-5 mt-1"></i>
+                    <div>
+                        <strong>Recepción confirmada por sucursal destino</strong>
+                        <p class="mb-0 small" th:each="r, iter : ${recibidas}" th:if="${iter.index < 3}">
+                            La sucursal <strong th:text="${r.almacenDestino != null and r.almacenDestino.sucursal != null ? r.almacenDestino.sucursal.nombre : (r.almacenDestino != null ? r.almacenDestino.nombre : '')}">-</strong> ya recibió: <span th:text="${r.producto != null ? r.producto.nombre : '-'}">-</span>, <span th:text="${r.cantidad}">0</span> unidades <span th:text="${r.fechaRecepcion != null ? '(recibido el ' + #temporals.format(r.fechaRecepcion, 'dd/MM/yyyy HH:mm') + ')' : ''}">.</span>
+                        </p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Form -->
+            <div class="content-card" style="max-width: 40rem;">
+                <div class="content-card-header">
+                    <h3><i class="bi bi-arrow-left-right me-2"></i>Nueva transferencia</h3>
+                </div>
+                <div class="content-card-body">
+                    <form th:action="@{/web/inventario/transferencias}" method="post"
+                          onsubmit="event.preventDefault(); nexoS.confirmSubmit(event, '¿Enviar esta transferencia? El almacén destino deberá confirmar la recepción cuando reciba la mercancía.'); return false;">
+                        <div class="row g-3">
+                            <div class="col-6 form-section">
+                                <label class="form-label">Almac&eacute;n origen</label>
+                                <select name="almacenOrigenId" class="form-select" required>
+                                    <option value="">Seleccione...</option>
+                                    <option th:each="a : ${almacenes}" th:value="${a.id}"
+                                            th:text="${a.nombre + ' - ' + (a.sucursal != null ? a.sucursal.nombre : 'Sin sucursal') + (a.principal ? ' (Principal)' : '')}">-</option>
+                                </select>
+                            </div>
+                            <div class="col-6 form-section">
+                                <label class="form-label">Almac&eacute;n destino</label>
+                                <select name="almacenDestinoId" class="form-select" required>
+                                    <option value="">Seleccione...</option>
+                                    <option th:each="a : ${almacenes}" th:value="${a.id}"
+                                            th:text="${a.nombre + ' - ' + (a.sucursal != null ? a.sucursal.nombre : 'Sin sucursal') + (a.principal ? ' (Principal)' : '')}">-</option>
+                                </select>
+                            </div>
+                            <div class="col-12 form-section">
+                                <label class="form-label">Producto</label>
+                                <select name="productoId" class="form-select" required>
+                                    <option value="">Seleccione...</option>
+                                    <option th:each="p : ${productos}" th:value="${p.id}" th:text="${p.nombre}">-</option>
+                                </select>
+                            </div>
+                            <div class="col-6 form-section">
+                                <label class="form-label">Cantidad</label>
+                                <input type="number" name="cantidad" class="form-control" min="1" required>
+                            </div>
+                            <div class="col-6 form-section">
+                                <label class="form-label">Referencia (opcional)</label>
+                                <input type="text" name="referencia" class="form-control">
+                            </div>
+                            <div class="col-12">
+                                <button type="submit" class="btn btn-primary"><i class="bi bi-send me-1"></i> Enviar transferencia</button>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            <!-- Pendientes de recepción -->
+            <div class="content-card transferencias-pendientes-card mt-4">
+                <div class="content-card-header d-flex flex-wrap align-items-center justify-content-between gap-2">
+                    <div class="d-flex align-items-center gap-2">
+                        <h3 class="mb-0"><i class="bi bi-inbox text-primary me-2"></i>Pendientes de recepción</h3>
+                        <span th:if="${pendientesRecepcion != null and !pendientesRecepcion.isEmpty()}" class="badge bg-warning text-dark fs-6" th:text="${#lists.size(pendientesRecepcion)} + ' por confirmar'">0</span>
+                    </div>
+                    <form th:action="@{/web/inventario/transferencias}" method="get" class="d-flex align-items-center gap-2">
+                        <label class="form-label mb-0 small text-muted">Almacén destino:</label>
+                        <select name="almacenDestinoId" class="form-select form-select-sm" style="width: auto; min-width: 220px;" onchange="this.form.submit()">
+                            <option value="">Todos los almacenes</option>
+                            <option th:each="a : ${almacenes}" th:value="${a.id}" th:text="${a.nombre + ' - ' + (a.sucursal != null ? a.sucursal.nombre : '')}" th:selected="${almacenDestinoFiltro != null and almacenDestinoFiltro == a.id}">-</option>
+                        </select>
+                    </form>
+                </div>
+                <div class="content-card-body">
+                    <p class="text-muted small mb-3">
+                        <i class="bi bi-info-circle me-1"></i> Estas transferencias ya fueron enviadas desde el almacén origen. Confirme la recepción cuando la mercancía llegue físicamente a su almacén.
+                    </p>
+                    <div th:if="${pendientesRecepcion == null or pendientesRecepcion.isEmpty()}" class="text-center py-5">
+                        <i class="bi bi-check2-circle display-4 text-success opacity-75"></i>
+                        <p class="text-muted mt-2 mb-0">No hay transferencias pendientes de confirmar.</p>
+                    </div>
+                    <div th:if="${pendientesRecepcion != null and !pendientesRecepcion.isEmpty()}" class="table-responsive">
+                        <table class="data-table">
+                            <thead>
+                                <tr>
+                                    <th>Origen</th>
+                                    <th>Destino</th>
+                                    <th>Producto</th>
+                                    <th class="text-center">Cantidad</th>
+                                    <th>Referencia</th>
+                                    <th>Fecha env&iacute;o</th>
+                                    <th class="text-end">Acciones</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr th:each="t : ${pendientesRecepcion}">
+                                    <td><span th:text="${t.almacenOrigen != null ? t.almacenOrigen.nombre : '-'}">-</span></td>
+                                    <td><strong th:text="${t.almacenDestino != null ? t.almacenDestino.nombre : '-'}">-</strong></td>
+                                    <td th:text="${t.producto != null ? t.producto.nombre : '-'}">-</td>
+                                    <td class="text-center" th:text="${t.cantidad}">0</td>
+                                    <td><span class="text-muted small" th:text="${t.referencia != null && !t.referencia.isEmpty() ? t.referencia : '—'}">—</span></td>
+                                    <td th:text="${t.fechaEnvio != null ? #temporals.format(t.fechaEnvio, 'dd/MM/yyyy HH:mm') : '-'}">-</td>
+                                    <td class="text-end">
+                                        <form th:action="@{/web/inventario/transferencias/{id}/confirmar-recepcion(id=${t.id})}" method="post" class="d-inline"
+                                              onsubmit="event.preventDefault(); if(confirm('¿Confirmar que recibió físicamente esta mercancía en su almacén?')) { this.submit(); } return false;">
+                                            <button type="submit" class="btn btn-success btn-sm"><i class="bi bi-check-lg me-1"></i> Confirmar</button>
+                                        </form>
+                                        <a th:href="@{/web/inventario/transferencias/{id}/comprobante(id=${t.id})}" target="_blank" class="btn btn-outline-primary btn-sm ms-1" title="Generar guía/comprobante para firmar recepción"><i class="bi bi-file-earmark-text me-1"></i> Guía</a>
+                                        <button type="button" class="btn btn-outline-secondary btn-sm ms-1" th:attr="data-bs-toggle='modal', data-bs-target='#modalActualizarTransferencia', data-id=${t.id}, data-cantidad=${t.cantidad}, data-referencia=${t.referencia != null ? t.referencia : ''}" title="Actualizar cantidad o referencia"><i class="bi bi-pencil me-1"></i> Actualizar</button>
+                                        <form th:action="@{/web/inventario/transferencias/{id}/eliminar(id=${t.id})}" method="post" class="d-inline ms-1"
+                                              onsubmit="event.preventDefault(); if(confirm('¿Eliminar esta transferencia? Se devolverá el stock al almacén origen.')) { this.submit(); } return false;">
+                                            <button type="submit" class="btn btn-outline-danger btn-sm"><i class="bi bi-trash me-1"></i> Eliminar</button>
+                                        </form>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Grilla: historial de transferencias (origen, sucursal destino, estado) -->
+            <div class="content-card mt-4">
+                <div class="content-card-header">
+                    <h3 class="mb-0"><i class="bi bi-table me-2"></i>Historial de transferencias</h3>
+                </div>
+                <div class="content-card-body">
+                    <p class="text-muted small mb-3">Todas las transferencias enviadas: sucursal a la que se envía y estado (Pendiente / Recibido).</p>
+                    <div th:if="${historialTransferencias == null or historialTransferencias.isEmpty()}" class="text-center py-4 text-muted">No hay transferencias registradas.</div>
+                    <div th:if="${historialTransferencias != null and !historialTransferencias.isEmpty()}" class="table-responsive">
+                        <table class="data-table">
+                            <thead>
+                                <tr>
+                                    <th>Origen</th>
+                                    <th>Sucursal destino</th>
+                                    <th>Producto</th>
+                                    <th class="text-center">Cantidad</th>
+                                    <th>Referencia</th>
+                                    <th class="text-center">Estado</th>
+                                    <th>Fecha env&iacute;o</th>
+                                    <th>Fecha recepci&oacute;n</th>
+                                    <th>Recibido por</th>
+                                    <th class="text-end">Acciones</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr th:each="t : ${historialTransferencias}">
+                                    <td><span th:text="${t.almacenOrigen != null ? t.almacenOrigen.nombre + (t.almacenOrigen.sucursal != null ? ' (' + t.almacenOrigen.sucursal.nombre + ')' : '') : '-'}">-</span></td>
+                                    <td><strong th:text="${t.almacenDestino != null ? t.almacenDestino.nombre + (t.almacenDestino.sucursal != null ? ' - ' + t.almacenDestino.sucursal.nombre : '') : '-'}">-</strong></td>
+                                    <td th:text="${t.producto != null ? t.producto.nombre : '-'}">-</td>
+                                    <td class="text-center" th:text="${t.cantidad}">0</td>
+                                    <td class="text-muted small" th:text="${t.referencia != null and !t.referencia.isEmpty() ? t.referencia : '—'}">—</td>
+                                    <td class="text-center">
+                                        <span th:if="${t.estado == 'ENVIADO'}" class="badge bg-warning text-dark">Pendiente</span>
+                                        <span th:if="${t.estado == 'RECIBIDO'}" class="badge bg-success">Recibido</span>
+                                    </td>
+                                    <td th:text="${t.fechaEnvio != null ? #temporals.format(t.fechaEnvio, 'dd/MM/yyyy HH:mm') : '-'}">-</td>
+                                    <td th:text="${t.fechaRecepcion != null ? #temporals.format(t.fechaRecepcion, 'dd/MM/yyyy HH:mm') : '—'}">—</td>
+                                    <td th:text="${t.usuarioRecepcion != null ? t.usuarioRecepcion : '—'}">—</td>
+                                    <td class="text-end">
+                                        <a th:href="@{/web/inventario/transferencias/{id}/comprobante(id=${t.id})}" target="_blank" class="btn btn-outline-primary btn-sm" title="Guía/comprobante"><i class="bi bi-file-earmark-text me-1"></i> Guía</a>
+                                        <form th:action="@{/web/inventario/transferencias/{id}/eliminar(id=${t.id})}" method="post" class="d-inline ms-1"
+                                              onsubmit="event.preventDefault(); if(confirm('¿Eliminar esta transferencia? Se ajustará el stock en origen y/o destino.')) { this.submit(); } return false;">
+                                            <button type="submit" class="btn btn-outline-danger btn-sm"><i class="bi bi-trash me-1"></i> Eliminar</button>
+                                        </form>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+</div>
+
+<!-- Modal Actualizar transferencia -->
+<div class="modal fade" id="modalActualizarTransferencia" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header"><h5 class="modal-title">Actualizar transferencia</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+            <div class="modal-body">
+                <form id="formActualizarTransferencia" method="post" action="">
+                    <div class="mb-2"><label class="form-label">Cantidad</label><input type="number" name="cantidad" id="actualizarCantidad" class="form-control" min="1" required></div>
+                    <div class="mb-2"><label class="form-label">Referencia (opcional)</label><input type="text" name="referencia" id="actualizarReferencia" class="form-control"></div>
+                    <button type="submit" class="btn btn-primary">Guardar</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+<script th:src="@{/js/app.js}"></script>
+<script>
+(function(){
+    var modal = document.getElementById('modalActualizarTransferencia');
+    if (modal) {
+        modal.addEventListener('show.bs.modal', function(e) {
+            var btn = e.relatedTarget;
+            if (!btn) return;
+            var id = btn.getAttribute('data-id');
+            var cantidad = btn.getAttribute('data-cantidad');
+            var referencia = btn.getAttribute('data-referencia') || '';
+            var form = document.getElementById('formActualizarTransferencia');
+            if (form) {
+                form.action = '/web/inventario/transferencias/' + id + '/actualizar';
+                document.getElementById('actualizarCantidad').value = cantidad || 1;
+                document.getElementById('actualizarReferencia').value = referencia;
+            }
+        });
+    }
+})();
+</script>
+</body>
+</html>

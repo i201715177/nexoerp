@@ -1,0 +1,24 @@
+========================================
+  COMO EJECUTAR Y DESPLEGAR - SISTEMA FARMACIA
+========================================
+
+Requisito: Java 17 para compilar y ejecutar (Spring Boot 3.2).
+Despliegue completo: ver DEPLOYMENT.md
+
+--- OPCION 1: Ejecutar con Java 17 en NetBeans ---
+1. Proyecto -> Clic derecho -> Properties -> Run
+2. Java Platform: elegir JDK 17 (si no esta: Tools -> Java Platforms -> Add)
+3. Aceptar y Run (F6)
+
+--- OPCION 2: Script run-con-java17.bat ---
+1. Editar run-con-java17.bat y poner la ruta de tu JDK 17 en set "JAVA_HOME=..."
+2. Ejecutar run-con-java17.bat (doble clic o desde CMD)
+
+--- OPCION 3: JAR (desarrollo) ---
+  mvnw.cmd clean package -DskipTests
+  java -jar target/sistema-farmacia-0.0.1-SNAPSHOT.jar
+
+--- OPCION 4: Docker ---
+  docker-compose up -d --build
+
+Detalles, perfiles (prod, oracle, docker) y produccion: DEPLOYMENT.md

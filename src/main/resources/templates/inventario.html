@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="es" xmlns:th="http://www.thymeleaf.org" xmlns:sec="http://www.thymeleaf.org/extras/spring-security">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Inventario - NexoERP</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+    <link rel="stylesheet" th:href="@{/css/app.css}">
+</head>
+<body>
+<div class="app-layout">
+    <!-- Sidebar -->
+    <aside class="sidebar" id="sidebar">
+        <div class="sidebar-header">
+            <span class="sidebar-brand"><i class="bi bi-diagram-3"></i> NexoERP</span>
+            <button class="sidebar-toggle d-lg-none" onclick="toggleSidebar()"><i class="bi bi-x-lg"></i></button>
+        </div>
+        <nav class="sidebar-nav">
+            <div class="sidebar-section-title">Operaciones</div>
+            <a class="sidebar-link" href="/web/productos"><i class="bi bi-box-seam"></i> Productos</a>
+            <a class="sidebar-link" href="/web/clientes"><i class="bi bi-people"></i> Clientes</a>
+            <a class="sidebar-link" href="/web/proveedores" sec:authorize="hasAnyRole('ADMIN','SAAS_ADMIN')"><i class="bi bi-truck"></i> Proveedores</a>
+            <a class="sidebar-link" href="/web/compras" sec:authorize="hasAnyRole('ADMIN','SAAS_ADMIN')"><i class="bi bi-cart-plus"></i> Compras</a>
+            <a class="sidebar-link" href="/web/ventas"><i class="bi bi-receipt"></i> Ventas</a>
+            <a class="sidebar-link" href="/web/caja"><i class="bi bi-cash-stack"></i> Caja</a>
+            <div class="sidebar-section-title">Gesti&oacute;n</div>
+            <a class="sidebar-link" href="/web/finanzas" sec:authorize="hasAnyRole('ADMIN','SAAS_ADMIN')"><i class="bi bi-graph-up"></i> Finanzas</a>
+            <a class="sidebar-link active" href="/web/inventario"><i class="bi bi-clipboard-data"></i> Inventario</a>
+            <a class="sidebar-link" href="/web/requerimientos"><i class="bi bi-box-arrow-in-down"></i> Requerimientos</a>
+            <a class="sidebar-link" href="/web/reportes"><i class="bi bi-file-earmark-bar-graph"></i> Reportes</a>
+            <a class="sidebar-link" href="/web/sucursales" sec:authorize="hasAnyRole('ADMIN','SAAS_ADMIN')"><i class="bi bi-building"></i> Sucursales</a>
+            <div class="sidebar-section-title">Sistema</div>
+            <a class="sidebar-link" href="/web/auditoria" sec:authorize="hasAnyRole('ADMIN','SAAS_ADMIN')"><i class="bi bi-shield-check"></i> Auditor&iacute;a</a>
+            <a class="sidebar-link" href="/web/admin/empresas" sec:authorize="hasRole('SAAS_ADMIN')"><i class="bi bi-gear"></i> Admin SaaS</a>
+        </nav>
+        <div class="sidebar-footer">
+            <div sec:authorize="hasRole('SAAS_ADMIN')">
+                <form th:if="${empresasTodas != null and !#lists.isEmpty(empresasTodas)}"
+                      th:action="@{/web/empresas/cambiar}" method="post" class="mb-2">
+                    <select name="tenantId" class="form-select form-select-sm"
+                            onchange="this.form.submit()" style="background:#243656; color:#c8d6e5; border-color:rgba(255,255,255,.12); font-size:12px;">
+                        <option th:each="e : ${empresasTodas}" th:value="${e.id}"
+                                th:selected="${empresaActual != null and e.id == empresaActual.id}"
+                                th:text="${e.nombre}">Empresa</option>
+                    </select>
+                    <input type="hidden" name="redirect" value="/web/inventario">
+                </form>
+            </div>
+        </div>
+    </aside>
+    <div id="sidebarBackdrop" class="sidebar-backdrop"></div>
+
+    <!-- Main -->
+    <div class="main-wrapper">
+        <header class="topbar">
+            <button class="btn-sidebar-toggle" onclick="toggleSidebar()"><i class="bi bi-list"></i></button>
+            <h1 class="topbar-title">Inventario</h1>
+            <div class="topbar-actions">
+                <a class="btn btn-sm btn-outline-primary" th:href="@{/web/inventario/ajustes}"><i class="bi bi-sliders me-1"></i> Ajustes</a>
+                <a class="btn btn-sm btn-outline-secondary position-relative" th:href="@{/web/inventario/transferencias}"><i class="bi bi-arrow-left-right me-1"></i> Transferencias <span th:if="${pendientesRecepcionCount != null and pendientesRecepcionCount > 0}" class="badge bg-warning text-dark ms-1" th:text="${pendientesRecepcionCount}">0</span></a>
+                <a class="btn btn-sm btn-outline-secondary" th:href="@{/web/inventario/lotes}"><i class="bi bi-calendar-event me-1"></i> Lotes</a>
+            </div>
+            <div class="topbar-user" th:if="${usuarioActual != null}">
+                <div class="topbar-user-avatar" th:text="${#strings.toUpperCase(#strings.substring(usuarioActual,0,1))}">A</div>
+                <div>
+                    <span class="topbar-user-name" th:text="${usuarioActual}">admin</span>
+                    <div class="topbar-user-empresa" th:text="${empresaActual != null ? empresaActual.nombre : ''}"></div>
+                </div>
+                <form th:action="@{/logout}" method="post">
+                    <button type="submit" class="btn-logout-top"><i class="bi bi-box-arrow-left"></i> Salir</button>
+                </form>
+            </div>
+        </header>
+
+        <main class="main-content">
+            <!-- KPIs -->
+            <div class="kpi-row">
+                <div class="kpi-card">
+                    <div class="kpi-icon yellow"><i class="bi bi-exclamation-triangle"></i></div>
+                    <div class="kpi-body">
+                        <div class="kpi-label">Bajo stock m&iacute;nimo</div>
+                        <div class="kpi-value" th:text="${productosBajoMinimo}">0</div>
+                    </div>
+                </div>
+                <div class="kpi-card">
+                    <div class="kpi-icon blue"><i class="bi bi-calendar-x"></i></div>
+                    <div class="kpi-body">
+                        <div class="kpi-label">Lotes por vencer (30d)</div>
+                        <div class="kpi-value" th:text="${lotesPorVencer}">0</div>
+                    </div>
+                </div>
+                <div class="kpi-card">
+                    <div class="kpi-icon green"><i class="bi bi-building"></i></div>
+                    <div class="kpi-body">
+                        <div class="kpi-label">Almacenes</div>
+                        <div class="kpi-value" th:text="${#lists.size(almacenes)}">0</div>
+                    </div>
+                </div>
+                <div class="kpi-card">
+                    <div class="kpi-icon red"><i class="bi bi-arrow-up-circle"></i></div>
+                    <div class="kpi-body">
+                        <div class="kpi-label">Sobre stock m&aacute;ximo</div>
+                        <div class="kpi-value" th:text="${productosSobreMaximo}">0</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="export-bar">
+                <a th:href="@{/web/inventario/excel}" class="btn-export btn-export-excel"><i class="bi bi-file-earmark-excel"></i> Exportar Inventario Excel</a>
+                <a th:href="@{/web/inventario/pdf}" class="btn-export btn-export-pdf"><i class="bi bi-file-earmark-pdf"></i> Exportar Inventario PDF</a>
+            </div>
+
+            <!-- Operaciones -->
+            <div class="content-card">
+                <div class="content-card-header">
+                    <h3><i class="bi bi-gear me-2"></i>Operaciones de inventario</h3>
+                </div>
+                <div class="content-card-body">
+                    <div class="row g-3">
+                        <div class="col-md-3">
+                            <a th:href="@{/web/inventario/ajustes}" class="text-decoration-none">
+                                <div class="kpi-card">
+                                    <div class="kpi-icon blue"><i class="bi bi-sliders"></i></div>
+                                    <div class="kpi-body">
+                                        <div class="kpi-label">Ajustes de inventario</div>
+                                        <div class="kpi-value" style="font-size:0.85rem;">Entrada / Salida</div>
+                                    </div>
+                                </div>
+                            </a>
+                        </div>
+                        <div class="col-md-3">
+                            <a th:href="@{/web/inventario/transferencias}" class="text-decoration-none">
+                                <div class="kpi-card">
+                                    <div class="kpi-icon green"><i class="bi bi-arrow-left-right"></i></div>
+                                    <div class="kpi-body">
+                                        <div class="kpi-label">Transferencias</div>
+                                        <div class="kpi-value" style="font-size:0.85rem;">Entre almacenes</div>
+                                        <div th:if="${pendientesRecepcionCount != null and pendientesRecepcionCount > 0}" class="small text-warning fw-bold mt-1"><i class="bi bi-inbox me-1"></i><span th:text="|${pendientesRecepcionCount} pend. de confirmar|">0 pend. de confirmar</span></div>
+                                    </div>
+                                </div>
+                            </a>
+                        </div>
+                        <div class="col-md-3">
+                            <a th:href="@{/web/inventario/lotes}" class="text-decoration-none">
+                                <div class="kpi-card">
+                                    <div class="kpi-icon yellow"><i class="bi bi-calendar-event"></i></div>
+                                    <div class="kpi-body">
+                                        <div class="kpi-label">Lotes y vencimientos</div>
+                                        <div class="kpi-value" style="font-size:0.85rem;">Control de lotes</div>
+                                    </div>
+                                </div>
+                            </a>
+                        </div>
+                        <div class="col-md-3">
+                            <a th:href="@{/web/productos}" class="text-decoration-none">
+                                <div class="kpi-card">
+                                    <div class="kpi-icon red"><i class="bi bi-journal-text"></i></div>
+                                    <div class="kpi-body">
+                                        <div class="kpi-label">Productos y Kardex</div>
+                                        <div class="kpi-value" style="font-size:0.85rem;">Ver movimientos</div>
+                                    </div>
+                                </div>
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+<script th:src="@{/js/app.js}"></script>
+</body>
+</html>
