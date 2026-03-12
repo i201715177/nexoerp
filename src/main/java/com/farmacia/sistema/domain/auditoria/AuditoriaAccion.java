@@ -7,7 +7,10 @@ import jakarta.persistence.*;
 import java.time.LocalDateTime;
 
 @Entity
-@Table(name = "auditoria_acciones")
+@Table(name = "auditoria_acciones", indexes = {
+        @Index(name = "idx_aud_tenant", columnList = "tenant_id"),
+        @Index(name = "idx_aud_tenant_fecha", columnList = "tenant_id, fecha_hora")
+})
 @EntityListeners(TenantEntityListener.class)
 public class AuditoriaAccion implements TenantSupport {
 

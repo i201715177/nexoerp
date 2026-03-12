@@ -8,7 +8,9 @@ import jakarta.validation.constraints.NotNull;
 import java.math.BigDecimal;
 
 @Entity
-@Table(name = "pagos_venta")
+@Table(name = "pagos_venta", indexes = {
+        @Index(name = "idx_pv_venta", columnList = "venta_id")
+})
 public class PagoVenta {
 
     @Id
