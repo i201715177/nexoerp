@@ -115,6 +115,7 @@
                                 <th class="text-center">Central</th>
                                 <th class="text-center">Inventario</th>
                                 <th class="text-center">Ventas</th>
+                                <th class="text-center">Acciones</th>
                             </tr>
                             </thead>
                             <tbody>
@@ -140,6 +141,18 @@
                                 <td class="text-center">
                                     <a class="btn-action" th:href="@{/web/sucursales/ventas(sucursalId=${s.id})}" title="Ver ventas"><i class="bi bi-receipt"></i></a>
                                 </td>
+                                <td class="text-center">
+                                    <a class="btn-action me-1" th:href="@{/web/sucursales(editId=${s.id})}" title="Editar sucursal">
+                                        <i class="bi bi-pencil"></i>
+                                    </a>
+                                    <form th:action="@{/web/sucursales/eliminar}" method="post" class="d-inline"
+                                          onsubmit="event.preventDefault(); nexoS.confirmSubmit(event, '¿Desactivar sucursal?'); return false;">
+                                        <input type="hidden" name="id" th:value="${s.id}">
+                                        <button type="submit" class="btn-action danger" title="Desactivar sucursal">
+                                            <i class="bi bi-trash"></i>
+                                        </button>
+                                    </form>
+                                </td>
                             </tr>
                             <tr th:if="${#lists.isEmpty(sucursales)}">
                                 <td colspan="7">
@@ -157,34 +170,44 @@
                 <!-- Form -->
                 <div class="content-card">
                     <div class="content-card-header">
-                        <h3><i class="bi bi-plus-circle me-2"></i>Nueva sucursal</h3>
+                        <h3>
+                            <i class="bi bi-plus-circle me-2"></i>
+                            <span th:text="${sucursalEdit != null} ? 'Editar sucursal' : 'Nueva sucursal'">Nueva sucursal</span>
+                        </h3>
                     </div>
                     <div class="content-card-body">
                         <form th:action="@{/web/sucursales}" method="post"
-                              onsubmit="event.preventDefault(); nexoS.confirmSubmit(event, '¿Registrar sucursal?'); return false;">
+                              onsubmit="event.preventDefault(); nexoS.confirmSubmit(event, [[${sucursalEdit != null} ? '¿Actualizar sucursal?' : '¿Registrar sucursal?']]); return false;">
                             <div class="row g-3">
+                                <input type="hidden" name="id" th:value="${sucursalEdit != null ? sucursalEdit.id : ''}">
                                 <div class="col-md-4 form-section">
                                     <label class="form-label">C&oacute;digo *</label>
-                                    <input type="text" name="codigo" class="form-control" required placeholder="C&oacute;digo sucursal">
+                                    <input type="text" name="codigo" class="form-control" required placeholder="C&oacute;digo sucursal"
+                                           th:value="${sucursalEdit != null ? sucursalEdit.codigo : ''}">
                                 </div>
                                 <div class="col-md-8 form-section">
                                     <label class="form-label">Nombre *</label>
-                                    <input type="text" name="nombre" class="form-control" required placeholder="Nombre de la sucursal">
+                                    <input type="text" name="nombre" class="form-control" required placeholder="Nombre de la sucursal"
+                                           th:value="${sucursalEdit != null ? sucursalEdit.nombre : ''}">
                                 </div>
                                 <div class="col-12 form-section">
                                     <label class="form-label">Direcci&oacute;n</label>
-                                    <input type="text" name="direccion" class="form-control">
+                                    <input type="text" name="direccion" class="form-control"
+                                           th:value="${sucursalEdit != null ? sucursalEdit.direccion : ''}">
                                 </div>
                                 <div class="col-12 form-section">
                                     <div class="form-check">
-                                        <input type="checkbox" name="central" value="true" id="central" class="form-check-input">
+                                        <input type="checkbox" name="central" value="true" id="central" class="form-check-input"
+                                               th:checked="${sucursalEdit != null ? s.central : false}">
                                         <label class="form-check-label" for="central">Es sucursal central (almac&eacute;n que abastece a las dem&aacute;s)</label>
                                     </div>
                                 </div>
                                 <div class="col-12 d-flex gap-2">
                                     <button type="submit" class="btn btn-primary">
-                                        <i class="bi bi-check-lg"></i> Guardar sucursal
+                                        <i class="bi bi-check-lg"></i>
+                                        <span th:text="${sucursalEdit != null} ? 'Actualizar sucursal' : 'Guardar sucursal'">Guardar sucursal</span>
                                     </button>
+                                    <a th:if="${sucursalEdit != null}" class="btn btn-outline-secondary" th:href="@{/web/sucursales}">Cancelar</a>
                                 </div>
                             </div>
                         </form>

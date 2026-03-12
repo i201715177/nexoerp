@@ -89,5 +89,12 @@ public class SucursalService {
         s.setCentral(true);
         repository.save(s);
     }
+
+    /** Desactiva lógicamente una sucursal (no se elimina la fila para no romper referencias). */
+    public void desactivar(Long id) {
+        Sucursal s = obtenerPorId(id);
+        s.setActiva(false);
+        repository.save(s);
+    }
 }
 
