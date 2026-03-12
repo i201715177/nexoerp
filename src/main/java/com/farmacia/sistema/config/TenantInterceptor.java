@@ -66,10 +66,21 @@ public class TenantInterceptor implements HandlerInterceptor {
                 return false;
             }
         } catch (Exception e) {
-            log.warn("Empresa no encontrada (id={}). Limpiando sesion.", tenantId);
-            session.removeAttribute(SESSION_TENANT_ID);
-            response.sendRedirect(request.getContextPath() + "/login");
-            return false;
+            // En una base nueva (como en un despliegue fresco) aún no existe la empresa con ese ID.
+            // Creamos/obtenemos la empresa por defecto y continuamos con ese tenant.
+            log.warn("Empresa no encontrada (id={}). Creando/seleccionando empresa por defecto.", tenantId);
+            try {
+                Empresa porDefecto = empresaService.empresaPorDefecto();
+                Long nuevoTenantId = porDefecto.getId();
+                session.setAttribute(SESSION_TENANT_ID, nuevoTenantId);
+                TenantContext.setTenantId(nuevoTenantId);
+                return true;
+            } catch (Exception ex) {
+                log.error("No se pudo recuperar o crear empresa por defecto: {}", ex.getMessage());
+                session.removeAttribute(SESSION_TENANT_ID);
+                response.sendRedirect(request.getContextPath() + "/login");
+                return false;
+            }
         }
 
         TenantContext.setTenantId(tenantId);
