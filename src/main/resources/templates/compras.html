@@ -27,6 +27,8 @@
             <div class="sidebar-section-title">Gesti&oacute;n</div>
             <a class="sidebar-link" href="/web/finanzas" sec:authorize="hasAnyRole('ADMIN','SAAS_ADMIN')"><i class="bi bi-graph-up"></i> Finanzas</a>
             <a class="sidebar-link" href="/web/inventario"><i class="bi bi-clipboard-data"></i> Inventario</a>
+            <a class="sidebar-link" href="/web/facturacion-electronica" sec:authorize="hasAnyRole('ADMIN','SAAS_ADMIN')"><i class="bi bi-file-earmark-check"></i> Facturación E.</a>
+            <a class="sidebar-link" href="/web/guias-remision" sec:authorize="hasAnyRole('ADMIN','SAAS_ADMIN')"><i class="bi bi-truck"></i> Guías Remisión</a>
             <a class="sidebar-link" href="/web/reportes"><i class="bi bi-file-earmark-bar-graph"></i> Reportes</a>
             <a class="sidebar-link" href="/web/sucursales" sec:authorize="hasAnyRole('ADMIN','SAAS_ADMIN')"><i class="bi bi-building"></i> Sucursales</a>
             <div class="sidebar-section-title">Sistema</div>
@@ -481,8 +483,14 @@ function buscarProveedorCompra() {
                 return;
             }
             var d = res.data;
+            var esDni = tipo.value === 'DNI';
             var info = '<i class="bi bi-exclamation-triangle-fill"></i> <strong>' + (d.razonSocial || 'Contribuyente encontrado') + '</strong>';
-            if (d.estado) info += ' | Estado: <strong>' + d.estado + '</strong>';
+            if (esDni && d.nombres) {
+                info += '<br><i class="bi bi-person-fill"></i> ' + d.nombres;
+                if (d.apellidoPaterno) info += ' ' + d.apellidoPaterno;
+                if (d.apellidoMaterno) info += ' ' + d.apellidoMaterno;
+            }
+            if (d.estado) info += '<br>Estado: <strong>' + d.estado + '</strong>';
             if (d.condicion) info += ' | Condici\u00f3n: <strong>' + d.condicion + '</strong>';
             if (d.direccion) info += '<br><i class="bi bi-geo-alt-fill"></i> ' + d.direccion;
             if (d.tipo) info += '<br><i class="bi bi-building"></i> Tipo: ' + d.tipo;

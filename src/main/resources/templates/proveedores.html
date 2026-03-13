@@ -27,6 +27,8 @@
             <div class="sidebar-section-title">Gesti&oacute;n</div>
             <a class="sidebar-link" href="/web/finanzas" sec:authorize="hasAnyRole('ADMIN','SAAS_ADMIN')"><i class="bi bi-graph-up"></i> Finanzas</a>
             <a class="sidebar-link" href="/web/inventario"><i class="bi bi-clipboard-data"></i> Inventario</a>
+            <a class="sidebar-link" href="/web/facturacion-electronica" sec:authorize="hasAnyRole('ADMIN','SAAS_ADMIN')"><i class="bi bi-file-earmark-check"></i> Facturación E.</a>
+            <a class="sidebar-link" href="/web/guias-remision" sec:authorize="hasAnyRole('ADMIN','SAAS_ADMIN')"><i class="bi bi-truck"></i> Guías Remisión</a>
             <a class="sidebar-link" href="/web/reportes"><i class="bi bi-file-earmark-bar-graph"></i> Reportes</a>
             <a class="sidebar-link" href="/web/sucursales" sec:authorize="hasAnyRole('ADMIN','SAAS_ADMIN')"><i class="bi bi-building"></i> Sucursales</a>
             <div class="sidebar-section-title">Sistema</div>
@@ -293,16 +295,22 @@ function buscarSunat() {
             }
             var d = res.data;
             llenarCampo('razonSocial', d.razonSocial);
-            llenarCampo('direccion', d.direccion);
             llenarCampo('contacto', d.razonSocial);
+            if (d.direccion) llenarCampo('direccion', d.direccion);
+            var esDni = tipo.value === 'DNI';
             var info = '<i class="bi bi-check-circle-fill text-success"></i> <strong>' + (d.razonSocial || '') + '</strong>';
+            if (esDni) {
+                if (d.nombres) info += '<br><i class="bi bi-person-fill"></i> Nombres: ' + d.nombres;
+                if (d.apellidoPaterno) info += ' | Ap. Paterno: ' + d.apellidoPaterno;
+                if (d.apellidoMaterno) info += ' | Ap. Materno: ' + d.apellidoMaterno;
+            }
             if (d.estado) info += '<br><i class="bi bi-dot"></i>Estado: <strong>' + d.estado + '</strong>';
             if (d.condicion) info += ' | Condici\u00f3n: <strong>' + d.condicion + '</strong>';
             if (d.direccion) info += '<br><i class="bi bi-geo-alt-fill"></i> ' + d.direccion;
             if (d.tipo) info += '<br><i class="bi bi-building"></i> Tipo empresa: ' + d.tipo;
             if (d.actividadEconomica) info += '<br><i class="bi bi-briefcase"></i> Actividad: ' + d.actividadEconomica;
             if (d.numeroTrabajadores) info += ' | Trabajadores: ' + d.numeroTrabajadores;
-            info += '<br><small class="text-muted"><i class="bi bi-info-circle"></i> Tel\u00e9fono y email no son proporcionados por SUNAT (datos privados). Ingr\u00e9selos manualmente.</small>';
+            info += '<br><small class="text-muted"><i class="bi bi-info-circle"></i> Tel\u00e9fono y email no son datos p\u00fablicos de SUNAT/RENIEC. Ingr\u00e9selos manualmente.</small>';
             mostrarMsg(msg, info, 'success');
         })
         .catch(function(err) {

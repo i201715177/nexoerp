@@ -9,9 +9,12 @@ import com.lowagie.text.pdf.PdfPCell;
 import com.lowagie.text.pdf.PdfPTable;
 import com.lowagie.text.pdf.PdfWriter;
 
+import com.farmacia.sistema.domain.facturacion.MontoEnLetras;
+
 import java.awt.Color;
 import java.io.OutputStream;
 import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
 
@@ -192,6 +195,24 @@ public final class ComprobantePdfUtil {
             tablaEstado.addCell(cellEstado);
             doc.add(tablaEstado);
 
+            Paragraph montoLetras = new Paragraph(MontoEnLetras.convertir(total),
+                    new Font(Font.HELVETICA, 7, Font.ITALIC, COLOR_PIE));
+            montoLetras.setAlignment(Element.ALIGN_CENTER);
+            montoLetras.setSpacingBefore(4);
+            doc.add(montoLetras);
+
+            BigDecimal baseImp = total.divide(new BigDecimal("1.18"), 2, RoundingMode.HALF_UP);
+            BigDecimal igvCalc = total.subtract(baseImp);
+            PdfPTable tablaIgv = new PdfPTable(2);
+            tablaIgv.setWidthPercentage(60);
+            tablaIgv.setSpacingBefore(4);
+            tablaIgv.setSpacingAfter(4);
+            tablaIgv.setHorizontalAlignment(Element.ALIGN_RIGHT);
+            añadirFilaResumen(tablaIgv, "Op. Gravada:", "S/ " + formatSoles(baseImp));
+            añadirFilaResumen(tablaIgv, "IGV (18%):", "S/ " + formatSoles(igvCalc));
+            añadirFilaResumen(tablaIgv, "Total:", "S/ " + formatSoles(total));
+            doc.add(tablaIgv);
+
             PdfPTable barraPie = new PdfPTable(1);
             barraPie.setWidthPercentage(100);
             barraPie.setSpacingBefore(6);
@@ -201,6 +222,13 @@ public final class ComprobantePdfUtil {
             cellPieBar.setBorder(Rectangle.NO_BORDER);
             barraPie.addCell(cellPieBar);
             doc.add(barraPie);
+
+            Paragraph hashRef = new Paragraph("Hash: pendiente de firma digital | Representación impresa del comprobante electrónico",
+                    new Font(Font.HELVETICA, 6, Font.NORMAL, COLOR_PIE));
+            hashRef.setAlignment(Element.ALIGN_CENTER);
+            hashRef.setSpacingBefore(3);
+            doc.add(hashRef);
+
             Paragraph mensajePie = new Paragraph("Transacción realizada exitosamente. Conserve este comprobante como respaldo de su operación.",
                     new Font(Font.HELVETICA, 8, Font.NORMAL, COLOR_PIE));
             mensajePie.setAlignment(Element.ALIGN_CENTER);
@@ -412,10 +440,25 @@ public final class ComprobantePdfUtil {
             doc.add(tablaAnul);
         }
 
-        // ----- Gracias por su preferencia (gris oscuro, itálica) -----
+        Paragraph montoLetras = new Paragraph(MontoEnLetras.convertir(total),
+                new Font(Font.HELVETICA, 7, Font.ITALIC, new Color(200, 200, 200)));
+        montoLetras.setAlignment(Element.ALIGN_LEFT);
+        montoLetras.setSpacingBefore(2);
+        doc.add(montoLetras);
+
         PdfPTable pieGracias = new PdfPTable(1);
         pieGracias.setWidthPercentage(100);
-        PdfPCell cellGracias = new PdfPCell(new Phrase("Gracias por su preferencia", new Font(Font.HELVETICA, 11, Font.ITALIC, Color.WHITE)));
+        pieGracias.setSpacingBefore(4);
+
+        Paragraph pieFinal = new Paragraph();
+        pieFinal.add(new Chunk("Representación impresa del comprobante electrónico\n",
+                new Font(Font.HELVETICA, 7, Font.NORMAL, new Color(180, 180, 180))));
+        pieFinal.add(new Chunk("Hash: pendiente de firma digital\n",
+                new Font(Font.HELVETICA, 6, Font.NORMAL, new Color(160, 160, 160))));
+        pieFinal.add(new Chunk("Gracias por su preferencia",
+                new Font(Font.HELVETICA, 11, Font.ITALIC, Color.WHITE)));
+
+        PdfPCell cellGracias = new PdfPCell(pieFinal);
         cellGracias.setBackgroundColor(COLOR_FACTURA_GRIS);
         cellGracias.setBorder(Rectangle.NO_BORDER);
         cellGracias.setPadding(12);

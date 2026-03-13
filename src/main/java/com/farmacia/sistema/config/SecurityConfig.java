@@ -66,6 +66,8 @@ public class SecurityConfig {
                         .requestMatchers("/web/finanzas/**").hasAnyRole("ADMIN", "SAAS_ADMIN")
                         .requestMatchers("/web/sucursales/**").hasAnyRole("ADMIN", "SAAS_ADMIN")
                         .requestMatchers("/web/auditoria/**").hasAnyRole("ADMIN", "SAAS_ADMIN")
+                        .requestMatchers("/web/facturacion-electronica/**").hasAnyRole("ADMIN", "SAAS_ADMIN")
+                        .requestMatchers("/web/guias-remision/**").hasAnyRole("ADMIN", "SAAS_ADMIN")
                         .requestMatchers("/web/**").hasAnyRole("ADMIN", "SAAS_ADMIN", "VENDEDOR")
                         .requestMatchers("/api/**").authenticated()
                         .anyRequest().authenticated()

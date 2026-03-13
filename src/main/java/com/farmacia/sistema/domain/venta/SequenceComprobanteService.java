@@ -12,9 +12,11 @@ public class SequenceComprobanteService {
         this.repository = repository;
     }
 
-    /** ID de secuencia: 1 = Boleta, 2 = Factura */
     private static final long SEQ_BOL = 1L;
     private static final long SEQ_FAC = 2L;
+    private static final long SEQ_NC  = 3L;
+    private static final long SEQ_ND  = 4L;
+    private static final long SEQ_GR  = 5L;
 
     @Transactional
     public long getNextNumero() {
@@ -27,7 +29,14 @@ public class SequenceComprobanteService {
      */
     @Transactional
     public long getNextNumeroPorTipo(String tipoComprobante) {
-        long id = "FAC".equalsIgnoreCase(tipoComprobante != null ? tipoComprobante.trim() : "") ? SEQ_FAC : SEQ_BOL;
+        String tipo = tipoComprobante != null ? tipoComprobante.trim().toUpperCase() : "BOL";
+        long id = switch (tipo) {
+            case "FAC" -> SEQ_FAC;
+            case "NC"  -> SEQ_NC;
+            case "ND"  -> SEQ_ND;
+            case "GR"  -> SEQ_GR;
+            default    -> SEQ_BOL;
+        };
         return repository.findAndLockById(id)
                 .map(seq -> {
                     long actual = seq.getSiguiente();

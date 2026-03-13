@@ -1,0 +1,221 @@
+<!DOCTYPE html>
+<html lang="es" xmlns:th="http://www.thymeleaf.org" xmlns:sec="http://www.thymeleaf.org/extras/spring-security">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Gu&iacute;as de Remisi&oacute;n - NexoERP</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+    <link rel="stylesheet" th:href="@{/css/app.css}">
+</head>
+<body>
+<div class="app-layout">
+    <aside class="sidebar" id="sidebar">
+        <div class="sidebar-header">
+            <span class="sidebar-brand"><i class="bi bi-diagram-3"></i> NexoERP</span>
+            <button class="sidebar-toggle d-lg-none" onclick="toggleSidebar()"><i class="bi bi-x-lg"></i></button>
+        </div>
+        <nav class="sidebar-nav">
+            <div class="sidebar-section-title">Operaciones</div>
+            <a class="sidebar-link" href="/web/productos"><i class="bi bi-box-seam"></i> Productos</a>
+            <a class="sidebar-link" href="/web/clientes"><i class="bi bi-people"></i> Clientes</a>
+            <a class="sidebar-link" href="/web/proveedores" sec:authorize="hasAnyRole('ADMIN','SAAS_ADMIN')"><i class="bi bi-truck"></i> Proveedores</a>
+            <a class="sidebar-link" href="/web/compras" sec:authorize="hasAnyRole('ADMIN','SAAS_ADMIN')"><i class="bi bi-cart-plus"></i> Compras</a>
+            <a class="sidebar-link" href="/web/ventas"><i class="bi bi-receipt"></i> Ventas</a>
+            <a class="sidebar-link" href="/web/caja"><i class="bi bi-cash-stack"></i> Caja</a>
+            <div class="sidebar-section-title">Gesti&oacute;n</div>
+            <a class="sidebar-link" href="/web/finanzas" sec:authorize="hasAnyRole('ADMIN','SAAS_ADMIN')"><i class="bi bi-graph-up"></i> Finanzas</a>
+            <a class="sidebar-link" href="/web/inventario"><i class="bi bi-clipboard-data"></i> Inventario</a>
+            <a class="sidebar-link" href="/web/facturacion-electronica" sec:authorize="hasAnyRole('ADMIN','SAAS_ADMIN')"><i class="bi bi-file-earmark-check"></i> Facturaci&oacute;n E.</a>
+            <a class="sidebar-link active" href="/web/guias-remision" sec:authorize="hasAnyRole('ADMIN','SAAS_ADMIN')"><i class="bi bi-truck"></i> Gu&iacute;as Remisi&oacute;n</a>
+            <a class="sidebar-link" href="/web/reportes"><i class="bi bi-file-earmark-bar-graph"></i> Reportes</a>
+            <a class="sidebar-link" href="/web/sucursales" sec:authorize="hasAnyRole('ADMIN','SAAS_ADMIN')"><i class="bi bi-building"></i> Sucursales</a>
+            <div class="sidebar-section-title">Sistema</div>
+            <a class="sidebar-link" href="/web/auditoria" sec:authorize="hasAnyRole('ADMIN','SAAS_ADMIN')"><i class="bi bi-shield-check"></i> Auditor&iacute;a</a>
+            <a class="sidebar-link" href="/web/admin/empresas" sec:authorize="hasRole('SAAS_ADMIN')"><i class="bi bi-gear"></i> Admin SaaS</a>
+        </nav>
+    </aside>
+    <div id="sidebarBackdrop" class="sidebar-backdrop"></div>
+
+    <div class="main-wrapper">
+        <header class="topbar">
+            <button class="btn-sidebar-toggle" onclick="toggleSidebar()"><i class="bi bi-list"></i></button>
+            <h1 class="topbar-title">Gu&iacute;as de Remisi&oacute;n</h1>
+            <div class="topbar-actions"></div>
+            <div class="topbar-user" th:if="${usuarioActual != null}">
+                <div class="topbar-user-avatar" th:text="${#strings.toUpperCase(#strings.substring(usuarioActual,0,1))}">A</div>
+                <div>
+                    <span class="topbar-user-name" th:text="${usuarioActual}">admin</span>
+                    <div class="topbar-user-empresa" th:text="${empresaActual != null ? empresaActual.nombre : ''}"></div>
+                </div>
+                <form th:action="@{/logout}" method="post">
+                    <button type="submit" class="btn-logout-top"><i class="bi bi-box-arrow-left"></i> Salir</button>
+                </form>
+            </div>
+        </header>
+
+        <main class="main-content">
+            <div th:if="${mensaje}" class="alert alert-success alert-dismissible fade show mb-3">
+                <i class="bi bi-check-circle me-1"></i> <span th:text="${mensaje}"></span>
+                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            </div>
+            <div th:if="${error}" class="alert alert-danger alert-dismissible fade show mb-3">
+                <i class="bi bi-exclamation-triangle me-1"></i> <span th:text="${error}"></span>
+                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            </div>
+
+            <div class="content-grid cols-7-5">
+                <!-- Table -->
+                <div class="content-card">
+                    <div class="content-card-header">
+                        <h3><i class="bi bi-table me-2"></i>Historial de gu&iacute;as</h3>
+                    </div>
+                    <div class="content-card-body no-padding">
+                        <table class="data-table">
+                            <thead>
+                            <tr>
+                                <th>N&uacute;mero</th>
+                                <th>Fecha</th>
+                                <th>Proveedor</th>
+                                <th>Motivo</th>
+                                <th class="text-center">Estado</th>
+                                <th class="text-center">Acciones</th>
+                            </tr>
+                            </thead>
+                            <tbody>
+                            <tr th:each="g : ${guias}">
+                                <td class="fw-700" th:text="${g.serieNumero}">T001-1</td>
+                                <td th:text="${g.fechaEmision != null ? #temporals.format(g.fechaEmision, 'dd/MM/yyyy HH:mm') : ''}"></td>
+                                <td th:text="${g.proveedor != null ? g.proveedor.razonSocial : '—'}">Proveedor</td>
+                                <td th:text="${g.motivoTraslado}">COMPRA</td>
+                                <td class="text-center">
+                                    <span class="badge-status" th:classappend="${g.estado == 'EMITIDA'} ? 'success' : 'danger'" th:text="${g.estado}">EMITIDA</span>
+                                </td>
+                                <td class="text-center">
+                                    <a th:href="@{/web/guias-remision/{id}/pdf(id=${g.id})}" class="btn-action primary" title="PDF"><i class="bi bi-file-earmark-pdf"></i></a>
+                                    <form th:if="${g.estado == 'EMITIDA'}" th:action="@{/web/guias-remision/anular}" method="post" class="d-inline"
+                                          onsubmit="return confirm('¿Anular esta guía de remisión?');">
+                                        <input type="hidden" name="guiaId" th:value="${g.id}">
+                                        <button class="btn-action danger ms-1" type="submit" title="Anular"><i class="bi bi-x-circle"></i></button>
+                                    </form>
+                                </td>
+                            </tr>
+                            <tr th:if="${#lists.isEmpty(guias)}"><td colspan="6"><div class="empty-state"><i class="bi bi-inbox"></i><p>No hay gu&iacute;as registradas.</p></div></td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- Form -->
+                <div class="content-card">
+                    <div class="content-card-header">
+                        <h3><i class="bi bi-plus-circle me-2"></i>Nueva gu&iacute;a de remisi&oacute;n</h3>
+                    </div>
+                    <div class="content-card-body">
+                        <form th:action="@{/web/guias-remision}" method="post">
+                            <div class="row g-3">
+                                <div class="col-12 form-section">
+                                    <label class="form-label">Orden de compra (opcional)</label>
+                                    <select name="ordenCompraId" class="form-select" id="selOrden" onchange="cargarOrden()">
+                                        <option value="">Sin orden (manual)</option>
+                                        <option th:each="o : ${ordenes}" th:value="${o.id}"
+                                                th:data-prov="${o.proveedor != null ? o.proveedor.razonSocial : ''}"
+                                                th:data-dir="${o.proveedor != null and o.proveedor.direccion != null ? o.proveedor.direccion : ''}"
+                                                th:text="${'OC #' + o.id + ' - ' + (o.proveedor != null ? o.proveedor.razonSocial : '') + ' (' + o.estado + ')'}">OC</option>
+                                    </select>
+                                    <small class="text-muted">Al seleccionar una orden, los productos se cargan autom&aacute;ticamente.</small>
+                                </div>
+                                <div class="col-12 form-section" id="divProveedor">
+                                    <label class="form-label">Proveedor</label>
+                                    <select name="proveedorId" class="form-select" id="selProveedor">
+                                        <option value="">Seleccione...</option>
+                                        <option th:each="p : ${proveedores}" th:value="${p.id}" th:text="${p.razonSocial}">Prov</option>
+                                    </select>
+                                </div>
+                                <div class="col-6 form-section">
+                                    <label class="form-label">Motivo traslado</label>
+                                    <select name="motivoTraslado" class="form-select">
+                                        <option value="COMPRA">Compra</option>
+                                        <option value="VENTA">Venta</option>
+                                        <option value="TRASLADO_ENTRE_ESTABLECIMIENTOS">Traslado entre establecimientos</option>
+                                        <option value="CONSIGNACION">Consignaci&oacute;n</option>
+                                        <option value="DEVOLUCION">Devoluci&oacute;n</option>
+                                        <option value="OTROS">Otros</option>
+                                    </select>
+                                </div>
+                                <div class="col-6 form-section">
+                                    <label class="form-label">Fecha traslado</label>
+                                    <input type="date" name="fechaTraslado" class="form-control">
+                                </div>
+                                <div class="col-6 form-section">
+                                    <label class="form-label">Dir. partida</label>
+                                    <input type="text" name="direccionPartida" class="form-control" id="dirPartida">
+                                </div>
+                                <div class="col-6 form-section">
+                                    <label class="form-label">Dir. llegada</label>
+                                    <input type="text" name="direccionLlegada" class="form-control" id="dirLlegada">
+                                </div>
+                                <div class="col-12"><hr><small class="text-muted fw-bold">Datos del transporte</small></div>
+                                <div class="col-6 form-section">
+                                    <label class="form-label">RUC transportista</label>
+                                    <input type="text" name="transportistaRuc" class="form-control" maxlength="11">
+                                </div>
+                                <div class="col-6 form-section">
+                                    <label class="form-label">Nombre transportista</label>
+                                    <input type="text" name="transportistaNombre" class="form-control">
+                                </div>
+                                <div class="col-4 form-section">
+                                    <label class="form-label">DNI conductor</label>
+                                    <input type="text" name="conductorDni" class="form-control" maxlength="8">
+                                </div>
+                                <div class="col-4 form-section">
+                                    <label class="form-label">Nombre conductor</label>
+                                    <input type="text" name="conductorNombre" class="form-control">
+                                </div>
+                                <div class="col-4 form-section">
+                                    <label class="form-label">Placa veh&iacute;culo</label>
+                                    <input type="text" name="placaVehiculo" class="form-control" maxlength="15">
+                                </div>
+                                <div class="col-6 form-section">
+                                    <label class="form-label">Licencia conductor</label>
+                                    <input type="text" name="conductorLicencia" class="form-control">
+                                </div>
+                                <div class="col-3 form-section">
+                                    <label class="form-label">Peso total</label>
+                                    <input type="text" name="pesoTotal" class="form-control" placeholder="Ej: 50 KG">
+                                </div>
+                                <div class="col-3 form-section">
+                                    <label class="form-label">N&ordm; bultos</label>
+                                    <input type="number" name="numeroBultos" class="form-control" min="0">
+                                </div>
+                                <div class="col-12 form-section">
+                                    <label class="form-label">Observaciones</label>
+                                    <input type="text" name="observaciones" class="form-control">
+                                </div>
+                                <div class="col-12 d-flex gap-2">
+                                    <button type="submit" class="btn btn-primary"><i class="bi bi-check-lg"></i> Registrar gu&iacute;a</button>
+                                </div>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+</div>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+<script th:src="@{/js/app.js}"></script>
+<script>
+function cargarOrden() {
+    var sel = document.getElementById('selOrden');
+    var opt = sel.options[sel.selectedIndex];
+    if (sel.value) {
+        document.getElementById('dirPartida').value = opt.getAttribute('data-dir') || '';
+        document.getElementById('divProveedor').style.display = 'none';
+    } else {
+        document.getElementById('divProveedor').style.display = '';
+    }
+}
+</script>
+</body>
+</html>
