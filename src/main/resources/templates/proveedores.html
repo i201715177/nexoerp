@@ -172,12 +172,18 @@
                                 </div>
                                 <div class="col-6 form-section">
                                     <label class="form-label">N&uacute;mero *</label>
-                                    <input type="text" th:field="*{numeroDocumento}" class="form-control" required id="proveedorNumDoc"
-                                           maxlength="11" pattern="[0-9]+" title="Solo d&#237;gitos: 8 para DNI, 11 para RUC" placeholder="8 o 11 d&#237;gitos">
+                                    <div class="input-group">
+                                        <input type="text" th:field="*{numeroDocumento}" class="form-control" required id="proveedorNumDoc"
+                                               maxlength="11" pattern="[0-9]+" title="Solo d&#237;gitos: 8 para DNI, 11 para RUC" placeholder="8 o 11 d&#237;gitos">
+                                        <button type="button" class="btn btn-outline-primary" id="btnBuscarSunat" onclick="buscarSunat()" title="Buscar en SUNAT/RENIEC">
+                                            <i class="bi bi-search"></i>
+                                        </button>
+                                    </div>
+                                    <small id="sunatMsg" class="text-muted d-none mt-1"></small>
                                 </div>
                                 <div class="col-12 form-section">
                                     <label class="form-label">Raz&oacute;n social *</label>
-                                    <input type="text" th:field="*{razonSocial}" class="form-control" required>
+                                    <input type="text" th:field="*{razonSocial}" class="form-control" required id="razonSocial">
                                 </div>
                                 <div class="col-12 form-section">
                                     <label class="form-label">Contacto</label>
@@ -193,7 +199,7 @@
                                 </div>
                                 <div class="col-12 form-section">
                                     <label class="form-label">Direcci&oacute;n</label>
-                                    <input type="text" th:field="*{direccion}" class="form-control">
+                                    <input type="text" th:field="*{direccion}" class="form-control" id="direccion">
                                 </div>
                                 <div class="col-12 form-check mt-2">
                                     <input class="form-check-input" type="checkbox" th:field="*{activo}" checked>
@@ -261,6 +267,52 @@ function validarDocumentoProveedor() {
     }
     num.value = n;
     return true;
+}
+function buscarSunat() {
+    var tipo = document.getElementById('proveedorTipoDoc');
+    var num = document.getElementById('proveedorNumDoc');
+    var msg = document.getElementById('sunatMsg');
+    var btn = document.getElementById('btnBuscarSunat');
+    if (!tipo || !num) return;
+    var numero = (num.value || '').trim().replace(/\D/g, '');
+    if (tipo.value === 'DNI' && numero.length !== 8) { mostrarMsg(msg, 'Ingrese 8 d\u00edgitos para DNI.', 'danger'); num.focus(); return; }
+    if (tipo.value === 'RUC' && numero.length !== 11) { mostrarMsg(msg, 'Ingrese 11 d\u00edgitos para RUC.', 'danger'); num.focus(); return; }
+
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner-border spinner-border-sm"></span>';
+    mostrarMsg(msg, 'Consultando SUNAT/RENIEC...', 'info');
+
+    fetch('/api/sunat/consultar?tipo=' + tipo.value + '&numero=' + numero)
+        .then(function(r) { return r.json().then(function(d) { return {ok: r.ok, data: d}; }); })
+        .then(function(res) {
+            btn.disabled = false;
+            btn.innerHTML = '<i class="bi bi-search"></i>';
+            if (!res.ok || res.data.error) {
+                mostrarMsg(msg, res.data.error || 'No se encontraron datos.', 'danger');
+                return;
+            }
+            var d = res.data;
+            if (d.razonSocial) { var rs = document.getElementById('razonSocial'); if (rs) rs.value = d.razonSocial; }
+            if (d.direccion) { var dir = document.getElementById('direccion'); if (dir) dir.value = d.direccion; }
+            var estadoInfo = '';
+            if (d.estado) estadoInfo += 'Estado: ' + d.estado;
+            if (d.condicion) estadoInfo += (estadoInfo ? ' | ' : '') + 'Condici\u00f3n: ' + d.condicion;
+            if (d.departamento) estadoInfo += (estadoInfo ? ' | ' : '') + d.departamento;
+            if (d.provincia) estadoInfo += ' - ' + d.provincia;
+            if (d.distrito) estadoInfo += ' - ' + d.distrito;
+            mostrarMsg(msg, '\u2705 ' + (d.razonSocial || 'Datos obtenidos') + (estadoInfo ? ' (' + estadoInfo + ')' : ''), 'success');
+        })
+        .catch(function(err) {
+            btn.disabled = false;
+            btn.innerHTML = '<i class="bi bi-search"></i>';
+            mostrarMsg(msg, 'Error de conexi\u00f3n. Intente de nuevo.', 'danger');
+        });
+}
+function mostrarMsg(el, texto, tipo) {
+    if (!el) return;
+    el.className = 'small mt-1 text-' + tipo;
+    el.textContent = texto;
+    el.classList.remove('d-none');
 }
 document.addEventListener('DOMContentLoaded', function() {
     var tipoDoc = document.getElementById('proveedorTipoDoc');

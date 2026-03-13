@@ -207,11 +207,27 @@
                         <form th:action="@{/web/compras}" method="post"
                               onsubmit="event.preventDefault(); nexoS.confirmSubmit(event, '¿Registrar orden de compra?'); return false;">
                             <div class="row g-3">
+                                <!-- Buscar proveedor por RUC/DNI -->
+                                <div class="col-12 form-section">
+                                    <label class="form-label"><i class="bi bi-search me-1"></i>Buscar por RUC / DNI</label>
+                                    <div class="input-group">
+                                        <select id="compTipoDoc" class="form-select" style="max-width:90px;">
+                                            <option value="RUC">RUC</option>
+                                            <option value="DNI">DNI</option>
+                                        </select>
+                                        <input type="text" id="compNumDoc" class="form-control" maxlength="11" placeholder="Ingrese n&uacute;mero y busque">
+                                        <button type="button" class="btn btn-outline-primary" id="btnBuscarCompra" onclick="buscarProveedorCompra()" title="Buscar en SUNAT/RENIEC">
+                                            <i class="bi bi-search"></i>
+                                        </button>
+                                    </div>
+                                    <small id="compSunatMsg" class="text-muted d-none mt-1"></small>
+                                </div>
                                 <div class="col-12 form-section">
                                     <label class="form-label">Proveedor *</label>
-                                    <select name="proveedorId" class="form-select" required>
+                                    <select name="proveedorId" id="compProveedorId" class="form-select" required>
                                         <option value="">Seleccione...</option>
                                         <option th:each="p : ${proveedores}" th:value="${p.id}"
+                                                th:data-doc="${p.numeroDocumento}"
                                                 th:text="${p.razonSocial}">Proveedor</option>
                                     </select>
                                 </div>
@@ -426,6 +442,61 @@
     }
     window.abrirModalEditar = abrirModalEditar;
 })();
+
+function buscarProveedorCompra() {
+    var tipo = document.getElementById('compTipoDoc');
+    var num = document.getElementById('compNumDoc');
+    var msg = document.getElementById('compSunatMsg');
+    var btn = document.getElementById('btnBuscarCompra');
+    var sel = document.getElementById('compProveedorId');
+    if (!tipo || !num || !sel) return;
+    var numero = (num.value || '').trim().replace(/\D/g, '');
+    if (tipo.value === 'DNI' && numero.length !== 8) { mostrarMsgComp(msg, 'Ingrese 8 d\u00edgitos para DNI.', 'danger'); num.focus(); return; }
+    if (tipo.value === 'RUC' && numero.length !== 11) { mostrarMsgComp(msg, 'Ingrese 11 d\u00edgitos para RUC.', 'danger'); num.focus(); return; }
+
+    // Primero buscar si ya existe en el dropdown
+    var encontrado = false;
+    for (var i = 0; i < sel.options.length; i++) {
+        if (sel.options[i].getAttribute('data-doc') === numero) {
+            sel.value = sel.options[i].value;
+            mostrarMsgComp(msg, '\u2705 Proveedor encontrado: ' + sel.options[i].text, 'success');
+            encontrado = true;
+            break;
+        }
+    }
+    if (encontrado) return;
+
+    // Si no existe, consultar SUNAT/RENIEC
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner-border spinner-border-sm"></span>';
+    mostrarMsgComp(msg, 'Consultando SUNAT/RENIEC...', 'info');
+
+    fetch('/api/sunat/consultar?tipo=' + tipo.value + '&numero=' + numero)
+        .then(function(r) { return r.json().then(function(d) { return {ok: r.ok, data: d}; }); })
+        .then(function(res) {
+            btn.disabled = false;
+            btn.innerHTML = '<i class="bi bi-search"></i>';
+            if (!res.ok || res.data.error) {
+                mostrarMsgComp(msg, res.data.error || 'No se encontraron datos.', 'danger');
+                return;
+            }
+            var d = res.data;
+            var info = d.razonSocial || 'Contribuyente encontrado';
+            if (d.direccion) info += ' | ' + d.direccion;
+            mostrarMsgComp(msg, '\u26a0\ufe0f ' + info + ' \u2014 Este proveedor no est\u00e1 registrado. Reg\u00edstrelo primero en <a href="/web/proveedores">Proveedores</a> y volver\u00e1 a aparecer aqu\u00ed.', 'warning');
+        })
+        .catch(function(err) {
+            btn.disabled = false;
+            btn.innerHTML = '<i class="bi bi-search"></i>';
+            mostrarMsgComp(msg, 'Error de conexi\u00f3n. Intente de nuevo.', 'danger');
+        });
+}
+function mostrarMsgComp(el, texto, tipo) {
+    if (!el) return;
+    el.className = 'small mt-1 text-' + tipo;
+    el.innerHTML = texto;
+    el.classList.remove('d-none');
+}
 </script>
 </body>
 </html>
