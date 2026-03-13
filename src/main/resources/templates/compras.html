@@ -481,9 +481,14 @@ function buscarProveedorCompra() {
                 return;
             }
             var d = res.data;
-            var info = d.razonSocial || 'Contribuyente encontrado';
-            if (d.direccion) info += ' | ' + d.direccion;
-            mostrarMsgComp(msg, '\u26a0\ufe0f ' + info + ' \u2014 Este proveedor no est\u00e1 registrado. Reg\u00edstrelo primero en <a href="/web/proveedores">Proveedores</a> y volver\u00e1 a aparecer aqu\u00ed.', 'warning');
+            var info = '<i class="bi bi-exclamation-triangle-fill"></i> <strong>' + (d.razonSocial || 'Contribuyente encontrado') + '</strong>';
+            if (d.estado) info += ' | Estado: <strong>' + d.estado + '</strong>';
+            if (d.condicion) info += ' | Condici\u00f3n: <strong>' + d.condicion + '</strong>';
+            if (d.direccion) info += '<br><i class="bi bi-geo-alt-fill"></i> ' + d.direccion;
+            if (d.tipo) info += '<br><i class="bi bi-building"></i> Tipo: ' + d.tipo;
+            if (d.actividadEconomica) info += '<br><i class="bi bi-briefcase"></i> Actividad: ' + d.actividadEconomica;
+            info += '<br><small>Este proveedor no est\u00e1 registrado. <a href="/web/proveedores">Reg\u00edstrelo primero en Proveedores</a> y volver\u00e1 a aparecer aqu\u00ed.</small>';
+            mostrarMsgComp(msg, info, 'warning');
         })
         .catch(function(err) {
             btn.disabled = false;
@@ -493,7 +498,7 @@ function buscarProveedorCompra() {
 }
 function mostrarMsgComp(el, texto, tipo) {
     if (!el) return;
-    el.className = 'small mt-1 text-' + tipo;
+    el.className = 'small mt-1 alert alert-' + (tipo === 'danger' ? 'danger' : tipo === 'success' ? 'success' : tipo === 'warning' ? 'warning' : 'info') + ' py-1 px-2';
     el.innerHTML = texto;
     el.classList.remove('d-none');
 }

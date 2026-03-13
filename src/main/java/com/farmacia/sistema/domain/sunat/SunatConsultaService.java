@@ -34,10 +34,6 @@ public class SunatConsultaService {
         this.apiBaseUrl = apiBaseUrl;
     }
 
-    /**
-     * Consulta RUC en SUNAT vía DECOLECTA API.
-     * Endpoint: GET /sunat/ruc?numero=XXXXXXXXXXX
-     */
     public Map<String, String> consultarRuc(String ruc) {
         Map<String, String> resultado = new LinkedHashMap<>();
         if (ruc == null || !ruc.matches("\\d{11}")) {
@@ -45,11 +41,11 @@ public class SunatConsultaService {
             return resultado;
         }
         if (apiToken == null || apiToken.isBlank()) {
-            resultado.put("error", "Token de API SUNAT no configurado. Configure app.sunat.api.token o la variable de entorno SUNAT_API_TOKEN.");
+            resultado.put("error", "Token de API SUNAT no configurado. Configure la variable de entorno SUNAT_API_TOKEN.");
             return resultado;
         }
         try {
-            String url = apiBaseUrl + "/sunat/ruc?numero=" + ruc;
+            String url = apiBaseUrl + "/sunat/ruc/full?numero=" + ruc;
             HttpRequest request = HttpRequest.newBuilder()
                     .uri(URI.create(url))
                     .header("Authorization", "Bearer " + apiToken)
@@ -62,15 +58,45 @@ public class SunatConsultaService {
 
             if (response.statusCode() == 200) {
                 JsonNode json = mapper.readTree(response.body());
+                String razonSocial = txt(json, "razon_social");
+                String direccion = txt(json, "direccion");
+                String distrito = txt(json, "distrito");
+                String provincia = txt(json, "provincia");
+                String departamento = txt(json, "departamento");
+
+                // Construir dirección completa
+                String direccionCompleta = direccion;
+                StringBuilder ubicacion = new StringBuilder();
+                if (!distrito.isEmpty()) ubicacion.append(distrito);
+                if (!provincia.isEmpty()) {
+                    if (ubicacion.length() > 0) ubicacion.append(" - ");
+                    ubicacion.append(provincia);
+                }
+                if (!departamento.isEmpty()) {
+                    if (ubicacion.length() > 0) ubicacion.append(" - ");
+                    ubicacion.append(departamento);
+                }
+                if (ubicacion.length() > 0 && !direccionCompleta.isEmpty()) {
+                    direccionCompleta = direccionCompleta.trim() + ", " + ubicacion;
+                } else if (ubicacion.length() > 0) {
+                    direccionCompleta = ubicacion.toString();
+                }
+
                 resultado.put("tipoDocumento", "RUC");
                 resultado.put("numeroDocumento", ruc);
-                resultado.put("razonSocial", txt(json, "razon_social"));
-                resultado.put("direccion", txt(json, "direccion"));
+                resultado.put("razonSocial", razonSocial);
+                resultado.put("direccion", direccionCompleta.trim());
                 resultado.put("estado", txt(json, "estado"));
                 resultado.put("condicion", txt(json, "condicion"));
-                resultado.put("departamento", txt(json, "departamento"));
-                resultado.put("provincia", txt(json, "provincia"));
-                resultado.put("distrito", txt(json, "distrito"));
+                resultado.put("departamento", departamento);
+                resultado.put("provincia", provincia);
+                resultado.put("distrito", distrito);
+                resultado.put("ubigeo", txt(json, "ubigeo"));
+                resultado.put("tipo", txt(json, "tipo"));
+                resultado.put("actividadEconomica", txt(json, "actividad_economica"));
+                resultado.put("numeroTrabajadores", txt(json, "numero_trabajadores"));
+                resultado.put("esAgenteRetencion", txt(json, "es_agente_retencion"));
+                resultado.put("esBuenContribuyente", txt(json, "es_buen_contribuyente"));
             } else {
                 log.warn("DECOLECTA SUNAT respondió {}: {}", response.statusCode(), response.body());
                 resultado.put("error", "No se encontró información para el RUC " + ruc + ".");
@@ -82,11 +108,6 @@ public class SunatConsultaService {
         return resultado;
     }
 
-    /**
-     * Consulta DNI en RENIEC vía DECOLECTA API.
-     * Endpoint: GET /reniec/dni?numero=XXXXXXXX
-     * Nota: este servicio puede tener restricciones por normativa de datos personales.
-     */
     public Map<String, String> consultarDni(String dni) {
         Map<String, String> resultado = new LinkedHashMap<>();
         if (dni == null || !dni.matches("\\d{8}")) {
@@ -94,7 +115,7 @@ public class SunatConsultaService {
             return resultado;
         }
         if (apiToken == null || apiToken.isBlank()) {
-            resultado.put("error", "Token de API no configurado. Configure app.sunat.api.token o la variable de entorno SUNAT_API_TOKEN.");
+            resultado.put("error", "Token de API no configurado. Configure la variable de entorno SUNAT_API_TOKEN.");
             return resultado;
         }
         try {

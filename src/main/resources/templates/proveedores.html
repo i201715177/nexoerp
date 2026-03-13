@@ -292,15 +292,18 @@ function buscarSunat() {
                 return;
             }
             var d = res.data;
-            if (d.razonSocial) { var rs = document.querySelector('[name="razonSocial"]'); if (rs) rs.value = d.razonSocial; }
-            if (d.direccion) { var dir = document.querySelector('[name="direccion"]'); if (dir) dir.value = d.direccion; }
-            var estadoInfo = '';
-            if (d.estado) estadoInfo += 'Estado: ' + d.estado;
-            if (d.condicion) estadoInfo += (estadoInfo ? ' | ' : '') + 'Condici\u00f3n: ' + d.condicion;
-            if (d.departamento) estadoInfo += (estadoInfo ? ' | ' : '') + d.departamento;
-            if (d.provincia) estadoInfo += ' - ' + d.provincia;
-            if (d.distrito) estadoInfo += ' - ' + d.distrito;
-            mostrarMsg(msg, '\u2705 ' + (d.razonSocial || 'Datos obtenidos') + (estadoInfo ? ' (' + estadoInfo + ')' : ''), 'success');
+            llenarCampo('razonSocial', d.razonSocial);
+            llenarCampo('direccion', d.direccion);
+            llenarCampo('contacto', d.razonSocial);
+            var info = '<i class="bi bi-check-circle-fill text-success"></i> <strong>' + (d.razonSocial || '') + '</strong>';
+            if (d.estado) info += '<br><i class="bi bi-dot"></i>Estado: <strong>' + d.estado + '</strong>';
+            if (d.condicion) info += ' | Condici\u00f3n: <strong>' + d.condicion + '</strong>';
+            if (d.direccion) info += '<br><i class="bi bi-geo-alt-fill"></i> ' + d.direccion;
+            if (d.tipo) info += '<br><i class="bi bi-building"></i> Tipo empresa: ' + d.tipo;
+            if (d.actividadEconomica) info += '<br><i class="bi bi-briefcase"></i> Actividad: ' + d.actividadEconomica;
+            if (d.numeroTrabajadores) info += ' | Trabajadores: ' + d.numeroTrabajadores;
+            info += '<br><small class="text-muted"><i class="bi bi-info-circle"></i> Tel\u00e9fono y email no son proporcionados por SUNAT (datos privados). Ingr\u00e9selos manualmente.</small>';
+            mostrarMsg(msg, info, 'success');
         })
         .catch(function(err) {
             btn.disabled = false;
@@ -308,10 +311,15 @@ function buscarSunat() {
             mostrarMsg(msg, 'Error de conexi\u00f3n. Intente de nuevo.', 'danger');
         });
 }
+function llenarCampo(nombre, valor) {
+    if (!valor) return;
+    var el = document.querySelector('#formProveedorData [name="' + nombre + '"]');
+    if (el) el.value = valor;
+}
 function mostrarMsg(el, texto, tipo) {
     if (!el) return;
-    el.className = 'small mt-1 text-' + tipo;
-    el.textContent = texto;
+    el.className = 'small mt-1 alert alert-' + (tipo === 'danger' ? 'danger' : tipo === 'success' ? 'success' : 'info') + ' py-1 px-2';
+    el.innerHTML = texto;
     el.classList.remove('d-none');
 }
 document.addEventListener('DOMContentLoaded', function() {
