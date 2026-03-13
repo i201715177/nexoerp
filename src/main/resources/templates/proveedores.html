@@ -292,8 +292,8 @@ function buscarSunat() {
                 return;
             }
             var d = res.data;
-            if (d.razonSocial) { var rs = document.getElementById('razonSocial'); if (rs) rs.value = d.razonSocial; }
-            if (d.direccion) { var dir = document.getElementById('direccion'); if (dir) dir.value = d.direccion; }
+            if (d.razonSocial) { var rs = document.querySelector('[name="razonSocial"]'); if (rs) rs.value = d.razonSocial; }
+            if (d.direccion) { var dir = document.querySelector('[name="direccion"]'); if (dir) dir.value = d.direccion; }
             var estadoInfo = '';
             if (d.estado) estadoInfo += 'Estado: ' + d.estado;
             if (d.condicion) estadoInfo += (estadoInfo ? ' | ' : '') + 'Condici\u00f3n: ' + d.condicion;
