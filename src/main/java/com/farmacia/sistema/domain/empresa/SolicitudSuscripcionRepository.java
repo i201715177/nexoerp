@@ -7,4 +7,8 @@ import java.util.List;
 public interface SolicitudSuscripcionRepository extends JpaRepository<SolicitudSuscripcion, Long> {
 
     List<SolicitudSuscripcion> findAllByOrderByFechaSolicitudDesc();
+
+    long countByEstado(String estado);
+
+    List<SolicitudSuscripcion> findTop5ByEstadoOrderByFechaSolicitudDesc(String estado);
 }

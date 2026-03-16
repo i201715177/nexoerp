@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="es" xmlns:th="http://www.thymeleaf.org" xmlns:sec="http://www.thymeleaf.org/extras/spring-security">
 <head>
     <meta charset="UTF-8">
@@ -10,45 +10,7 @@
 </head>
 <body>
 <div class="app-layout">
-    <aside class="sidebar" id="sidebar">
-        <div class="sidebar-header">
-            <span class="sidebar-brand"><i class="bi bi-diagram-3"></i> NexoERP</span>
-            <button class="sidebar-toggle d-lg-none" onclick="toggleSidebar()"><i class="bi bi-x-lg"></i></button>
-        </div>
-        <nav class="sidebar-nav">
-            <div class="sidebar-section-title">Operaciones</div>
-            <a class="sidebar-link" href="/web/productos"><i class="bi bi-box-seam"></i> Productos</a>
-            <a class="sidebar-link" href="/web/clientes"><i class="bi bi-people"></i> Clientes</a>
-            <a class="sidebar-link" href="/web/proveedores" sec:authorize="hasAnyRole('ADMIN','SAAS_ADMIN')"><i class="bi bi-truck"></i> Proveedores</a>
-            <a class="sidebar-link" href="/web/compras" sec:authorize="hasAnyRole('ADMIN','SAAS_ADMIN')"><i class="bi bi-cart-plus"></i> Compras</a>
-            <a class="sidebar-link" href="/web/ventas"><i class="bi bi-receipt"></i> Ventas</a>
-            <a class="sidebar-link" href="/web/caja"><i class="bi bi-cash-stack"></i> Caja</a>
-            <div class="sidebar-section-title">Gesti&oacute;n</div>
-            <a class="sidebar-link" href="/web/finanzas" sec:authorize="hasAnyRole('ADMIN','SAAS_ADMIN')"><i class="bi bi-graph-up"></i> Finanzas</a>
-            <a class="sidebar-link" href="/web/inventario"><i class="bi bi-clipboard-data"></i> Inventario</a>
-            <a class="sidebar-link active" href="/web/facturacion-electronica" sec:authorize="hasAnyRole('ADMIN','SAAS_ADMIN')"><i class="bi bi-file-earmark-check"></i> Facturación E.</a>
-            <a class="sidebar-link" href="/web/guias-remision" sec:authorize="hasAnyRole('ADMIN','SAAS_ADMIN')"><i class="bi bi-truck"></i> Guías Remisión</a>
-            <a class="sidebar-link" href="/web/reportes"><i class="bi bi-file-earmark-bar-graph"></i> Reportes</a>
-            <a class="sidebar-link" href="/web/sucursales" sec:authorize="hasAnyRole('ADMIN','SAAS_ADMIN')"><i class="bi bi-building"></i> Sucursales</a>
-            <div class="sidebar-section-title">Sistema</div>
-            <a class="sidebar-link" href="/web/auditoria" sec:authorize="hasAnyRole('ADMIN','SAAS_ADMIN')"><i class="bi bi-shield-check"></i> Auditor&iacute;a</a>
-            <a class="sidebar-link" href="/web/admin/empresas" sec:authorize="hasRole('SAAS_ADMIN')"><i class="bi bi-gear"></i> Admin SaaS</a>
-        </nav>
-        <div class="sidebar-footer">
-            <div sec:authorize="hasRole('SAAS_ADMIN')">
-                <form th:if="${empresasTodas != null and !#lists.isEmpty(empresasTodas)}"
-                      th:action="@{/web/empresas/cambiar}" method="post" class="mb-2">
-                    <select name="tenantId" class="form-select form-select-sm"
-                            onchange="this.form.submit()" style="background:#243656; color:#c8d6e5; border-color:rgba(255,255,255,.12); font-size:12px;">
-                        <option th:each="e : ${empresasTodas}" th:value="${e.id}"
-                                th:selected="${empresaActual != null and e.id == empresaActual.id}"
-                                th:text="${e.nombre}">Empresa</option>
-                    </select>
-                    <input type="hidden" name="redirect" value="/web/facturacion-electronica">
-                </form>
-            </div>
-        </div>
-    </aside>
+        <div th:replace="~{fragments/sidebar :: sidebar('facturacion')}"></div>
     <div id="sidebarBackdrop" class="sidebar-backdrop"></div>
 
     <div class="main-wrapper">
@@ -83,11 +45,18 @@
             </div>
 
             <!-- Estado SUNAT -->
-            <div class="alert mb-3" th:classappend="${sunatHabilitado} ? 'alert-success' : 'alert-info'">
-                <i class="bi" th:classappend="${sunatHabilitado} ? 'bi-check-circle-fill' : 'bi-info-circle'"></i>
-                <strong>Modo SUNAT:</strong>
-                <span th:if="${sunatHabilitado}">Certificado digital configurado. Env&iacute;o a SUNAT <strong>ACTIVO</strong>.</span>
-                <span th:unless="${sunatHabilitado}">Sin certificado digital. Los comprobantes se generan en formato SUNAT pero <strong>no se env&iacute;an</strong>. Cuando su cliente adquiera un certificado digital, se activar&aacute; el env&iacute;o autom&aacute;tico.</span>
+            <div class="alert mb-3 d-flex align-items-center justify-content-between" th:classappend="${sunatHabilitado} ? 'alert-success' : 'alert-info'">
+                <div>
+                    <i class="bi" th:classappend="${sunatHabilitado} ? 'bi-check-circle-fill' : 'bi-info-circle'"></i>
+                    <strong>SUNAT</strong>
+                    <span th:if="${empresaSunat != null}" class="text-muted ms-1">(<span th:text="${empresaSunat.nombre}"></span>)</span>
+                    <strong>:</strong>
+                    <span th:if="${sunatHabilitado}">Certificado configurado. Env&iacute;o a SUNAT <strong>ACTIVO</strong> en modo <strong th:text="${sunatModo}">BETA</strong>.</span>
+                    <span th:unless="${sunatHabilitado}">Sin certificado digital. Los comprobantes se generan en PDF interno. Configure el certificado para activar el env&iacute;o a SUNAT.</span>
+                </div>
+                <a href="/web/sunat-config" class="btn btn-sm" th:classappend="${sunatHabilitado} ? 'btn-outline-success' : 'btn-primary'">
+                    <i class="bi bi-gear me-1"></i> Configurar
+                </a>
             </div>
 
             <!-- KPIs -->
@@ -164,7 +133,7 @@
                                     <td class="text-end" th:text="${'S/ ' + #numbers.formatDecimal(v.total, 1, 2)}">S/ 0.00</td>
                                     <td class="text-center"><span class="badge-status" th:classappend="${v.estado == 'EMITIDA'} ? 'success' : 'danger'" th:text="${v.estado}">EMITIDA</span></td>
                                     <td class="text-center"><span class="badge-status" th:classappend="${v.estadoSunat == 'ACEPTADO'} ? 'success' : (${v.estadoSunat == 'RECHAZADO'} ? 'danger' : 'warning')" th:text="${v.estadoSunat != null ? v.estadoSunat : 'PENDIENTE'}">PENDIENTE</span></td>
-                                    <td class="text-center"><a th:href="@{/web/ventas/{id}/comprobante(id=${v.id})}" class="btn-action primary" title="Ver PDF"><i class="bi bi-file-earmark-pdf"></i></a></td>
+                                    <td class="text-center"><a target="_blank" th:href="@{/web/ventas/{id}/comprobante(id=${v.id})}" class="btn-action primary" title="Ver PDF"><i class="bi bi-file-earmark-pdf"></i></a></td>
                                 </tr>
                                 <tr th:if="${#lists.isEmpty(facturas)}"><td colspan="8"><div class="empty-state"><i class="bi bi-inbox"></i><p>No hay facturas emitidas.</p></div></td></tr>
                                 </tbody>
@@ -197,7 +166,7 @@
                                     <td class="text-end" th:text="${'S/ ' + #numbers.formatDecimal(v.total, 1, 2)}">S/ 0.00</td>
                                     <td class="text-center"><span class="badge-status" th:classappend="${v.estado == 'EMITIDA'} ? 'success' : 'danger'" th:text="${v.estado}">EMITIDA</span></td>
                                     <td class="text-center"><span class="badge-status warning" th:text="${v.estadoSunat != null ? v.estadoSunat : 'PENDIENTE'}">PENDIENTE</span></td>
-                                    <td class="text-center"><a th:href="@{/web/ventas/{id}/comprobante(id=${v.id})}" class="btn-action primary" title="Ver PDF"><i class="bi bi-file-earmark-pdf"></i></a></td>
+                                    <td class="text-center"><a target="_blank" th:href="@{/web/ventas/{id}/comprobante(id=${v.id})}" class="btn-action primary" title="Ver PDF"><i class="bi bi-file-earmark-pdf"></i></a></td>
                                 </tr>
                                 <tr th:if="${#lists.isEmpty(boletas)}"><td colspan="7"><div class="empty-state"><i class="bi bi-inbox"></i><p>No hay boletas emitidas.</p></div></td></tr>
                                 </tbody>
@@ -263,7 +232,7 @@
                                     <td th:text="${g.direccionPartida != null ? g.direccionPartida : '—'}">Partida</td>
                                     <td th:text="${g.direccionLlegada != null ? g.direccionLlegada : '—'}">Llegada</td>
                                     <td class="text-center"><span class="badge-status" th:classappend="${g.estado == 'EMITIDA'} ? 'success' : 'danger'" th:text="${g.estado}">EMITIDA</span></td>
-                                    <td class="text-center"><a th:href="@{/web/guias-remision/{id}/pdf(id=${g.id})}" class="btn-action primary" title="Ver PDF"><i class="bi bi-file-earmark-pdf"></i></a></td>
+                                    <td class="text-center"><a target="_blank" th:href="@{/web/guias-remision/{id}/pdf(id=${g.id})}" class="btn-action primary" title="Ver PDF"><i class="bi bi-file-earmark-pdf"></i></a></td>
                                 </tr>
                                 <tr th:if="${#lists.isEmpty(guias)}"><td colspan="7"><div class="empty-state"><i class="bi bi-inbox"></i><p>No hay gu&iacute;as de remisi&oacute;n.</p></div></td></tr>
                                 </tbody>

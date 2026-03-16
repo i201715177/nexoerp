@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="es" xmlns:th="http://www.thymeleaf.org" xmlns:sec="http://www.thymeleaf.org/extras/spring-security">
 <head>
     <meta charset="UTF-8">
@@ -11,46 +11,7 @@
 <body>
 <div class="app-layout">
     <!-- Sidebar -->
-    <aside class="sidebar" id="sidebar">
-        <div class="sidebar-header">
-            <span class="sidebar-brand"><i class="bi bi-diagram-3"></i> NexoERP</span>
-            <button class="sidebar-toggle d-lg-none" onclick="toggleSidebar()"><i class="bi bi-x-lg"></i></button>
-        </div>
-        <nav class="sidebar-nav">
-            <div class="sidebar-section-title">Operaciones</div>
-            <a class="sidebar-link" href="/web/productos"><i class="bi bi-box-seam"></i> Productos</a>
-            <a class="sidebar-link" href="/web/clientes"><i class="bi bi-people"></i> Clientes</a>
-            <a class="sidebar-link" href="/web/proveedores" sec:authorize="hasAnyRole('ADMIN','SAAS_ADMIN')"><i class="bi bi-truck"></i> Proveedores</a>
-            <a class="sidebar-link" href="/web/compras" sec:authorize="hasAnyRole('ADMIN','SAAS_ADMIN')"><i class="bi bi-cart-plus"></i> Compras</a>
-            <a class="sidebar-link active" href="/web/ventas"><i class="bi bi-receipt"></i> Ventas</a>
-            <a class="sidebar-link" href="/web/caja"><i class="bi bi-cash-stack"></i> Caja</a>
-            <a class="sidebar-link" href="/web/requerimientos"><i class="bi bi-box-arrow-in-down"></i> Requerimientos</a>
-            <div class="sidebar-section-title">Gesti&oacute;n</div>
-            <a class="sidebar-link" href="/web/finanzas" sec:authorize="hasAnyRole('ADMIN','SAAS_ADMIN')"><i class="bi bi-graph-up"></i> Finanzas</a>
-            <a class="sidebar-link" href="/web/inventario"><i class="bi bi-clipboard-data"></i> Inventario</a>
-            <a class="sidebar-link" href="/web/facturacion-electronica" sec:authorize="hasAnyRole('ADMIN','SAAS_ADMIN')"><i class="bi bi-file-earmark-check"></i> Facturación E.</a>
-            <a class="sidebar-link" href="/web/guias-remision" sec:authorize="hasAnyRole('ADMIN','SAAS_ADMIN')"><i class="bi bi-truck"></i> Guías Remisión</a>
-            <a class="sidebar-link" href="/web/reportes"><i class="bi bi-file-earmark-bar-graph"></i> Reportes</a>
-            <a class="sidebar-link" href="/web/sucursales" sec:authorize="hasAnyRole('ADMIN','SAAS_ADMIN')"><i class="bi bi-building"></i> Sucursales</a>
-            <div class="sidebar-section-title">Sistema</div>
-            <a class="sidebar-link" href="/web/auditoria" sec:authorize="hasAnyRole('ADMIN','SAAS_ADMIN')"><i class="bi bi-shield-check"></i> Auditor&iacute;a</a>
-            <a class="sidebar-link" href="/web/admin/empresas" sec:authorize="hasRole('SAAS_ADMIN')"><i class="bi bi-gear"></i> Admin SaaS</a>
-        </nav>
-        <div class="sidebar-footer">
-            <div sec:authorize="hasRole('SAAS_ADMIN')">
-                <form th:if="${empresasTodas != null and !#lists.isEmpty(empresasTodas)}"
-                      th:action="@{/web/empresas/cambiar}" method="post" class="mb-2">
-                    <select name="tenantId" class="form-select form-select-sm"
-                            onchange="this.form.submit()" style="background:#243656; color:#c8d6e5; border-color:rgba(255,255,255,.12); font-size:12px;">
-                        <option th:each="e : ${empresasTodas}" th:value="${e.id}"
-                                th:selected="${empresaActual != null and e.id == empresaActual.id}"
-                                th:text="${e.nombre}">Empresa</option>
-                    </select>
-                    <input type="hidden" name="redirect" value="/web/ventas">
-                </form>
-            </div>
-        </div>
-    </aside>
+        <div th:replace="~{fragments/sidebar :: sidebar('ventas')}"></div>
     <div id="sidebarBackdrop" class="sidebar-backdrop"></div>
 
     <!-- Main -->
@@ -194,16 +155,19 @@
                                                 </select>
                                                 <div class="form-text small" id="facturaRequisito" style="display:none;">RUC 11 d&iacute;gitos.</div>
                                             </div>
-                                            <div class="col-4">
-                                                <label class="form-label">Cliente</label>
-                                                <select class="form-select form-select-sm" id="selectCliente" th:field="*{clienteId}" required onchange="onCambioCliente(this)">
-                                                    <option value="" disabled selected>Seleccione...</option>
-                                                    <option th:each="c : ${clientes}" th:value="${c.id}" th:attr="data-tipo-doc=${c.tipoDocumento},data-num-doc=${c.numeroDocumento}" th:text="${(c.nombres != null ? c.nombres : '') + ' ' + (c.apellidos != null ? c.apellidos : '') + ' (' + (c.tipoDocumento != null ? c.tipoDocumento : '') + ' ' + (c.numeroDocumento != null ? c.numeroDocumento : '') + ')'}"></option>
-                                                </select>
+                                            <div class="col-3">
+                                                <label class="form-label">Buscar RUC/DNI</label>
+                                                <div class="d-flex gap-1">
+                                                    <input type="text" class="form-control form-control-sm" id="ventaBusqDoc" placeholder="8 o 11 d&iacute;gitos" maxlength="11" style="min-width:90px;">
+                                                    <button type="button" class="btn btn-sm btn-info flex-shrink-0" onclick="buscarClienteVenta()" title="Buscar en SUNAT/RENIEC">
+                                                        <i class="bi bi-search"></i>
+                                                    </button>
+                                                </div>
                                             </div>
                                             <div class="col">
-                                                <label class="form-label">Nombre en venta</label>
-                                                <input type="text" th:field="*{nombreClienteVenta}" class="form-control form-control-sm" placeholder="Texto libre">
+                                                <label class="form-label">Nombre del cliente</label>
+                                                <input type="text" th:field="*{nombreClienteVenta}" class="form-control form-control-sm" id="nombreClienteInput" placeholder="Escriba el nombre o busque por RUC/DNI">
+                                                <input type="hidden" name="clienteId" id="clienteIdHidden" value="">
                                             </div>
                                         </div>
                                     </div>
@@ -330,6 +294,16 @@
     </div>
 </div>
 
+<!-- Alerta flotante: resultado búsqueda SUNAT/RENIEC -->
+<div id="alertaFlotanteSunat" style="display:none; position:fixed; z-index:9999; min-width:320px; max-width:480px; top:80px; right:30px; box-shadow:0 8px 32px rgba(0,0,0,.25); border-radius:10px; overflow:hidden; cursor:move;">
+    <div id="alertaFlotanteHeader" style="background:#f0ad4e; color:#fff; padding:6px 12px; display:flex; justify-content:space-between; align-items:center; font-weight:600; font-size:13px; user-select:none;">
+        <span><i class="bi bi-info-circle me-1"></i>Datos SUNAT / RENIEC</span>
+        <button type="button" onclick="cerrarAlertaFlotante()" style="background:none; border:none; color:#fff; font-size:18px; cursor:pointer; line-height:1; padding:0 2px;" title="Cerrar">&times;</button>
+    </div>
+    <div id="alertaFlotanteBody" style="background:#fff; padding:12px 14px; font-size:13px; line-height:1.6; color:#333;">
+    </div>
+</div>
+
 <!-- Modal flotante: Ventas recientes -->
 <div class="modal fade" id="modalVentasRecientes" tabindex="-1" aria-labelledby="modalVentasRecientesLabel" aria-hidden="true" data-bs-backdrop="true" data-bs-keyboard="true">
     <div class="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable">
@@ -340,8 +314,8 @@
             </div>
             <div class="modal-body p-0">
                 <div class="export-bar d-flex flex-wrap align-items-center gap-2 p-3 border-bottom">
-                    <a th:href="@{/web/ventas/excel}" id="btnExportExcel" class="btn-export btn-export-excel"><i class="bi bi-file-earmark-excel"></i> Excel</a>
-                    <a th:href="@{/web/ventas/pdf}" id="btnExportPdf" class="btn-export btn-export-pdf"><i class="bi bi-file-earmark-pdf"></i> PDF</a>
+                    <a target="_blank" th:href="@{/web/ventas/excel}" id="btnExportExcel" class="btn-export btn-export-excel"><i class="bi bi-file-earmark-excel"></i> Excel</a>
+                    <a target="_blank" th:href="@{/web/ventas/pdf}" id="btnExportPdf" class="btn-export btn-export-pdf"><i class="bi bi-file-earmark-pdf"></i> PDF</a>
                     <button type="button" class="btn-export btn btn-sm btn-outline-primary" id="btnVerComprobante" title="Ver factura o comprobante de la venta seleccionada">
                         <i class="bi bi-receipt me-1"></i>Factura
                     </button>
@@ -519,19 +493,139 @@
         recalcularTotales();
     }
 
-    function onCambioCliente(selectElement) {
-        if (!selectElement) {
-            return;
-        }
-        const selectedOption = selectElement.options[selectElement.selectedIndex];
-        if (!selectedOption) {
-            return;
-        }
-        const nombre = selectedOption.text;
-        const inputTexto = document.querySelector('input[name="nombreClienteVenta"]');
-        if (inputTexto && (!inputTexto.value || inputTexto.value.trim().length === 0)) {
-            inputTexto.value = nombre;
-        }
+    function mostrarAlertaFlotante(html, colorHeader) {
+        var alerta = document.getElementById('alertaFlotanteSunat');
+        var header = document.getElementById('alertaFlotanteHeader');
+        var body = document.getElementById('alertaFlotanteBody');
+        if (!alerta || !body) return;
+        body.innerHTML = html;
+        if (header && colorHeader) header.style.background = colorHeader;
+        alerta.style.display = 'block';
+    }
+
+    function cerrarAlertaFlotante() {
+        var alerta = document.getElementById('alertaFlotanteSunat');
+        if (alerta) alerta.style.display = 'none';
+    }
+
+    function buscarClienteVenta() {
+        var numero = (document.getElementById('ventaBusqDoc').value || '').trim().replace(/\D/g, '');
+        document.getElementById('ventaBusqDoc').value = numero;
+        var nombreInput = document.getElementById('nombreClienteInput');
+        var hiddenId = document.getElementById('clienteIdHidden');
+
+        if (!numero) { alert('Ingrese RUC (11) o DNI (8).'); return; }
+        var tipo = '';
+        if (numero.length === 11) tipo = 'RUC';
+        else if (numero.length === 8) tipo = 'DNI';
+        else { alert('Ingrese 8 d\u00edgitos para DNI o 11 para RUC.'); return; }
+
+        fetch('/api/clientes/buscar-doc?numero=' + numero)
+            .then(function(r) { return r.ok ? r.json() : null; })
+            .then(function(clienteExistente) {
+                if (clienteExistente && clienteExistente.id) {
+                    if (hiddenId) hiddenId.value = clienteExistente.id;
+                    var nombreCompleto = ((clienteExistente.nombres || '') + ' ' + (clienteExistente.apellidos || '')).trim();
+                    if (nombreInput) nombreInput.value = nombreCompleto;
+                    var tipoDoc = (clienteExistente.tipoDocumento || '').toUpperCase();
+                    var tipoComp = document.getElementById('tipoComprobante');
+                    if (tipoComp) {
+                        tipoComp.value = (tipoDoc === 'RUC') ? 'FAC' : 'BOL';
+                        actualizarAvisoFactura();
+                    }
+                    var html = '<div style="color:#155724;"><i class="bi bi-check-circle-fill me-1"></i><strong>Cliente encontrado en el sistema</strong></div>';
+                    html += '<div class="mt-1"><strong>Nombre:</strong> ' + nombreCompleto + '</div>';
+                    html += '<div><strong>Doc:</strong> ' + tipoDoc + ' ' + numero + '</div>';
+                    if (clienteExistente.direccion) html += '<div><strong>Direcci\u00f3n:</strong> ' + clienteExistente.direccion + '</div>';
+                    if (clienteExistente.telefono) html += '<div><strong>Tel:</strong> ' + clienteExistente.telefono + '</div>';
+                    mostrarAlertaFlotante(html, '#28a745');
+                    return;
+                }
+                buscarEnSunat(tipo, numero);
+            })
+            .catch(function() {
+                buscarEnSunat(tipo, numero);
+            });
+    }
+
+    function buscarEnSunat(tipo, numero) {
+        var nombreInput = document.getElementById('nombreClienteInput');
+        var hiddenId = document.getElementById('clienteIdHidden');
+        if (hiddenId) hiddenId.value = '';
+
+        mostrarAlertaFlotante('<div style="color:#0c5460;"><i class="bi bi-hourglass-split me-1"></i>Buscando ' + tipo + ' en SUNAT/RENIEC...</div>', '#17a2b8');
+
+        fetch('/api/sunat/consultar?tipo=' + tipo + '&numero=' + numero)
+            .then(function(r) { return r.json(); })
+            .then(function(data) {
+                if (data.error) {
+                    mostrarAlertaFlotante('<div style="color:#721c24;"><i class="bi bi-x-circle-fill me-1"></i>' + data.error + '</div>', '#dc3545');
+                    return;
+                }
+                var nombres = '';
+                var apellidos = '';
+                if (tipo === 'DNI') {
+                    if (data.nombres && (data.apellidoPaterno || data.apellidoMaterno)) {
+                        nombres = data.nombres;
+                        apellidos = ((data.apellidoPaterno || '') + ' ' + (data.apellidoMaterno || '')).trim();
+                    } else if (data.razonSocial) {
+                        nombres = data.razonSocial;
+                    }
+                } else {
+                    nombres = data.razonSocial || '';
+                }
+                var nombreCompleto = (nombres + ' ' + apellidos).trim();
+
+                if (nombreInput) nombreInput.value = nombreCompleto;
+
+                var tipoComp = document.getElementById('tipoComprobante');
+                if (tipoComp) {
+                    tipoComp.value = (tipo === 'RUC') ? 'FAC' : 'BOL';
+                    actualizarAvisoFactura();
+                }
+
+                var nuevoCliente = {
+                    tipoDocumento: tipo,
+                    numeroDocumento: numero,
+                    nombres: nombres,
+                    apellidos: apellidos,
+                    direccion: data.direccion || ''
+                };
+
+                fetch('/api/clientes', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(nuevoCliente)
+                })
+                .then(function(rc) { return rc.ok ? rc.json() : null; })
+                .then(function(clienteCreado) {
+                    if (clienteCreado && clienteCreado.id) {
+                        if (hiddenId) hiddenId.value = clienteCreado.id;
+                    }
+                })
+                .catch(function() {});
+
+                var tipoLabel = (tipo === 'RUC') ? 'Factura' : 'Boleta';
+                var html = '<div style="color:#155724;"><i class="bi bi-check-circle-fill me-1"></i><strong>Datos obtenidos de SUNAT — Cliente registrado autom\u00e1ticamente</strong></div>';
+                html += '<table style="width:100%; margin-top:6px; font-size:13px; border-collapse:collapse;">';
+                html += '<tr><td style="padding:2px 8px 2px 0; font-weight:600; white-space:nowrap;">Nombre:</td><td>' + nombreCompleto + '</td></tr>';
+                html += '<tr><td style="padding:2px 8px 2px 0; font-weight:600; white-space:nowrap;">Documento:</td><td>' + tipo + ': ' + numero + '</td></tr>';
+                html += '<tr><td style="padding:2px 8px 2px 0; font-weight:600; white-space:nowrap;">Comprobante:</td><td><span style="background:#0d6efd; color:#fff; padding:1px 8px; border-radius:4px; font-size:12px;">' + tipoLabel + '</span></td></tr>';
+                if (data.direccion) {
+                    html += '<tr><td style="padding:2px 8px 2px 0; font-weight:600; white-space:nowrap;"><i class="bi bi-geo-alt"></i> Direcci\u00f3n:</td><td>' + data.direccion + '</td></tr>';
+                }
+                if (data.estado) {
+                    html += '<tr><td style="padding:2px 8px 2px 0; font-weight:600; white-space:nowrap;">Estado:</td><td>' + data.estado + '</td></tr>';
+                }
+                if (data.condicion) {
+                    html += '<tr><td style="padding:2px 8px 2px 0; font-weight:600; white-space:nowrap;">Condici\u00f3n:</td><td>' + data.condicion + '</td></tr>';
+                }
+                html += '</table>';
+                mostrarAlertaFlotante(html, '#28a745');
+            })
+            .catch(function(err) {
+                mostrarAlertaFlotante('<div style="color:#721c24;"><i class="bi bi-x-circle-fill me-1"></i>Error: ' + err + '</div>', '#dc3545');
+            });
     }
 
     function aplicarDescuentoPorcentaje() {
@@ -610,8 +704,8 @@
     }
 
     function buildVentaPayload() {
-        const clienteId = document.querySelector('select[name="clienteId"]');
-        const nombreClienteVenta = document.querySelector('input[name="nombreClienteVenta"]');
+        const clienteIdEl = document.getElementById('clienteIdHidden');
+        const nombreClienteVenta = document.getElementById('nombreClienteInput');
         const descuentoTotal = document.querySelector('input[name="descuentoTotal"]');
         const cajaTurnoIdEl = document.getElementById('cajaTurnoId');
 
@@ -638,8 +732,8 @@
 
         const totalVenta = parseFloat(document.getElementById('totalVenta').value) || 0;
         const payload = {
-            clienteId: clienteId && clienteId.value ? parseInt(clienteId.value, 10) : null,
-            nombreClienteVenta: nombreClienteVenta && nombreClienteVenta.value ? nombreClienteVenta.value : '',
+            clienteId: clienteIdEl && clienteIdEl.value ? parseInt(clienteIdEl.value, 10) : null,
+            nombreClienteVenta: nombreClienteVenta && nombreClienteVenta.value ? nombreClienteVenta.value.trim() : '',
             tipoComprobante: tipoComprobante,
             items: items,
             descuentoTotal: descuentoTotal && descuentoTotal.value ? parseFloat(descuentoTotal.value) : 0,
@@ -679,8 +773,12 @@
             if (!ok) return;
 
             var payload = buildVentaPayload();
-            if (!payload || !payload.clienteId) {
-                nexoS.toast({ type: 'warning', message: 'Seleccione cliente y al menos un ítem.' });
+            if (!payload) {
+                nexoS.toast({ type: 'warning', message: 'Agregue al menos un producto.' });
+                return;
+            }
+            if (!payload.nombreClienteVenta) {
+                nexoS.toast({ type: 'warning', message: 'Ingrese el nombre del cliente.' });
                 return;
             }
             if (!payload.pagos || payload.pagos.length === 0) {
@@ -705,6 +803,7 @@
             })
                 .then(function (resp) {
                     if (resp.ok) {
+                        cerrarAlertaFlotante();
                         nexoS.toast({ type: 'success', message: 'Venta registrada correctamente.', duration: 2000 });
                         setTimeout(function () { window.location.href = '/web/ventas'; }, 800);
                         return;
@@ -921,18 +1020,13 @@
         if (tipoSelect && aviso) aviso.style.display = (tipoSelect.value === 'FAC') ? 'block' : 'none';
     }
     function validarFacturaAntesEnviar() {
-        const tipoSelect = document.getElementById('tipoComprobante');
+        var tipoSelect = document.getElementById('tipoComprobante');
         if (!tipoSelect || tipoSelect.value !== 'FAC') return true;
-        const selectCliente = document.getElementById('selectCliente');
-        if (!selectCliente || !selectCliente.selectedIndex || selectCliente.selectedIndex <= 0) return true;
-        const opt = selectCliente.options[selectCliente.selectedIndex];
-        const tipoDoc = (opt && opt.getAttribute('data-tipo-doc')) ? opt.getAttribute('data-tipo-doc').toUpperCase() : '';
-        if (tipoDoc !== 'RUC') {
-            alert('Para emitir una Factura el cliente debe tener RUC (11 d\u00edgitos). Seleccione un cliente con RUC o reg\u00edstrelo en Clientes.');
-            if (selectCliente) selectCliente.focus();
-            return false;
-        }
-        return true;
+        var docInput = document.getElementById('ventaBusqDoc');
+        var numero = docInput ? docInput.value.trim().replace(/\D/g, '') : '';
+        if (numero.length === 11) return true;
+        var confirmar = confirm('Factura requiere RUC (11 d\u00edgitos). \u00bfDesea continuar de todos modos?');
+        return confirmar;
     }
 
     function getVentasSeleccionadosIds() {
@@ -943,6 +1037,10 @@
     }
 
     document.addEventListener('DOMContentLoaded', function () {
+        var ventaBusqDoc = document.getElementById('ventaBusqDoc');
+        if (ventaBusqDoc) {
+            ventaBusqDoc.addEventListener('input', function() { var l = this.value.replace(/\D/g, ''); if (l !== this.value) this.value = l; });
+        }
         const tipoComprobanteEl = document.getElementById('tipoComprobante');
         if (tipoComprobanteEl) {
             tipoComprobanteEl.addEventListener('change', actualizarAvisoFactura);
@@ -1162,6 +1260,44 @@
             }
             header.addEventListener('mousedown', function (e) {
                 if (e.target.closest('.btn-close')) return;
+                e.preventDefault();
+                onDown(e);
+                document.addEventListener('mousemove', onMove);
+                document.addEventListener('mouseup', onUp);
+            });
+        })();
+
+        (function initAlertaDraggable() {
+            var alerta = document.getElementById('alertaFlotanteSunat');
+            var header = document.getElementById('alertaFlotanteHeader');
+            if (!alerta || !header) return;
+            var drag = { active: false, startX: 0, startY: 0, startLeft: 0, startTop: 0 };
+            function onDown(e) {
+                if (e.target.tagName === 'BUTTON') return;
+                drag.active = true;
+                drag.startX = e.clientX;
+                drag.startY = e.clientY;
+                var rect = alerta.getBoundingClientRect();
+                drag.startLeft = rect.left;
+                drag.startTop = rect.top;
+                alerta.style.right = 'auto';
+                alerta.style.left = drag.startLeft + 'px';
+                alerta.style.top = drag.startTop + 'px';
+            }
+            function onMove(e) {
+                if (!drag.active) return;
+                var dx = e.clientX - drag.startX;
+                var dy = e.clientY - drag.startY;
+                alerta.style.left = (drag.startLeft + dx) + 'px';
+                alerta.style.top = (drag.startTop + dy) + 'px';
+            }
+            function onUp() {
+                drag.active = false;
+                document.removeEventListener('mousemove', onMove);
+                document.removeEventListener('mouseup', onUp);
+            }
+            header.addEventListener('mousedown', function (e) {
+                if (e.target.tagName === 'BUTTON') return;
                 e.preventDefault();
                 onDown(e);
                 document.addEventListener('mousemove', onMove);

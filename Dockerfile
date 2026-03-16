@@ -1,47 +1,24 @@
-## Imagen multi-stage para construir y ejecutar NexoERP
+FROM eclipse-temurin:17-jre-alpine
 
-### Etapa 1: build con Maven
-FROM maven:3.9.9-eclipse-temurin-17 AS build
+LABEL maintainer="NexoERP"
+LABEL description="Sistema de gestion farmaceutica multi-tenant"
 
-WORKDIR /app
-
-COPY pom.xml ./
-COPY .mvn .mvn
-COPY mvnw mvnw.cmd ./
-
-RUN chmod +x mvnw
-
-RUN ./mvnw -q -DskipTests dependency:go-offline
-
-COPY src src
-
-RUN ./mvnw -q -DskipTests package
-
-### Etapa 2: imagen ligera para produccion
-FROM eclipse-temurin:17-jre-jammy
+RUN addgroup -S nexoerp && adduser -S nexoerp -G nexoerp
 
 WORKDIR /app
 
-RUN useradd -r -s /bin/false appuser && chown -R appuser:appuser /app
-USER appuser
+COPY target/nexoerp-1.0.0.jar app.jar
 
-COPY --from=build /app/target/nexoerp-*.jar app.jar
+RUN mkdir -p /app/logs /app/backups && \
+    chown -R nexoerp:nexoerp /app
+
+USER nexoerp
 
 EXPOSE 8082
 
-ENV SPRING_PROFILES_ACTIVE=postgres
+HEALTHCHECK --interval=30s --timeout=5s --start-period=60s --retries=3 \
+  CMD wget --no-verbose --tries=1 --spider http://localhost:8082/actuator/health || exit 1
 
-ENV JAVA_OPTS="-XX:+UseContainerSupport \
-  -XX:MaxRAMPercentage=75.0 \
-  -XX:InitialRAMPercentage=50.0 \
-  -XX:+UseG1GC \
-  -XX:G1HeapRegionSize=4m \
-  -XX:+UseStringDeduplication \
-  -XX:+OptimizeStringConcat \
-  -XX:+ParallelRefProcEnabled \
-  -XX:MaxGCPauseMillis=200 \
-  -XX:+AlwaysPreTouch \
-  -Djava.security.egd=file:/dev/./urandom \
-  -Dfile.encoding=UTF-8"
+ENV JAVA_OPTS="-Xms256m -Xmx512m -XX:+UseG1GC -XX:+UseContainerSupport -Djava.security.egd=file:/dev/./urandom"
 
 ENTRYPOINT ["sh", "-c", "java $JAVA_OPTS -jar app.jar"]

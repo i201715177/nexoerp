@@ -19,7 +19,7 @@ public class TenantWebController {
         this.empresaService = empresaService;
     }
 
-    @PreAuthorize("hasRole('SAAS_ADMIN')")
+    @PreAuthorize("hasRole('GERENTE')")
     @PostMapping("/cambiar")
     public String cambiarEmpresa(@RequestParam("tenantId") Long tenantId,
                                  @RequestParam(value = "redirect", required = false) String redirect,

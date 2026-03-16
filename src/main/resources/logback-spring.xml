@@ -5,21 +5,22 @@
     <property name="LOG_PATH" value="${LOG_PATH:-logs}"/>
     <property name="LOG_FILE" value="${LOG_FILE:-nexoerp}"/>
 
+    <!-- Consola con colores -->
     <appender name="CONSOLE" class="ch.qos.logback.core.ConsoleAppender">
         <encoder>
-            <pattern>%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level %logger{36} - %msg%n</pattern>
+            <pattern>%d{HH:mm:ss.SSS} %highlight(%-5level) [%thread] %cyan(%logger{30}) - %msg%n</pattern>
             <charset>UTF-8</charset>
         </encoder>
     </appender>
 
+    <!-- Archivo principal con rotación por tamaño y fecha -->
     <appender name="FILE" class="ch.qos.logback.core.rolling.RollingFileAppender">
         <file>${LOG_PATH}/${LOG_FILE}.log</file>
-        <rollingPolicy class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
-            <fileNamePattern>${LOG_PATH}/${LOG_FILE}-%d{yyyy-MM-dd}.%i.log</fileNamePattern>
-            <timeBasedFileNamingAndTriggeringPolicy class="ch.qos.logback.core.rolling.SizeAndTimeBasedFNATP">
-                <maxFileSize>10MB</maxFileSize>
-            </timeBasedFileNamingAndTriggeringPolicy>
+        <rollingPolicy class="ch.qos.logback.core.rolling.SizeAndTimeBasedRollingPolicy">
+            <fileNamePattern>${LOG_PATH}/${LOG_FILE}-%d{yyyy-MM-dd}.%i.log.gz</fileNamePattern>
+            <maxFileSize>10MB</maxFileSize>
             <maxHistory>30</maxHistory>
+            <totalSizeCap>500MB</totalSizeCap>
         </rollingPolicy>
         <encoder>
             <pattern>%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level %logger{36} - %msg%n</pattern>
@@ -27,15 +28,57 @@
         </encoder>
     </appender>
 
+    <!-- Archivo separado para errores -->
+    <appender name="ERROR_FILE" class="ch.qos.logback.core.rolling.RollingFileAppender">
+        <file>${LOG_PATH}/${LOG_FILE}-errors.log</file>
+        <filter class="ch.qos.logback.classic.filter.ThresholdFilter">
+            <level>ERROR</level>
+        </filter>
+        <rollingPolicy class="ch.qos.logback.core.rolling.SizeAndTimeBasedRollingPolicy">
+            <fileNamePattern>${LOG_PATH}/${LOG_FILE}-errors-%d{yyyy-MM-dd}.%i.log.gz</fileNamePattern>
+            <maxFileSize>5MB</maxFileSize>
+            <maxHistory>60</maxHistory>
+            <totalSizeCap>200MB</totalSizeCap>
+        </rollingPolicy>
+        <encoder>
+            <pattern>%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level %logger{36} - %msg%n%ex</pattern>
+            <charset>UTF-8</charset>
+        </encoder>
+    </appender>
+
+    <!-- Archivo separado para auditoría y operaciones críticas -->
+    <appender name="AUDIT_FILE" class="ch.qos.logback.core.rolling.RollingFileAppender">
+        <file>${LOG_PATH}/${LOG_FILE}-audit.log</file>
+        <rollingPolicy class="ch.qos.logback.core.rolling.SizeAndTimeBasedRollingPolicy">
+            <fileNamePattern>${LOG_PATH}/${LOG_FILE}-audit-%d{yyyy-MM-dd}.%i.log.gz</fileNamePattern>
+            <maxFileSize>10MB</maxFileSize>
+            <maxHistory>90</maxHistory>
+            <totalSizeCap>1GB</totalSizeCap>
+        </rollingPolicy>
+        <encoder>
+            <pattern>%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %level %logger{36} - %msg%n</pattern>
+            <charset>UTF-8</charset>
+        </encoder>
+    </appender>
+
+    <!-- Loggers específicos -->
     <logger name="com.farmacia.sistema" level="INFO"/>
+    <logger name="com.farmacia.sistema.config.AuditoriaInterceptor" level="INFO" additivity="false">
+        <appender-ref ref="AUDIT_FILE"/>
+        <appender-ref ref="FILE"/>
+    </logger>
+    <logger name="com.farmacia.sistema.config.PerformanceLoggingAspect" level="INFO"/>
     <logger name="org.springframework.web" level="INFO"/>
     <logger name="org.springframework.security" level="WARN"/>
     <logger name="org.hibernate.SQL" level="WARN"/>
+    <logger name="org.hibernate.type.descriptor.sql" level="WARN"/>
+    <logger name="com.zaxxer.hikari" level="INFO"/>
 
     <springProfile name="dev">
         <root level="INFO">
             <appender-ref ref="CONSOLE"/>
             <appender-ref ref="FILE"/>
+            <appender-ref ref="ERROR_FILE"/>
         </root>
     </springProfile>
 
@@ -43,6 +86,7 @@
         <root level="INFO">
             <appender-ref ref="CONSOLE"/>
             <appender-ref ref="FILE"/>
+            <appender-ref ref="ERROR_FILE"/>
         </root>
     </springProfile>
 
@@ -50,6 +94,7 @@
         <root level="INFO">
             <appender-ref ref="CONSOLE"/>
             <appender-ref ref="FILE"/>
+            <appender-ref ref="ERROR_FILE"/>
         </root>
     </springProfile>
 </configuration>

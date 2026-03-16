@@ -26,8 +26,8 @@ public class Venta implements TenantSupport {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @ManyToOne(optional = false)
-    @JoinColumn(name = "cliente_id", nullable = false)
+    @ManyToOne(optional = true)
+    @JoinColumn(name = "cliente_id")
     private Cliente cliente;
 
     @Column(name = "nombre_cliente_venta", length = 255)

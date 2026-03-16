@@ -309,5 +309,11 @@ public class VentaWebController {
         }
         return "redirect:/web/ventas";
     }
+
+    @GetMapping("/{ventaId}/ticket")
+    public String ticket(@PathVariable Long ventaId, Model model) {
+        model.addAttribute("venta", ventaService.obtenerPorId(ventaId));
+        return "ticket-venta";
+    }
 }
 

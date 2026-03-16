@@ -8,6 +8,7 @@ import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
 
 @Entity
 @Table(name = "productos",
@@ -83,6 +84,34 @@ public class Producto implements TenantSupport {
 
     @Column(nullable = false)
     private boolean activo = true;
+
+    // --- Campos DIGEMID (productos controlados) ---
+    @Column(name = "principio_activo", length = 200)
+    private String principioActivo;
+    @Column(length = 100)
+    private String concentracion;
+    @Column(name = "forma_farmaceutica", length = 100)
+    private String formaFarmaceutica;
+    @Column(name = "registro_sanitario", length = 50)
+    private String registroSanitario;
+    @Column(length = 50)
+    private String lote;
+    @Column(name = "fecha_vencimiento")
+    private LocalDate fechaVencimiento;
+    /** ESTUPEFACIENTE, PSICOTROPICO, SUJETO_FISCALIZACION */
+    @Column(name = "tipo_producto_controlado", length = 30)
+    private String tipoProductoControlado;
+    @Column(name = "tipo_control_digemid", length = 30)
+    private String tipoControlDigemid;
+    /** LISTA_I, LISTA_II, LISTA_III, LISTA_IV */
+    @Column(name = "lista_control", length = 30)
+    private String listaControl;
+    @Column(name = "control_stock_especial", nullable = false)
+    private boolean controlStockEspecial = false;
+    @Column(name = "requiere_receta", nullable = false)
+    private boolean requiereReceta = false;
+    @Column(name = "tipo_receta", length = 30)
+    private String tipoReceta;  // RECETA_SIMPLE, RECETA_RETENIDA, etc.
 
     @Column(name = "tenant_id", nullable = false)
     private Long tenantId;
@@ -222,6 +251,31 @@ public class Producto implements TenantSupport {
     public void setActivo(boolean activo) {
         this.activo = activo;
     }
+
+    public String getPrincipioActivo() { return principioActivo; }
+    public void setPrincipioActivo(String principioActivo) { this.principioActivo = principioActivo; }
+    public String getConcentracion() { return concentracion; }
+    public void setConcentracion(String concentracion) { this.concentracion = concentracion; }
+    public String getFormaFarmaceutica() { return formaFarmaceutica; }
+    public void setFormaFarmaceutica(String formaFarmaceutica) { this.formaFarmaceutica = formaFarmaceutica; }
+    public String getRegistroSanitario() { return registroSanitario; }
+    public void setRegistroSanitario(String registroSanitario) { this.registroSanitario = registroSanitario; }
+    public String getLote() { return lote; }
+    public void setLote(String lote) { this.lote = lote; }
+    public LocalDate getFechaVencimiento() { return fechaVencimiento; }
+    public void setFechaVencimiento(LocalDate fechaVencimiento) { this.fechaVencimiento = fechaVencimiento; }
+    public String getTipoProductoControlado() { return tipoProductoControlado; }
+    public void setTipoProductoControlado(String tipoProductoControlado) { this.tipoProductoControlado = tipoProductoControlado; }
+    public String getTipoControlDigemid() { return tipoControlDigemid; }
+    public void setTipoControlDigemid(String tipoControlDigemid) { this.tipoControlDigemid = tipoControlDigemid; }
+    public String getListaControl() { return listaControl; }
+    public void setListaControl(String listaControl) { this.listaControl = listaControl; }
+    public boolean isControlStockEspecial() { return controlStockEspecial; }
+    public void setControlStockEspecial(boolean controlStockEspecial) { this.controlStockEspecial = controlStockEspecial; }
+    public boolean isRequiereReceta() { return requiereReceta; }
+    public void setRequiereReceta(boolean requiereReceta) { this.requiereReceta = requiereReceta; }
+    public String getTipoReceta() { return tipoReceta; }
+    public void setTipoReceta(String tipoReceta) { this.tipoReceta = tipoReceta; }
 
     @Override
     public Long getTenantId() {

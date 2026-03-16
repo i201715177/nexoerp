@@ -1,5 +1,7 @@
 package com.farmacia.sistema.domain.venta;
 
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -44,5 +46,24 @@ public interface VentaRepository extends JpaRepository<Venta, Long> {
     @EntityGraph(attributePaths = {"items", "items.producto", "cliente"})
     @Query("SELECT v FROM Venta v ORDER BY v.fechaHora DESC")
     java.util.List<Venta> findAllByOrderByFechaHoraDescWithItems();
+
+    @EntityGraph(attributePaths = {"items", "items.producto", "cliente", "cajaTurno"})
+    @Query("SELECT v FROM Venta v WHERE v.tenantId = :tenantId AND v.estado != 'ANULADA' " +
+           "AND v.fechaHora >= :desde AND v.fechaHora <= :hasta ORDER BY v.fechaHora DESC")
+    List<Venta> findByTenantIdAndFechaBetweenWithDetails(@Param("tenantId") Long tenantId,
+                                                         @Param("desde") LocalDateTime desde,
+                                                         @Param("hasta") LocalDateTime hasta);
+
+    @EntityGraph(attributePaths = {"items", "items.producto", "cliente", "cajaTurno"})
+    @Query("SELECT v FROM Venta v WHERE v.estado != 'ANULADA' " +
+           "AND v.fechaHora >= :desde AND v.fechaHora <= :hasta ORDER BY v.fechaHora DESC")
+    List<Venta> findByFechaBetweenWithDetails(@Param("desde") LocalDateTime desde,
+                                              @Param("hasta") LocalDateTime hasta);
+
+    @Query("SELECT v FROM Venta v WHERE v.tenantId = :tenantId ORDER BY v.fechaHora DESC")
+    Page<Venta> findByTenantIdPaginado(@Param("tenantId") Long tenantId, Pageable pageable);
+
+    long countByTenantId(Long tenantId);
+    long countByTenantIdAndEstado(Long tenantId, String estado);
 }
 

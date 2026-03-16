@@ -6,6 +6,8 @@ import com.farmacia.sistema.api.venta.PagoRequest;
 import com.farmacia.sistema.domain.cliente.Cliente;
 import com.farmacia.sistema.domain.caja.CajaTurnoService;
 import com.farmacia.sistema.domain.cliente.ClienteService;
+import com.farmacia.sistema.domain.digemid.DigemidService;
+import com.farmacia.sistema.domain.digemid.RegistroReceta;
 import com.farmacia.sistema.domain.inventario.InventarioService;
 import com.farmacia.sistema.domain.producto.Producto;
 import com.farmacia.sistema.domain.producto.ProductoService;
@@ -35,19 +37,22 @@ public class VentaService {
     private final CajaTurnoService cajaTurnoService;
     private final SequenceComprobanteService sequenceComprobanteService;
     private final InventarioService inventarioService;
+    private final DigemidService digemidService;
 
     public VentaService(VentaRepository ventaRepository,
                         ClienteService clienteService,
                         ProductoService productoService,
                         CajaTurnoService cajaTurnoService,
                         SequenceComprobanteService sequenceComprobanteService,
-                        InventarioService inventarioService) {
+                        InventarioService inventarioService,
+                        DigemidService digemidService) {
         this.ventaRepository = ventaRepository;
         this.clienteService = clienteService;
         this.productoService = productoService;
         this.cajaTurnoService = cajaTurnoService;
         this.sequenceComprobanteService = sequenceComprobanteService;
         this.inventarioService = inventarioService;
+        this.digemidService = digemidService;
     }
 
     private List<Venta> ventasDelTenant() {
@@ -60,6 +65,14 @@ public class VentaService {
 
     public List<Venta> listarTodas() {
         return ventasDelTenant();
+    }
+
+    public List<Venta> listarEntreFechas(LocalDateTime desde, LocalDateTime hasta) {
+        Long tenantId = TenantContext.getTenantId();
+        if (tenantId != null) {
+            return ventaRepository.findByTenantIdAndFechaBetweenWithDetails(tenantId, desde, hasta);
+        }
+        return ventaRepository.findByFechaBetweenWithDetails(desde, hasta);
     }
 
     public List<VentaResumenDto> listarVentasResumenParaWeb() {
@@ -151,27 +164,31 @@ public class VentaService {
     }
 
     public Venta crearVenta(CrearVentaRequest request) {
-        Cliente cliente = clienteService.obtenerPorId(request.getClienteId());
-
         if (request.getItems() == null || request.getItems().isEmpty()) {
             throw new IllegalArgumentException("La venta debe tener al menos un ítem");
         }
 
         Venta venta = new Venta();
-        venta.setCliente(cliente);
+        Cliente cliente = null;
+        if (request.getClienteId() != null) {
+            cliente = clienteService.obtenerPorId(request.getClienteId());
+            venta.setCliente(cliente);
+        }
         String nombreClienteVenta = request.getNombreClienteVenta();
         if (nombreClienteVenta == null || nombreClienteVenta.isBlank()) {
-            StringBuilder sb = new StringBuilder();
-            if (cliente.getNombres() != null) {
-                sb.append(cliente.getNombres());
-            }
-            if (cliente.getApellidos() != null && !cliente.getApellidos().isBlank()) {
-                if (!sb.isEmpty()) {
-                    sb.append(" ");
+            if (cliente != null) {
+                StringBuilder sb = new StringBuilder();
+                if (cliente.getNombres() != null) {
+                    sb.append(cliente.getNombres());
                 }
-                sb.append(cliente.getApellidos());
+                if (cliente.getApellidos() != null && !cliente.getApellidos().isBlank()) {
+                    if (!sb.isEmpty()) sb.append(" ");
+                    sb.append(cliente.getApellidos());
+                }
+                nombreClienteVenta = sb.toString();
+            } else {
+                nombreClienteVenta = "CLIENTE GENERAL";
             }
-            nombreClienteVenta = sb.toString();
         }
         venta.setNombreClienteVenta(nombreClienteVenta);
         venta.setFechaHora(LocalDateTime.now());
@@ -192,8 +209,8 @@ public class VentaService {
         venta.setEstadoSunat("PENDIENTE");
 
         if ("FAC".equals(tipo)) {
-            if (cliente.getTipoDocumento() == null || !"RUC".equalsIgnoreCase(cliente.getTipoDocumento().trim())) {
-                throw new IllegalArgumentException("Para emitir Factura el cliente debe tener RUC (documento de 11 dígitos). Seleccione un cliente con RUC o regístrelo en Clientes.");
+            if (cliente == null || cliente.getTipoDocumento() == null || !"RUC".equalsIgnoreCase(cliente.getTipoDocumento().trim())) {
+                throw new IllegalArgumentException("Para emitir Factura el cliente debe tener RUC. Registre al cliente en la sección Clientes con su RUC antes de emitir una factura.");
             }
         }
 
@@ -206,6 +223,20 @@ public class VentaService {
             Producto producto = productoService.obtenerPorId(itemReq.getProductoId());
             int cantidad = itemReq.getCantidad();
             int stockActual = producto.getStockActual() != null ? producto.getStockActual() : 0;
+
+            if (producto.isRequiereReceta()) {
+                String numeroReceta = itemReq.getNumeroReceta() != null ? itemReq.getNumeroReceta().trim() : "";
+                if (numeroReceta.isBlank()) {
+                    throw new IllegalArgumentException("El producto controlado \"" + producto.getNombre() + "\" requiere número de receta. Indique el número de receta.");
+                }
+                if (digemidService.existeRecetaConNumero(numeroReceta, null)) {
+                    throw new IllegalArgumentException("La receta " + numeroReceta + " ya fue utilizada. No se permite recetas duplicadas para productos controlados.");
+                }
+                int stockControlado = digemidService.stockControladoTotalProducto(producto.getId());
+                if (stockControlado < cantidad) {
+                    throw new IllegalArgumentException("Stock controlado insuficiente para " + producto.getNombre() + " (disponible: " + stockControlado + ").");
+                }
+            }
 
             if (sucursalIdVenta != null) {
                 int stockSucursal = inventarioService.obtenerStockEnSucursal(sucursalIdVenta, producto.getId());
@@ -285,6 +316,36 @@ public class VentaService {
         }
 
         Venta guardada = ventaRepository.save(venta);
+
+        Long almacenIdVenta = sucursalIdVenta != null ? inventarioService.obtenerIdPrimerAlmacenDeSucursal(sucursalIdVenta).orElse(null) : null;
+        List<VentaItem> itemsGuardados = guardada.getItems();
+        for (int idx = 0; idx < itemsGuardados.size(); idx++) {
+            VentaItem vi = itemsGuardados.get(idx);
+            Producto p = vi.getProducto();
+            if (p != null && p.isRequiereReceta()) {
+                ItemVentaRequest itemReq = idx < request.getItems().size() ? request.getItems().get(idx) : null;
+                if (itemReq == null) {
+                    itemReq = request.getItems().stream().filter(i -> p.getId().equals(i.getProductoId())).findFirst().orElse(null);
+                }
+                String numeroReceta = itemReq != null && itemReq.getNumeroReceta() != null ? itemReq.getNumeroReceta().trim() : "";
+                RegistroReceta reg = new RegistroReceta();
+                reg.setNumeroReceta(numeroReceta);
+                reg.setNombreMedico(itemReq != null ? itemReq.getNombreMedico() : null);
+                reg.setCmpMedico(itemReq != null ? itemReq.getCmpMedico() : null);
+                reg.setEspecialidadMedico(itemReq != null ? itemReq.getEspecialidadMedico() : null);
+                reg.setNombrePaciente(itemReq != null ? itemReq.getNombrePaciente() : null);
+                reg.setDocumentoPaciente(itemReq != null ? itemReq.getDocumentoPaciente() : null);
+                reg.setDireccionPaciente(itemReq != null ? itemReq.getDireccionPaciente() : null);
+                reg.setProducto(p);
+                reg.setCantidad(vi.getCantidad() != null ? vi.getCantidad() : 0);
+                reg.setCantidadPrescrita(itemReq != null ? itemReq.getCantidadPrescrita() : null);
+                reg.setVentaId(guardada.getId());
+                reg.setTipoReceta(itemReq != null ? itemReq.getTipoReceta() : p.getTipoReceta());
+                reg = digemidService.guardarRegistroReceta(reg);
+                digemidService.registrarSalidaControlada(p.getId(), almacenIdVenta, vi.getCantidad(), "SALIDA_VENTA",
+                        "Venta #" + guardada.getNumeroComprobante(), guardada.getId(), reg.getId(), null);
+            }
+        }
 
         // Programa de puntos: 1 punto por cada S/10 de consumo (redondeo hacia abajo)
         BigDecimal totalVenta = guardada.getTotal() != null ? guardada.getTotal() : BigDecimal.ZERO;
@@ -366,6 +427,16 @@ public class VentaService {
                         sucursalId.equals(v.getCajaTurno().getSucursal().getId()))
                 .sorted(Comparator.comparing(Venta::getFechaHora).reversed())
                 .toList();
+    }
+
+    public List<Venta> listarVentasEntreFechasConDetalle(LocalDate desde, LocalDate hasta) {
+        LocalDateTime ini = desde.atStartOfDay();
+        LocalDateTime fin = hasta.atTime(java.time.LocalTime.MAX);
+        Long tenantId = TenantContext.getTenantId();
+        if (tenantId != null) {
+            return ventaRepository.findByTenantIdAndFechaBetweenWithDetails(tenantId, ini, fin);
+        }
+        return ventaRepository.findByFechaBetweenWithDetails(ini, fin);
     }
 
     public BigDecimal totalVentasPorSucursalEntreFechas(Long sucursalId, LocalDate desde, LocalDate hasta) {

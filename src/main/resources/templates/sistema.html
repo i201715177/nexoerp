@@ -1,0 +1,137 @@
+﻿<!DOCTYPE html>
+<html lang="es" xmlns:th="http://www.thymeleaf.org" xmlns:sec="http://www.thymeleaf.org/extras/spring-security">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Panel del Sistema - NexoERP</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+    <link rel="stylesheet" th:href="@{/css/app.css}">
+</head>
+<body>
+<div class="app-layout">
+        <div th:replace="~{fragments/sidebar :: sidebar('sistema')}"></div>
+    <div id="sidebarBackdrop" class="sidebar-backdrop"></div>
+    <div class="main-wrapper">
+        <header class="topbar">
+            <button class="btn-sidebar-toggle" onclick="toggleSidebar()"><i class="bi bi-list"></i></button>
+            <h1 class="topbar-title"><i class="bi bi-cpu me-2"></i>Panel del Sistema</h1>
+            <div class="topbar-user" th:if="${usuarioActual != null}">
+                <div class="topbar-user-avatar" th:text="${#strings.toUpperCase(#strings.substring(usuarioActual,0,1))}">A</div>
+                <div>
+                    <span class="topbar-user-name" th:text="${usuarioActual}">admin</span>
+                    <div class="topbar-user-empresa" th:text="${empresaActual != null ? empresaActual.nombre : ''}"></div>
+                </div>
+                <form th:action="@{/logout}" method="post">
+                    <button type="submit" class="btn-logout-top"><i class="bi bi-box-arrow-left"></i> Salir</button>
+                </form>
+            </div>
+        </header>
+
+        <main class="main-content">
+            <div th:if="${mensajeSistema}" class="alert alert-success alert-dismissible fade show"><i class="bi bi-check-circle me-1"></i><span th:text="${mensajeSistema}"></span><button type="button" class="btn-close" data-bs-dismiss="alert"></button></div>
+            <div th:if="${errorSistema}" class="alert alert-danger alert-dismissible fade show"><i class="bi bi-exclamation-triangle me-1"></i><span th:text="${errorSistema}"></span><button type="button" class="btn-close" data-bs-dismiss="alert"></button></div>
+
+            <!-- KPIs del sistema -->
+            <div class="kpi-row">
+                <div class="kpi-card">
+                    <div class="kpi-icon" th:classappend="${sysInfo.healthStatus == 'UP' ? 'green' : 'red'}">
+                        <i th:class="${sysInfo.healthStatus == 'UP' ? 'bi bi-check-circle' : 'bi bi-x-circle'}"></i>
+                    </div>
+                    <div class="kpi-body">
+                        <div class="kpi-label">Estado</div>
+                        <div class="kpi-value" th:text="${sysInfo.healthStatus}">UP</div>
+                    </div>
+                </div>
+                <div class="kpi-card">
+                    <div class="kpi-icon blue"><i class="bi bi-memory"></i></div>
+                    <div class="kpi-body">
+                        <div class="kpi-label">Memoria usada</div>
+                        <div class="kpi-value" th:text="${sysInfo.usedMemoryMb + ' MB'}">0</div>
+                        <small class="text-muted" th:text="'de ' + ${sysInfo.maxMemoryMb} + ' MB'"></small>
+                    </div>
+                </div>
+                <div class="kpi-card">
+                    <div class="kpi-icon yellow"><i class="bi bi-cpu"></i></div>
+                    <div class="kpi-body">
+                        <div class="kpi-label">Procesadores</div>
+                        <div class="kpi-value" th:text="${sysInfo.processors}">0</div>
+                    </div>
+                </div>
+                <div class="kpi-card">
+                    <div class="kpi-icon green"><i class="bi bi-clock-history"></i></div>
+                    <div class="kpi-body">
+                        <div class="kpi-label">Uptime</div>
+                        <div class="kpi-value" th:text="${(sysInfo.uptimeMs / 60000) + ' min'}">0</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="row g-3">
+                <!-- Info del sistema -->
+                <div class="col-lg-6">
+                    <div class="content-card">
+                        <div class="content-card-header"><h3><i class="bi bi-info-circle me-2"></i>Informaci&oacute;n del Sistema</h3></div>
+                        <div class="content-card-body">
+                            <table class="table table-sm mb-0">
+                                <tr><td class="fw-bold">Java</td><td th:text="${sysInfo.javaVersion}">-</td></tr>
+                                <tr><td class="fw-bold">Sistema Operativo</td><td th:text="${sysInfo.os}">-</td></tr>
+                                <tr><td class="fw-bold">Base de datos</td><td th:text="${sysInfo.database}">-</td></tr>
+                                <tr><td class="fw-bold">URL BD</td><td style="font-size:11px;" th:text="${sysInfo.dbUrl}">-</td></tr>
+                                <tr><td class="fw-bold">Memoria libre</td><td th:text="${sysInfo.freeMemoryMb + ' MB'}">-</td></tr>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Cach&eacute; -->
+                <div class="col-lg-6">
+                    <div class="content-card">
+                        <div class="content-card-header d-flex justify-content-between align-items-center">
+                            <h3><i class="bi bi-lightning me-2"></i>Cach&eacute; (Caffeine)</h3>
+                            <form th:action="@{/web/sistema/cache/limpiar}" method="post" class="d-inline">
+                                <button type="submit" class="btn btn-sm btn-outline-warning"><i class="bi bi-trash me-1"></i>Limpiar todo</button>
+                            </form>
+                        </div>
+                        <div class="content-card-body">
+                            <div class="d-flex flex-wrap gap-2">
+                                <span th:each="c : ${cacheNames}" class="badge bg-primary" th:text="${c}">cache</span>
+                            </div>
+                            <p class="text-muted small mt-2 mb-0">Las cach&eacute;s expiran autom&aacute;ticamente cada 5 minutos. M&aacute;ximo 1000 entradas por cach&eacute;.</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Backups -->
+                <div class="col-12">
+                    <div class="content-card">
+                        <div class="content-card-header d-flex justify-content-between align-items-center">
+                            <h3><i class="bi bi-hdd me-2"></i>Backups de Base de Datos</h3>
+                            <form th:action="@{/web/sistema/backup}" method="post" class="d-inline">
+                                <button type="submit" class="btn btn-sm btn-primary"><i class="bi bi-download me-1"></i>Crear backup ahora</button>
+                            </form>
+                        </div>
+                        <div class="content-card-body">
+                            <p class="text-muted small">Backup autom&aacute;tico diario a las 2:00 AM. Se conservan los &uacute;ltimos 30 backups.</p>
+                            <table class="table table-sm table-hover">
+                                <thead><tr><th>Archivo</th><th>Tama&ntilde;o</th><th>Fecha</th></tr></thead>
+                                <tbody>
+                                <tr th:if="${#lists.isEmpty(backups)}"><td colspan="3" class="text-muted">No hay backups a&uacute;n. Cree uno manualmente.</td></tr>
+                                <tr th:each="b : ${backups}">
+                                    <td><i class="bi bi-file-earmark-code me-1"></i><span th:text="${b.nombre}">-</span></td>
+                                    <td th:text="${b.tamanoKb + ' KB'}">-</td>
+                                    <td th:text="${#temporals.format(b.fecha, 'dd/MM/yyyy HH:mm')}">-</td>
+                                </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+</div>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+<script th:src="@{/js/app.js}"></script>
+</body>
+</html>

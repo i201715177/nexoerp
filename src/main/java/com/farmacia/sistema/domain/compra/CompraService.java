@@ -51,6 +51,11 @@ public class CompraService {
                 .orElseThrow(() -> new EntityNotFoundException("Orden de compra no encontrada"));
     }
 
+    public OrdenCompra obtenerOrdenConItems(Long id) {
+        return ordenRepository.findByIdWithItems(id)
+                .orElseThrow(() -> new EntityNotFoundException("Orden de compra no encontrada"));
+    }
+
     public OrdenCompra crearOrden(Long proveedorId, Long productoId, int cantidad, BigDecimal precioUnitario,
                                   LocalDate fechaEsperada, String observaciones) {
         Proveedor proveedor = proveedorService.obtenerPorId(proveedorId);

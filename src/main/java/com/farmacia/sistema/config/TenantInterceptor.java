@@ -56,8 +56,8 @@ public class TenantInterceptor implements HandlerInterceptor {
             Empresa empresa = empresaService.obtenerPorId(tenantId);
             if (!empresa.isActiva()) {
                 log.warn("Empresa suspendida (id={}).", tenantId);
-                // SAAS_ADMIN puede seguir entrando para reactivar desde Admin SaaS
-                if (tieneRolSaasAdmin()) {
+                // GERENTE puede seguir entrando para reactivar desde Admin SaaS
+                if (tieneRolGerente()) {
                     TenantContext.setTenantId(tenantId);
                     return true;
                 }
@@ -95,11 +95,11 @@ public class TenantInterceptor implements HandlerInterceptor {
         return null;
     }
 
-    private boolean tieneRolSaasAdmin() {
+    private boolean tieneRolGerente() {
         Authentication auth = SecurityContextHolder.getContext().getAuthentication();
         if (auth == null || auth.getAuthorities() == null) return false;
         return auth.getAuthorities().stream()
-                .anyMatch(a -> "ROLE_SAAS_ADMIN".equals(a.getAuthority()));
+                .anyMatch(a -> "ROLE_GERENTE".equals(a.getAuthority()));
     }
 
     @Override

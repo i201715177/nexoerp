@@ -1,0 +1,61 @@
+﻿<!DOCTYPE html>
+<html lang="es" xmlns:th="http://www.thymeleaf.org" xmlns:sec="http://www.thymeleaf.org/extras/spring-security">
+<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Cotizaciones - NexoERP</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+<link rel="stylesheet" th:href="@{/css/app.css}"></head>
+<body><div class="app-layout">    <div th:replace="~{fragments/sidebar :: sidebar('cotizaciones')}"></div>
+<div class="main-wrapper"><header class="topbar"><button class="btn-sidebar-toggle" onclick="document.getElementById('sidebar').classList.toggle('show')"><i class="bi bi-list"></i></button><h1 class="topbar-title">Cotizaciones / Proformas</h1></header>
+<main class="main-content">
+<div th:if="${ok}" class="alert alert-success alert-dismissible fade show" role="alert"><span th:text="${ok}"></span><button type="button" class="btn-close" data-bs-dismiss="alert"></button></div>
+<div th:if="${error}" class="alert alert-danger alert-dismissible fade show" role="alert"><span th:text="${error}"></span><button type="button" class="btn-close" data-bs-dismiss="alert"></button></div>
+<!-- Formulario nueva cotización -->
+<div class="content-card mb-3"><div class="content-card-header"><h5>Nueva cotizaci&oacute;n</h5></div><div class="content-card-body">
+<form method="post" th:action="@{/web/cotizaciones}">
+<div class="row g-2 mb-2">
+<div class="col-md-3"><label class="form-label">Cliente</label><select name="clienteId" class="form-select form-select-sm"><option value="">-- Sin cliente --</option><option th:each="c : ${clientes}" th:value="${c.id}" th:text="${c.nombres + ' ' + (c.apellidos != null ? c.apellidos : '')}">-</option></select></div>
+<div class="col-md-3"><label class="form-label">O nombre libre</label><input type="text" name="nombreCliente" class="form-control form-control-sm"></div>
+<div class="col-md-3"><label class="form-label">Vigencia hasta</label><input type="date" name="vigenciaHasta" class="form-control form-control-sm"></div>
+<div class="col-md-3"><label class="form-label">Observaciones</label><input type="text" name="observaciones" class="form-control form-control-sm"></div>
+</div>
+<div id="items-container">
+<div class="row g-2 mb-1 item-row">
+<div class="col-md-4"><select name="productoIds" class="form-select form-select-sm" required><option value="">Producto</option><option th:each="p : ${productos}" th:value="${p.id}" th:text="${p.nombre + ' (S/' + p.precioVenta + ')'}">-</option></select></div>
+<div class="col-md-2"><input type="number" name="cantidades" class="form-control form-control-sm" min="1" value="1" placeholder="Cant." required></div>
+<div class="col-md-2"><input type="number" name="precios" step="0.01" class="form-control form-control-sm" placeholder="Precio"></div>
+<div class="col-md-2"><input type="number" name="descuentos" step="0.01" class="form-control form-control-sm" placeholder="Desc." value="0"></div>
+<div class="col-md-2"><button type="button" class="btn btn-sm btn-outline-success" onclick="agregarItem()"><i class="bi bi-plus"></i></button></div>
+</div></div>
+<button type="submit" class="btn btn-primary btn-sm mt-2"><i class="bi bi-save"></i> Crear cotizaci&oacute;n</button>
+</form></div></div>
+<!-- Lista -->
+<div class="content-card"><div class="content-card-body table-responsive">
+<table class="table table-sm table-hover" style="font-size:12px;"><thead><tr><th>N&ordm;</th><th>Fecha</th><th>Cliente</th><th>Vigencia</th><th>Total</th><th>Estado</th><th>Acciones</th></tr></thead><tbody>
+<tr th:if="${#lists.isEmpty(cotizaciones)}"><td colspan="7" class="text-muted">Sin cotizaciones</td></tr>
+<tr th:each="c : ${cotizaciones}">
+<td><strong th:text="${c.numero}">-</strong></td>
+<td th:text="${c.fecha != null ? #temporals.format(c.fecha, 'dd/MM/yyyy') : '-'}">-</td>
+<td th:text="${c.nombreCliente != null ? c.nombreCliente : '-'}">-</td>
+<td th:text="${c.vigenciaHasta != null ? c.vigenciaHasta : '-'}">-</td>
+<td class="fw-bold">S/ <span th:text="${#numbers.formatDecimal(c.total,1,2)}">0</span></td>
+<td><span class="badge" th:classappend="${c.estado == 'PENDIENTE' ? 'bg-warning' : c.estado == 'ACEPTADA' ? 'bg-success' : c.estado == 'CONVERTIDA' ? 'bg-info' : 'bg-secondary'}" th:text="${c.estado}">-</span></td>
+<td>
+<form th:action="@{/web/cotizaciones/{id}/estado(id=${c.id})}" method="post" class="d-inline">
+<select name="estado" class="form-select form-select-sm d-inline" style="width:auto;" onchange="this.form.submit()">
+<option value="PENDIENTE" th:selected="${c.estado == 'PENDIENTE'}">Pendiente</option>
+<option value="ACEPTADA" th:selected="${c.estado == 'ACEPTADA'}">Aceptada</option>
+<option value="RECHAZADA" th:selected="${c.estado == 'RECHAZADA'}">Rechazada</option>
+<option value="VENCIDA" th:selected="${c.estado == 'VENCIDA'}">Vencida</option>
+</select></form>
+<a th:href="@{/web/cotizaciones/{id}(id=${c.id})}" class="btn btn-xs btn-outline-primary"><i class="bi bi-eye"></i></a>
+</td></tr></tbody></table></div></div>
+</main></div></div>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+<script>
+function agregarItem(){
+    const c=document.querySelector('.item-row').cloneNode(true);
+    c.querySelectorAll('input').forEach(i=>i.value=i.type==='number'&&i.name==='cantidades'?'1':'');
+    c.querySelectorAll('select').forEach(s=>s.selectedIndex=0);
+    document.getElementById('items-container').appendChild(c);
+}
+</script></body></html>

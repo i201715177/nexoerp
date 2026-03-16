@@ -1,0 +1,22 @@
+﻿<!DOCTYPE html>
+<html lang="es" xmlns:th="http://www.thymeleaf.org"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Configuraci&oacute;n - NexoERP</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css"><link rel="stylesheet" th:href="@{/css/app.css}"></head>
+<body><div class="app-layout">    <div th:replace="~{fragments/sidebar :: sidebar('configuracion')}"></div>
+<div class="main-wrapper"><header class="topbar"><h1 class="topbar-title">Configuraci&oacute;n de Empresa</h1></header>
+<main class="main-content">
+<div th:if="${ok}" class="alert alert-success"><span th:text="${ok}"></span></div>
+<div class="content-card"><div class="content-card-body">
+<form method="post" th:action="@{/web/configuracion}">
+<div class="row g-3">
+<div class="col-md-6"><label class="form-label">Nombre de la empresa</label><input type="text" name="nombre" class="form-control" th:value="${empresa.nombre}" required></div>
+<div class="col-md-3"><label class="form-label">Tipo de documento</label><select name="tipoDocumento" class="form-select"><option value="RUC" th:selected="${empresa.tipoDocumento == 'RUC'}">RUC</option><option value="DNI" th:selected="${empresa.tipoDocumento == 'DNI'}">DNI</option></select></div>
+<div class="col-md-3"><label class="form-label">RUC / N&ordm; documento</label><input type="text" name="ruc" class="form-control" th:value="${empresa.ruc}"></div>
+<div class="col-md-6"><label class="form-label">Direcci&oacute;n</label><input type="text" name="direccion" class="form-control" th:value="${empresa.direccion}"></div>
+<div class="col-md-3"><label class="form-label">Tel&eacute;fono</label><input type="text" name="telefono" class="form-control" th:value="${empresa.telefono}"></div>
+<div class="col-md-3"><label class="form-label">Email contacto</label><input type="email" name="emailContacto" class="form-control" th:value="${empresa.emailContacto}"></div>
+<div class="col-md-12"><label class="form-label">Descripci&oacute;n</label><textarea name="descripcion" class="form-control" rows="2" th:text="${empresa.descripcion}"></textarea></div>
+</div>
+<button type="submit" class="btn btn-primary mt-3"><i class="bi bi-save"></i> Guardar cambios</button>
+</form></div></div>
+</main></div></div>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script></body></html>

@@ -57,18 +57,35 @@ public class SecurityConfig {
                         .requestMatchers("/css/**", "/js/**", "/images/**").permitAll()
                         .requestMatchers("/swagger-ui.html", "/swagger-ui/**", "/v3/api-docs/**").permitAll()
                         .requestMatchers("/actuator/health", "/actuator/info").permitAll()
-                        .requestMatchers("/actuator/**").hasRole("SAAS_ADMIN")
                         .requestMatchers("/api/auth/**").permitAll()
+                        .requestMatchers("/api/temperatura/lectura").permitAll()
                         .requestMatchers("/solicitar-suscripcion", "/solicitar-suscripcion/**").permitAll()
-                        .requestMatchers("/web/admin/**").hasAnyRole("SAAS_ADMIN", "GERENTE")
-                        .requestMatchers("/web/compras/**").hasAnyRole("ADMIN", "SAAS_ADMIN")
-                        .requestMatchers("/web/proveedores/**").hasAnyRole("ADMIN", "SAAS_ADMIN")
-                        .requestMatchers("/web/finanzas/**").hasAnyRole("ADMIN", "SAAS_ADMIN")
-                        .requestMatchers("/web/sucursales/**").hasAnyRole("ADMIN", "SAAS_ADMIN")
-                        .requestMatchers("/web/auditoria/**").hasAnyRole("ADMIN", "SAAS_ADMIN")
-                        .requestMatchers("/web/facturacion-electronica/**").hasAnyRole("ADMIN", "SAAS_ADMIN")
-                        .requestMatchers("/web/guias-remision/**").hasAnyRole("ADMIN", "SAAS_ADMIN")
-                        .requestMatchers("/web/**").hasAnyRole("ADMIN", "SAAS_ADMIN", "VENDEDOR")
+                        /* Solo GERENTE (dueño): Admin SaaS, Usuarios, Mi Empresa, Actuator */
+                        .requestMatchers("/actuator/**").hasRole("GERENTE")
+                        .requestMatchers("/web/admin/**").hasRole("GERENTE")
+                        .requestMatchers("/web/usuarios/**").hasRole("GERENTE")
+                        .requestMatchers("/web/configuracion/**").hasRole("GERENTE")
+                        /* Sucursales: ADMIN y GERENTE (VENDEDOR no) */
+                        .requestMatchers("/web/sucursales/**").hasAnyRole("ADMIN", "GERENTE")
+                        /* Resto gestión: ADMIN, GERENTE, VENDEDOR (+ QF/AUDITOR donde aplique) */
+                        .requestMatchers("/web/compras/**").hasAnyRole("ADMIN", "GERENTE", "VENDEDOR")
+                        .requestMatchers("/web/proveedores/**").hasAnyRole("ADMIN", "GERENTE", "VENDEDOR")
+                        .requestMatchers("/web/finanzas/**").hasAnyRole("ADMIN", "GERENTE", "VENDEDOR")
+                        .requestMatchers("/web/auditoria/**").hasAnyRole("ADMIN", "GERENTE", "VENDEDOR", "AUDITOR")
+                        .requestMatchers("/web/facturacion-electronica/**").hasAnyRole("ADMIN", "GERENTE", "VENDEDOR")
+                        .requestMatchers("/web/sunat-config/**").hasAnyRole("ADMIN", "GERENTE", "VENDEDOR")
+                        .requestMatchers("/web/guias-remision/**").hasAnyRole("ADMIN", "GERENTE", "VENDEDOR")
+                        .requestMatchers("/web/devoluciones-proveedor/**").hasAnyRole("ADMIN", "GERENTE", "VENDEDOR")
+                        .requestMatchers("/web/catalogos/**").hasAnyRole("ADMIN", "GERENTE", "VENDEDOR")
+                        .requestMatchers("/web/listas-precio/**").hasAnyRole("ADMIN", "GERENTE", "VENDEDOR")
+                        .requestMatchers("/web/backup/**").hasAnyRole("ADMIN", "GERENTE", "VENDEDOR")
+                        .requestMatchers("/web/sistema/**").hasAnyRole("ADMIN", "GERENTE", "VENDEDOR")
+                        .requestMatchers("/web/inventario-fisico/**").hasAnyRole("ADMIN", "GERENTE", "VENDEDOR", "QUIMICO_FARMACEUTICO")
+                        .requestMatchers("/web/digemid/**").hasAnyRole("ADMIN", "GERENTE", "VENDEDOR", "QUIMICO_FARMACEUTICO", "AUDITOR")
+                        .requestMatchers("/web/mermas/**").hasAnyRole("ADMIN", "GERENTE", "VENDEDOR", "QUIMICO_FARMACEUTICO", "AUDITOR")
+                        .requestMatchers("/api/digemid/**").hasAnyRole("ADMIN", "GERENTE", "VENDEDOR", "QUIMICO_FARMACEUTICO", "AUDITOR")
+                        .requestMatchers("/api/mermas/**").hasAnyRole("ADMIN", "GERENTE", "VENDEDOR", "QUIMICO_FARMACEUTICO", "AUDITOR")
+                        .requestMatchers("/web/**").hasAnyRole("ADMIN", "GERENTE", "VENDEDOR", "QUIMICO_FARMACEUTICO", "AUDITOR")
                         .requestMatchers("/api/**").authenticated()
                         .anyRequest().authenticated()
                 )
@@ -102,16 +119,7 @@ public class SecurityConfig {
                 if (authentication.getPrincipal() instanceof TenantUserDetails tud) {
                     request.getSession().setAttribute("TENANT_ID", tud.getTenantId());
                 }
-                // Gerente solo ve Admin SaaS, Facturación y Solicitudes → ir directo ahí
-                boolean esSoloGerente = authentication.getAuthorities().stream()
-                        .anyMatch(a -> "ROLE_GERENTE".equals(a.getAuthority()))
-                        && authentication.getAuthorities().stream()
-                        .noneMatch(a -> "ROLE_SAAS_ADMIN".equals(a.getAuthority()));
-                if (esSoloGerente) {
-                    response.sendRedirect(request.getContextPath() + "/web/admin/solicitudes");
-                    return;
-                }
-                response.sendRedirect(request.getContextPath() + "/web/productos");
+                response.sendRedirect(request.getContextPath() + "/web/dashboard");
             }
         };
     }
@@ -124,15 +132,7 @@ public class SecurityConfig {
     @Bean
     public AccessDeniedHandler accessDeniedHandler() {
         return (request, response, accessDeniedException) -> {
-            String contextPath = request.getContextPath();
-            org.springframework.security.core.Authentication auth =
-                    org.springframework.security.core.context.SecurityContextHolder.getContext().getAuthentication();
-            boolean esSoloGerente = auth != null && auth.getAuthorities() != null
-                    && auth.getAuthorities().stream().anyMatch(a -> "ROLE_GERENTE".equals(a.getAuthority()))
-                    && auth.getAuthorities().stream().noneMatch(a -> "ROLE_SAAS_ADMIN".equals(a.getAuthority()));
-            String redirectUrl = esSoloGerente
-                    ? contextPath + "/web/admin/solicitudes?error=sin_permiso"
-                    : contextPath + "/web/productos?error=sin_permiso";
+            String redirectUrl = request.getContextPath() + "/web/dashboard?error=sin_permiso";
             response.sendRedirect(redirectUrl);
         };
     }

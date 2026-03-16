@@ -1,0 +1,227 @@
+﻿<!DOCTYPE html>
+<html lang="es" xmlns:th="http://www.thymeleaf.org" xmlns:sec="http://www.thymeleaf.org/extras/spring-security">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Mermas - NexoERP</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+    <link rel="stylesheet" th:href="@{/css/app.css}">
+</head>
+<body>
+<div class="app-layout">
+        <div th:replace="~{fragments/sidebar :: sidebar('mermas')}"></div>
+    <div id="sidebarBackdrop" class="sidebar-backdrop"></div>
+
+    <div class="main-wrapper">
+        <header class="topbar">
+            <button class="btn-sidebar-toggle" onclick="toggleSidebar()"><i class="bi bi-list"></i></button>
+            <h1 class="topbar-title">Registro de Merma de Inventario</h1>
+            <div class="topbar-actions">
+                <a class="btn btn-sm btn-outline-primary" th:href="@{/web/mermas/reportes/por-periodo}"><i class="bi bi-calendar-range me-1"></i> Reporte por periodo</a>
+                <a class="btn btn-sm btn-outline-secondary" th:href="@{/web/mermas/reportes/por-producto}"><i class="bi bi-box-seam me-1"></i> Reporte por producto</a>
+            </div>
+            <div class="topbar-user" th:if="${usuarioActual != null}">
+                <div class="topbar-user-avatar" th:text="${#strings.toUpperCase(#strings.substring(usuarioActual,0,1))}">A</div>
+                <div>
+                    <span class="topbar-user-name" th:text="${usuarioActual}">admin</span>
+                    <div class="topbar-user-empresa" th:text="${empresaActual != null ? empresaActual.nombre : ''}"></div>
+                </div>
+                <form th:action="@{/logout}" method="post">
+                    <button type="submit" class="btn-logout-top"><i class="bi bi-box-arrow-left"></i> Salir</button>
+                </form>
+            </div>
+        </header>
+
+        <main class="main-content">
+            <div th:if="${mensajeMerma}" class="alert alert-success alert-dismissible fade show"><span th:text="${mensajeMerma}"></span><button type="button" class="btn-close" data-bs-dismiss="alert"></button></div>
+            <div th:if="${errorMerma}" class="alert alert-danger alert-dismissible fade show"><span th:text="${errorMerma}"></span><button type="button" class="btn-close" data-bs-dismiss="alert"></button></div>
+
+            <!-- KPIs -->
+            <div class="kpi-row">
+                <div class="kpi-card">
+                    <div class="kpi-icon blue"><i class="bi bi-clipboard-data"></i></div>
+                    <div class="kpi-body">
+                        <div class="kpi-label">Total registros</div>
+                        <div class="kpi-value" th:text="${resumen != null ? resumen.get('totalRegistros') : 0}">0</div>
+                    </div>
+                </div>
+                <div class="kpi-card">
+                    <div class="kpi-icon red"><i class="bi bi-dash-circle"></i></div>
+                    <div class="kpi-body">
+                        <div class="kpi-label">Unidades perdidas</div>
+                        <div class="kpi-value" th:text="${resumen != null ? resumen.get('totalUnidades') : 0}">0</div>
+                    </div>
+                </div>
+                <div class="kpi-card">
+                    <div class="kpi-icon orange"><i class="bi bi-currency-dollar"></i></div>
+                    <div class="kpi-body">
+                        <div class="kpi-label">Costo total estimado</div>
+                        <div class="kpi-value" th:text="${resumen != null ? resumen.get('costoTotal') : 0}">0</div>
+                    </div>
+                </div>
+                <div class="kpi-card">
+                    <div class="kpi-icon yellow"><i class="bi bi-calendar-event"></i></div>
+                    <div class="kpi-body">
+                        <div class="kpi-label">Pr&oacute;ximos a vencer</div>
+                        <div class="kpi-value" th:text="${resumen != null ? resumen.get('proximosVencer') : 0}">0</div>
+                    </div>
+                </div>
+                <div class="kpi-card">
+                    <div class="kpi-icon red"><i class="bi bi-exclamation-triangle"></i></div>
+                    <div class="kpi-body">
+                        <div class="kpi-label">Lotes con exceso</div>
+                        <div class="kpi-value" th:text="${resumen != null ? resumen.get('excesoLotes') : 0}">0</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Alertas -->
+            <div th:if="${proximosVencer != null and !#lists.isEmpty(proximosVencer)}" class="alert alert-warning">
+                <i class="bi bi-calendar-event me-1"></i> <strong>Productos pr&oacute;ximos a vencer (30 d&iacute;as):</strong>
+                <ul class="mb-0 mt-1" style="font-size:13px;">
+                    <li th:each="p : ${proximosVencer}" th:text="${p.nombre + ' - Lote: ' + (p.lote != null ? p.lote : 'S/L') + ' - Vence: ' + (p.fechaVencimiento != null ? #temporals.format(p.fechaVencimiento) : '?') + ' - Stock: ' + p.stockActual}">-</li>
+                </ul>
+            </div>
+            <div th:if="${excesoLotes != null and !#lists.isEmpty(excesoLotes)}" class="alert alert-danger">
+                <i class="bi bi-exclamation-triangle me-1"></i> <strong>Exceso de mermas en lotes:</strong>
+                <ul class="mb-0 mt-1" style="font-size:13px;">
+                    <li th:each="a : ${excesoLotes}" th:text="'Lote ' + a.get('lote') + ': ' + a.get('totalMerma') + ' unidades en ' + a.get('registros') + ' registros'">-</li>
+                </ul>
+            </div>
+
+            <!-- Formulario de registro de merma -->
+            <div class="content-card">
+                <div class="content-card-header">
+                    <h3><i class="bi bi-dash-circle me-2"></i>Registrar merma</h3>
+                </div>
+                <div class="content-card-body">
+                    <form th:action="@{/web/mermas/registrar}" method="post">
+                        <div class="row g-2">
+                            <div class="col-md-3">
+                                <label class="form-label">Producto *</label>
+                                <select name="productoId" id="productoSelect" class="form-select form-select-sm" required>
+                                    <option value="">Seleccione...</option>
+                                    <option th:each="p : ${productos}" th:value="${p.id}"
+                                            th:data-stock="${p.stockActual}" th:data-lote="${p.lote}"
+                                            th:data-vencimiento="${p.fechaVencimiento}" th:data-controlado="${p.requiereReceta}"
+                                            th:text="${p.codigo + ' - ' + p.nombre + ' (Stock: ' + p.stockActual + ')'}">Producto</option>
+                                </select>
+                            </div>
+                            <div class="col-md-2">
+                                <label class="form-label">Almac&eacute;n</label>
+                                <select name="almacenId" class="form-select form-select-sm">
+                                    <option value="">-- Global --</option>
+                                    <option th:each="a : ${almacenes}" th:value="${a.id}" th:text="${a.nombre}">Almac&eacute;n</option>
+                                </select>
+                            </div>
+                            <div class="col-md-2"><label class="form-label">Lote</label><input type="text" name="lote" id="loteInput" class="form-control form-control-sm"></div>
+                            <div class="col-md-1"><label class="form-label">Cantidad *</label><input type="number" name="cantidad" class="form-control form-control-sm" min="1" required></div>
+                            <div class="col-md-2">
+                                <label class="form-label">Tipo de merma *</label>
+                                <select name="tipoMerma" class="form-select form-select-sm">
+                                    <option th:each="t : ${tiposMerma}" th:value="${t}" th:text="${t}">OTRO</option>
+                                </select>
+                            </div>
+                            <div class="col-md-2"><label class="form-label">Motivo</label><input type="text" name="motivo" class="form-control form-control-sm" placeholder="Detalle breve"></div>
+                        </div>
+                        <div class="row g-2 mt-1">
+                            <div class="col-md-4"><label class="form-label">Observaciones</label><textarea name="observaciones" class="form-control form-control-sm" rows="1" placeholder="Comentario o detalle del incidente"></textarea></div>
+                            <div class="col-md-2"><label class="form-label">Stock actual</label><input type="text" id="stockActualDisplay" class="form-control form-control-sm" readonly></div>
+                            <div class="col-md-2"><label class="form-label">F. vencimiento</label><input type="text" id="vencimientoDisplay" class="form-control form-control-sm" readonly></div>
+                        </div>
+
+                        <!-- Campos adicionales para productos controlados -->
+                        <div id="camposControlados" style="display:none;" class="mt-2 p-2 border rounded bg-light">
+                            <small class="text-danger fw-bold"><i class="bi bi-shield-check me-1"></i>Producto controlado - Campos obligatorios DIGEMID</small>
+                            <div class="row g-2 mt-1">
+                                <div class="col-md-3"><label class="form-label">Responsable autorizado</label><input type="text" name="responsableAutorizado" class="form-control form-control-sm"></div>
+                                <div class="col-md-3"><label class="form-label">Aprobaci&oacute;n Qu&iacute;mico Farmac&eacute;utico</label><input type="text" name="aprobacionQF" class="form-control form-control-sm"></div>
+                                <div class="col-md-3"><label class="form-label">Acta de destrucci&oacute;n</label><input type="text" name="actaDestruccion" class="form-control form-control-sm" placeholder="N&ordm; acta"></div>
+                                <div class="col-md-3"><label class="form-label">N&ordm; reporte</label><input type="text" name="numeroReporte" class="form-control form-control-sm"></div>
+                            </div>
+                        </div>
+
+                        <div class="mt-2">
+                            <button type="submit" class="btn btn-primary btn-sm"><i class="bi bi-check-lg me-1"></i> Registrar merma</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            <!-- Filtro y listado -->
+            <div class="content-card mt-3">
+                <div class="content-card-header d-flex justify-content-between align-items-center flex-wrap gap-2">
+                    <h3><i class="bi bi-list-ul me-2"></i>Historial de mermas</h3>
+                    <form method="get" th:action="@{/web/mermas}" class="d-flex gap-2 flex-wrap">
+                        <select name="tipo" class="form-select form-select-sm" style="width:auto;">
+                            <option value="">Todos los tipos</option>
+                            <option th:each="t : ${tiposMerma}" th:value="${t}" th:selected="${tipoFiltro == t}" th:text="${t}">OTRO</option>
+                        </select>
+                        <input type="date" name="desde" class="form-control form-control-sm" style="width:auto;" th:value="${desde != null ? #temporals.format(desde, 'yyyy-MM-dd') : ''}" placeholder="Desde">
+                        <input type="date" name="hasta" class="form-control form-control-sm" style="width:auto;" th:value="${hasta != null ? #temporals.format(hasta, 'yyyy-MM-dd') : ''}" placeholder="Hasta">
+                        <button type="submit" class="btn btn-sm btn-outline-secondary"><i class="bi bi-funnel me-1"></i> Filtrar</button>
+                    </form>
+                </div>
+                <div class="content-card-body table-responsive">
+                    <table class="table table-sm table-hover" style="font-size:12px;">
+                        <thead>
+                        <tr>
+                            <th>N&ordm; Merma</th>
+                            <th>Fecha</th>
+                            <th>Producto</th>
+                            <th>Lote</th>
+                            <th>Almac&eacute;n</th>
+                            <th>Cantidad</th>
+                            <th>Stock antes</th>
+                            <th>Stock despu&eacute;s</th>
+                            <th>Tipo</th>
+                            <th>Motivo</th>
+                            <th>Costo est.</th>
+                            <th>Usuario</th>
+                            <th>Controlado</th>
+                        </tr>
+                        </thead>
+                        <tbody>
+                        <tr th:if="${#lists.isEmpty(mermas)}"><td colspan="13" class="text-muted">No hay mermas registradas.</td></tr>
+                        <tr th:each="m : ${mermas}">
+                            <td><strong th:text="${m.numeroMerma != null ? m.numeroMerma : '-'}">-</strong></td>
+                            <td th:text="${m.fechaRegistro != null ? #temporals.format(m.fechaRegistro) : '-'}">-</td>
+                            <td th:text="${m.producto != null ? m.producto.nombre : '-'}">-</td>
+                            <td th:text="${m.lote != null ? m.lote : '-'}">-</td>
+                            <td th:text="${m.almacen != null ? m.almacen.nombre : '-'}">-</td>
+                            <td th:text="${m.cantidad}">0</td>
+                            <td th:text="${m.stockAntes != null ? m.stockAntes : '-'}">-</td>
+                            <td th:text="${m.stockDespues != null ? m.stockDespues : '-'}">-</td>
+                            <td><span class="badge bg-secondary" th:text="${m.tipoMerma}">-</span></td>
+                            <td th:text="${m.motivo != null ? m.motivo : '-'}">-</td>
+                            <td th:text="${m.costoEstimado != null ? m.costoEstimado : '-'}">-</td>
+                            <td th:text="${m.usuarioRegistro != null ? m.usuarioRegistro : '-'}">-</td>
+                            <td>
+                                <span th:if="${m.esControlado}" class="badge bg-info">S&iacute;</span>
+                                <span th:unless="${m.esControlado}" class="text-muted">No</span>
+                                <small th:if="${m.actaDestruccion != null}" class="d-block text-danger" th:text="'Acta: ' + ${m.actaDestruccion}"></small>
+                                <a th:if="${m.esControlado}" th:href="@{/web/mermas/acta-destruccion/{id}(id=${m.id})}" class="btn btn-xs btn-outline-danger mt-1" style="font-size:10px;padding:1px 6px;"><i class="bi bi-printer"></i> Acta</a>
+                            </td>
+                        </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </main>
+    </div>
+</div>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+<script th:src="@{/js/app.js}"></script>
+<script>
+document.getElementById('productoSelect')?.addEventListener('change', function() {
+    var opt = this.options[this.selectedIndex];
+    document.getElementById('stockActualDisplay').value = opt.dataset.stock || '';
+    document.getElementById('loteInput').value = opt.dataset.lote || '';
+    document.getElementById('vencimientoDisplay').value = opt.dataset.vencimiento || '';
+    var controlado = opt.dataset.controlado === 'true';
+    document.getElementById('camposControlados').style.display = controlado ? 'block' : 'none';
+});
+</script>
+</body>
+</html>

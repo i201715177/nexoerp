@@ -28,7 +28,7 @@ import static com.farmacia.sistema.domain.auditoria.AuditoriaService.nuevoCambio
 
 @Controller
 @RequestMapping("/web/proveedores")
-@PreAuthorize("hasAnyRole('ADMIN', 'SAAS_ADMIN')")
+@PreAuthorize("hasAnyRole('ADMIN', 'GERENTE', 'VENDEDOR')")
 public class ProveedorWebController {
 
     private final ProveedorService proveedorService;

@@ -9,7 +9,6 @@ import com.farmacia.sistema.domain.producto.Producto;
 import com.farmacia.sistema.domain.producto.ProductoRepository;
 import com.farmacia.sistema.domain.sucursal.Sucursal;
 import com.farmacia.sistema.domain.sucursal.SucursalRepository;
-import com.farmacia.sistema.domain.usuario.UsuarioService;
 import com.farmacia.sistema.tenant.TenantContext;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -33,7 +32,6 @@ public class InicializarAlmacenRunner implements ApplicationRunner {
     private final ProductoRepository productoRepository;
     private final SucursalRepository sucursalRepository;
     private final EmpresaService empresaService;
-    private final UsuarioService usuarioService;
     private final JdbcTemplate jdbcTemplate;
 
     public InicializarAlmacenRunner(AlmacenRepository almacenRepository,
@@ -41,14 +39,12 @@ public class InicializarAlmacenRunner implements ApplicationRunner {
                                     @Lazy ProductoRepository productoRepository,
                                     SucursalRepository sucursalRepository,
                                     EmpresaService empresaService,
-                                    UsuarioService usuarioService,
                                     JdbcTemplate jdbcTemplate) {
         this.almacenRepository = almacenRepository;
         this.stockAlmacenRepository = stockAlmacenRepository;
         this.productoRepository = productoRepository;
         this.sucursalRepository = sucursalRepository;
         this.empresaService = empresaService;
-        this.usuarioService = usuarioService;
         this.jdbcTemplate = jdbcTemplate;
     }
 
@@ -58,10 +54,6 @@ public class InicializarAlmacenRunner implements ApplicationRunner {
         Long tenantId = empresaService.empresaPorDefecto().getId();
         TenantContext.setTenantId(tenantId);
         try {
-            usuarioService.crearSiNoExiste("admin", "admin123",
-                    "Administrador del Sistema", "SAAS_ADMIN", tenantId);
-            usuarioService.actualizarRolSiDifiere("admin", "SAAS_ADMIN");
-            log.info("Usuario SAAS_ADMIN verificado para tenant {}", tenantId);
             runInicializacion();
         } finally {
             TenantContext.clear();

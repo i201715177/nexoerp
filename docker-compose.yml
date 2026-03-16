@@ -1,65 +1,52 @@
-version: "3.9"
+version: '3.8'
 
 services:
   app:
     build: .
-    container_name: nexoerp-app
+    container_name: nexoerp
     ports:
-      - "8080:8080"
+      - "8082:8082"
     environment:
-      - SPRING_PROFILES_ACTIVE=docker
-      - JAVA_OPTS=-Xmx512m -Xms256m -XX:+UseG1GC
-      - APP_SECURITY_JWT_SECRET=${APP_SECURITY_JWT_SECRET:-ZmFybWFjaWEtc2lzdGVtYS1zZWNyZXRvLWxhcmdvLWxhcmdvLWxhcmdvLWxhcmdv}
-    depends_on:
-      - redis
+      - SPRING_PROFILES_ACTIVE=postgres
+      - SPRING_DATASOURCE_URL=jdbc:postgresql://db:5432/nexoerp
+      - SPRING_DATASOURCE_USERNAME=nexoerp
+      - SPRING_DATASOURCE_PASSWORD=nexoerp_secret
+      - SPRING_JPA_DATABASE_PLATFORM=org.hibernate.dialect.PostgreSQLDialect
+      - APP_SECURITY_JWT_SECRET=clave-super-secreta-produccion-cambiar-esto
+      - JAVA_OPTS=-Xms256m -Xmx512m
     volumes:
-      - nexoerp-logs:/app/logs
-      - nexoerp-data:/app/data
+      - app-logs:/app/logs
+      - app-backups:/app/backups
+    depends_on:
+      db:
+        condition: service_healthy
     restart: unless-stopped
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8080/actuator/health"]
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:8082/actuator/health"]
       interval: 30s
       timeout: 5s
       retries: 3
+      start_period: 60s
 
-  redis:
-    image: redis:7-alpine
-    container_name: nexoerp-redis
-    restart: unless-stopped
-
-  nginx:
-    image: nginx:alpine
-    container_name: nexoerp-nginx
-    depends_on:
-      - app
-    ports:
-      - "80:80"
-      - "443:443"
+  db:
+    image: postgres:16-alpine
+    container_name: nexoerp-db
+    environment:
+      - POSTGRES_DB=nexoerp
+      - POSTGRES_USER=nexoerp
+      - POSTGRES_PASSWORD=nexoerp_secret
     volumes:
-      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
-    restart: unless-stopped
-
-  prometheus:
-    image: prom/prometheus:latest
-    container_name: nexoerp-prometheus
-    depends_on:
-      - app
+      - postgres-data:/var/lib/postgresql/data
     ports:
-      - "9090:9090"
-    volumes:
-      - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml:ro
-    restart: unless-stopped
-
-  grafana:
-    image: grafana/grafana:latest
-    container_name: nexoerp-grafana
-    depends_on:
-      - prometheus
-    ports:
-      - "3000:3000"
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U nexoerp"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
     restart: unless-stopped
 
 volumes:
-  nexoerp-logs:
-  nexoerp-data:
-
+  postgres-data:
+  app-logs:
+  app-backups:

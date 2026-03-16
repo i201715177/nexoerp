@@ -1,0 +1,614 @@
+﻿<!DOCTYPE html>
+<html lang="es" xmlns:th="http://www.thymeleaf.org" xmlns:sec="http://www.thymeleaf.org/extras/spring-security">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Control DIGEMID - NexoERP</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+    <link rel="stylesheet" th:href="@{/css/app.css}">
+</head>
+<body>
+<div class="app-layout">
+        <div th:replace="~{fragments/sidebar :: sidebar('digemid')}"></div>
+    <div id="sidebarBackdrop" class="sidebar-backdrop"></div>
+
+    <div class="main-wrapper">
+        <header class="topbar">
+            <button class="btn-sidebar-toggle" onclick="toggleSidebar()"><i class="bi bi-list"></i></button>
+            <h1 class="topbar-title">Control DIGEMID - Productos controlados</h1>
+            <div class="topbar-actions">
+                <a class="btn btn-sm btn-outline-primary" th:href="@{/web/digemid/reportes/movimientos}"><i class="bi bi-journal-text me-1"></i> Movimientos</a>
+                <a class="btn btn-sm btn-outline-secondary" th:href="@{/web/digemid/reportes/recetas}"><i class="bi bi-file-medical me-1"></i> Recetas</a>
+                <a class="btn btn-sm btn-outline-info" th:href="@{/web/digemid/reportes/psicotropicos}"><i class="bi bi-capsule me-1"></i> Psicotr&oacute;picos</a>
+                <a class="btn btn-sm btn-outline-warning" th:href="@{/web/digemid/reportes/estupefacientes}"><i class="bi bi-capsule me-1"></i> Estupefacientes</a>
+                <a class="btn btn-sm btn-outline-success" th:href="@{/web/digemid/reportes/lotes}"><i class="bi bi-boxes me-1"></i> Lotes</a>
+                <a class="btn btn-sm btn-outline-dark" th:href="@{/web/digemid/reportes/distribucion}"><i class="bi bi-truck me-1"></i> Distribuci&oacute;n</a>
+            </div>
+            <div class="topbar-user" th:if="${usuarioActual != null}">
+                <div class="topbar-user-avatar" th:text="${#strings.toUpperCase(#strings.substring(usuarioActual,0,1))}">A</div>
+                <div>
+                    <span class="topbar-user-name" th:text="${usuarioActual}">admin</span>
+                    <div class="topbar-user-empresa" th:text="${empresaActual != null ? empresaActual.nombre : ''}"></div>
+                </div>
+                <form th:action="@{/logout}" method="post">
+                    <button type="submit" class="btn-logout-top"><i class="bi bi-box-arrow-left"></i> Salir</button>
+                </form>
+            </div>
+        </header>
+
+        <main class="main-content">
+            <div th:if="${mensajeReceta}" class="alert alert-success alert-dismissible fade show"><span th:text="${mensajeReceta}"></span><button type="button" class="btn-close" data-bs-dismiss="alert"></button></div>
+            <div th:if="${errorReceta}" class="alert alert-danger alert-dismissible fade show"><span th:text="${errorReceta}"></span><button type="button" class="btn-close" data-bs-dismiss="alert"></button></div>
+            <div th:if="${mensajeDigemid}" class="alert alert-success alert-dismissible fade show"><span th:text="${mensajeDigemid}"></span><button type="button" class="btn-close" data-bs-dismiss="alert"></button></div>
+            <div th:if="${errorDigemid}" class="alert alert-danger alert-dismissible fade show"><span th:text="${errorDigemid}"></span><button type="button" class="btn-close" data-bs-dismiss="alert"></button></div>
+
+            <!-- KPIs clickeables -->
+            <div class="kpi-row">
+                <div class="kpi-card" style="cursor:pointer;transition:transform .15s,box-shadow .15s;" onclick="togglePanel('panelTodos')" onmouseover="this.style.transform='translateY(-3px)';this.style.boxShadow='0 6px 20px rgba(0,0,0,.15)'" onmouseout="this.style.transform='';this.style.boxShadow=''">
+                    <div class="kpi-icon blue"><i class="bi bi-capsule"></i></div>
+                    <div class="kpi-body">
+                        <div class="kpi-label">Productos controlados</div>
+                        <div class="kpi-value" th:text="${alertas != null ? alertas.get('productosControlados') : #lists.size(productosControlados)}">0</div>
+                        <small class="text-primary" style="font-size:10px;"><i class="bi bi-hand-index me-1"></i>Clic para ver</small>
+                    </div>
+                </div>
+                <div class="kpi-card" style="cursor:pointer;transition:transform .15s,box-shadow .15s;" onclick="togglePanel('panelStockBajo')" onmouseover="this.style.transform='translateY(-3px)';this.style.boxShadow='0 6px 20px rgba(0,0,0,.15)'" onmouseout="this.style.transform='';this.style.boxShadow=''">
+                    <div class="kpi-icon yellow"><i class="bi bi-exclamation-triangle"></i></div>
+                    <div class="kpi-body">
+                        <div class="kpi-label">Stock controlado bajo</div>
+                        <div class="kpi-value" th:text="${alertas != null ? alertas.get('productosControladosStockBajo') : 0}">0</div>
+                        <small class="text-warning" style="font-size:10px;"><i class="bi bi-hand-index me-1"></i>Clic para ver</small>
+                    </div>
+                </div>
+                <div class="kpi-card" style="cursor:pointer;transition:transform .15s,box-shadow .15s;" onclick="togglePanel('panelPorVencer')" onmouseover="this.style.transform='translateY(-3px)';this.style.boxShadow='0 6px 20px rgba(0,0,0,.15)'" onmouseout="this.style.transform='';this.style.boxShadow=''">
+                    <div class="kpi-icon orange"><i class="bi bi-calendar-event"></i></div>
+                    <div class="kpi-body">
+                        <div class="kpi-label">Por vencer (30 d&iacute;as)</div>
+                        <div class="kpi-value" th:text="${alertas != null ? alertas.get('porVencer') : #lists.size(porVencer)}">0</div>
+                        <small class="text-warning" style="font-size:10px;"><i class="bi bi-hand-index me-1"></i>Clic para ver</small>
+                    </div>
+                </div>
+                <div class="kpi-card" style="cursor:pointer;transition:transform .15s,box-shadow .15s;" onclick="togglePanel('panelVencidos')" onmouseover="this.style.transform='translateY(-3px)';this.style.boxShadow='0 6px 20px rgba(0,0,0,.15)'" onmouseout="this.style.transform='';this.style.boxShadow=''">
+                    <div class="kpi-icon red"><i class="bi bi-calendar-x"></i></div>
+                    <div class="kpi-body">
+                        <div class="kpi-label">Vencidos</div>
+                        <div class="kpi-value" th:text="${alertas != null ? alertas.get('vencidos') : #lists.size(vencidos)}">0</div>
+                        <small class="text-danger" style="font-size:10px;"><i class="bi bi-hand-index me-1"></i>Clic para ver</small>
+                    </div>
+                </div>
+                <div class="kpi-card" style="cursor:pointer;transition:transform .15s,box-shadow .15s;" onclick="togglePanel('panelExceso')" onmouseover="this.style.transform='translateY(-3px)';this.style.boxShadow='0 6px 20px rgba(0,0,0,.15)'" onmouseout="this.style.transform='';this.style.boxShadow=''">
+                    <div class="kpi-icon red"><i class="bi bi-graph-up-arrow"></i></div>
+                    <div class="kpi-body">
+                        <div class="kpi-label">Exceso de venta</div>
+                        <div class="kpi-value" th:text="${alertas != null ? alertas.get('excesoVenta') : 0}">0</div>
+                        <small class="text-danger" style="font-size:10px;"><i class="bi bi-hand-index me-1"></i>Clic para ver</small>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ═══ PANELES DESPLEGABLES ARRASTRABLES ═══ -->
+            <!-- Panel: Todos los productos controlados -->
+            <div id="panelTodos" class="draggable-panel" style="display:none;">
+                <div class="draggable-panel-header" onmousedown="startDrag(event,'panelTodos')">
+                    <span><i class="bi bi-capsule me-2"></i>Todos los Productos Controlados</span>
+                    <button class="btn btn-sm btn-outline-light" onclick="togglePanel('panelTodos')"><i class="bi bi-x-lg"></i></button>
+                </div>
+                <div class="draggable-panel-body">
+                    <table class="table table-sm table-hover mb-0" style="font-size:12px;">
+                        <thead class="table-light"><tr><th>C&oacute;digo</th><th>Nombre</th><th>Principio Activo</th><th>Tipo Control</th><th>Lista</th><th>Receta</th><th>Stock</th><th>Estado</th></tr></thead>
+                        <tbody>
+                        <tr th:if="${#lists.isEmpty(productosControlados)}"><td colspan="8" class="text-muted text-center">No hay productos controlados registrados.</td></tr>
+                        <tr th:each="p : ${productosControlados}">
+                            <td th:text="${p.codigo}">-</td>
+                            <td><strong th:text="${p.nombre}">-</strong></td>
+                            <td th:text="${p.principioActivo != null ? p.principioActivo : '-'}">-</td>
+                            <td>
+                                <span th:if="${p.tipoProductoControlado == 'ESTUPEFACIENTE'}" class="badge bg-danger">Estupefaciente</span>
+                                <span th:if="${p.tipoProductoControlado == 'PSICOTROPICO'}" class="badge bg-warning text-dark">Psicotr&oacute;pico</span>
+                                <span th:if="${p.tipoProductoControlado == 'SUJETO_FISCALIZACION'}" class="badge bg-info text-dark">Suj. Fiscalizaci&oacute;n</span>
+                                <span th:if="${p.tipoProductoControlado == null or p.tipoProductoControlado == ''}" class="badge bg-secondary">Con receta</span>
+                            </td>
+                            <td th:text="${p.listaControl != null ? p.listaControl : '-'}">-</td>
+                            <td th:text="${p.tipoReceta != null ? p.tipoReceta.replace('_',' ') : '-'}">-</td>
+                            <td th:text="${p.stockActual}">0</td>
+                            <td>
+                                <span th:if="${p.stockActual != null and p.stockMinimo != null and p.stockActual le p.stockMinimo}" class="badge bg-danger">Bajo</span>
+                                <span th:if="${p.stockActual != null and p.stockMinimo != null and p.stockActual gt p.stockMinimo}" class="badge bg-success">OK</span>
+                            </td>
+                        </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Panel: Stock bajo -->
+            <div id="panelStockBajo" class="draggable-panel" style="display:none;">
+                <div class="draggable-panel-header" style="background:linear-gradient(135deg,#f39c12,#e67e22);" onmousedown="startDrag(event,'panelStockBajo')">
+                    <span><i class="bi bi-exclamation-triangle me-2"></i>Productos Controlados con Stock Bajo</span>
+                    <button class="btn btn-sm btn-outline-light" onclick="togglePanel('panelStockBajo')"><i class="bi bi-x-lg"></i></button>
+                </div>
+                <div class="draggable-panel-body">
+                    <table class="table table-sm table-hover mb-0" style="font-size:12px;">
+                        <thead class="table-light"><tr><th>C&oacute;digo</th><th>Nombre</th><th>Tipo</th><th>Stock Actual</th><th>Stock M&iacute;nimo</th><th>Faltante</th></tr></thead>
+                        <tbody>
+                        <tr th:each="p : ${productosControlados}" th:if="${p.stockActual != null and p.stockMinimo != null and p.stockActual le p.stockMinimo}">
+                            <td th:text="${p.codigo}">-</td>
+                            <td><strong th:text="${p.nombre}">-</strong></td>
+                            <td>
+                                <span th:if="${p.tipoProductoControlado == 'ESTUPEFACIENTE'}" class="badge bg-danger">Estupefaciente</span>
+                                <span th:if="${p.tipoProductoControlado == 'PSICOTROPICO'}" class="badge bg-warning text-dark">Psicotr&oacute;pico</span>
+                                <span th:if="${p.tipoProductoControlado == 'SUJETO_FISCALIZACION'}" class="badge bg-info text-dark">Suj. Fiscalizaci&oacute;n</span>
+                                <span th:if="${p.tipoProductoControlado == null or p.tipoProductoControlado == ''}" class="badge bg-secondary">Con receta</span>
+                            </td>
+                            <td class="text-danger fw-bold" th:text="${p.stockActual}">0</td>
+                            <td th:text="${p.stockMinimo}">0</td>
+                            <td class="text-danger" th:text="${p.stockMinimo - p.stockActual}">0</td>
+                        </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Panel: Por vencer -->
+            <div id="panelPorVencer" class="draggable-panel" style="display:none;">
+                <div class="draggable-panel-header" style="background:linear-gradient(135deg,#e67e22,#d35400);" onmousedown="startDrag(event,'panelPorVencer')">
+                    <span><i class="bi bi-calendar-event me-2"></i>Productos Controlados por Vencer (30 d&iacute;as)</span>
+                    <button class="btn btn-sm btn-outline-light" onclick="togglePanel('panelPorVencer')"><i class="bi bi-x-lg"></i></button>
+                </div>
+                <div class="draggable-panel-body">
+                    <table class="table table-sm table-hover mb-0" style="font-size:12px;">
+                        <thead class="table-light"><tr><th>Producto</th><th>Lote</th><th>Almac&eacute;n</th><th>Vencimiento</th><th>Stock</th><th>D&iacute;as restantes</th></tr></thead>
+                        <tbody>
+                        <tr th:if="${#lists.isEmpty(porVencer)}"><td colspan="6" class="text-muted text-center">No hay productos por vencer.</td></tr>
+                        <tr th:each="s : ${porVencer}">
+                            <td><strong th:text="${s.producto != null ? s.producto.nombre : '-'}">-</strong></td>
+                            <td th:text="${s.lote != null ? s.lote : '-'}">-</td>
+                            <td th:text="${s.almacen != null ? s.almacen.nombre : 'Global'}">-</td>
+                            <td class="text-warning fw-bold" th:text="${s.fechaVencimiento != null ? #temporals.format(s.fechaVencimiento) : '-'}">-</td>
+                            <td th:text="${s.cantidad}">0</td>
+                            <td>
+                                <span th:if="${s.fechaVencimiento != null}" class="badge bg-warning text-dark"
+                                      th:text="${T(java.time.temporal.ChronoUnit).DAYS.between(T(java.time.LocalDate).now(), s.fechaVencimiento) + ' d\u00edas'}">-</span>
+                            </td>
+                        </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Panel: Vencidos -->
+            <div id="panelVencidos" class="draggable-panel" style="display:none;">
+                <div class="draggable-panel-header" style="background:linear-gradient(135deg,#e74c3c,#c0392b);" onmousedown="startDrag(event,'panelVencidos')">
+                    <span><i class="bi bi-calendar-x me-2"></i>Productos Controlados VENCIDOS</span>
+                    <button class="btn btn-sm btn-outline-light" onclick="togglePanel('panelVencidos')"><i class="bi bi-x-lg"></i></button>
+                </div>
+                <div class="draggable-panel-body">
+                    <table class="table table-sm table-hover mb-0" style="font-size:12px;">
+                        <thead class="table-light"><tr><th>Producto</th><th>Lote</th><th>Almac&eacute;n</th><th>Vencimiento</th><th>Stock</th><th>D&iacute;as vencido</th></tr></thead>
+                        <tbody>
+                        <tr th:if="${#lists.isEmpty(vencidos)}"><td colspan="6" class="text-muted text-center">No hay productos vencidos.</td></tr>
+                        <tr th:each="s : ${vencidos}">
+                            <td><strong th:text="${s.producto != null ? s.producto.nombre : '-'}">-</strong></td>
+                            <td th:text="${s.lote != null ? s.lote : '-'}">-</td>
+                            <td th:text="${s.almacen != null ? s.almacen.nombre : 'Global'}">-</td>
+                            <td class="text-danger fw-bold" th:text="${s.fechaVencimiento != null ? #temporals.format(s.fechaVencimiento) : '-'}">-</td>
+                            <td th:text="${s.cantidad}">0</td>
+                            <td>
+                                <span th:if="${s.fechaVencimiento != null}" class="badge bg-danger"
+                                      th:text="${T(java.time.temporal.ChronoUnit).DAYS.between(s.fechaVencimiento, T(java.time.LocalDate).now()) + ' d\u00edas'}">-</span>
+                            </td>
+                        </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Panel: Exceso de venta -->
+            <div id="panelExceso" class="draggable-panel" style="display:none;">
+                <div class="draggable-panel-header" style="background:linear-gradient(135deg,#c0392b,#900);" onmousedown="startDrag(event,'panelExceso')">
+                    <span><i class="bi bi-graph-up-arrow me-2"></i>Alerta de Exceso de Venta (7 d&iacute;as)</span>
+                    <button class="btn btn-sm btn-outline-light" onclick="togglePanel('panelExceso')"><i class="bi bi-x-lg"></i></button>
+                </div>
+                <div class="draggable-panel-body">
+                    <table class="table table-sm table-hover mb-0" style="font-size:12px;">
+                        <thead class="table-light"><tr><th>Producto</th><th>Tipo</th><th>Unidades vendidas</th><th>Transacciones</th></tr></thead>
+                        <tbody>
+                        <tr th:if="${excesoVenta == null or #lists.isEmpty(excesoVenta)}"><td colspan="4" class="text-muted text-center">No hay alertas de exceso de venta.</td></tr>
+                        <tr th:each="a : ${excesoVenta}">
+                            <td><strong th:text="${a.get('producto').nombre}">-</strong></td>
+                            <td>
+                                <span th:with="tipo=${a.get('producto').tipoProductoControlado}">
+                                    <span th:if="${tipo == 'ESTUPEFACIENTE'}" class="badge bg-danger">Estupefaciente</span>
+                                    <span th:if="${tipo == 'PSICOTROPICO'}" class="badge bg-warning text-dark">Psicotr&oacute;pico</span>
+                                    <span th:if="${tipo == 'SUJETO_FISCALIZACION'}" class="badge bg-info text-dark">Suj. Fiscalizaci&oacute;n</span>
+                                </span>
+                            </td>
+                            <td class="text-danger fw-bold" th:text="${a.get('totalVendido')}">0</td>
+                            <td th:text="${a.get('numTransacciones')}">0</td>
+                        </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Alertas -->
+            <div th:if="${vencidos != null and !#lists.isEmpty(vencidos)}" class="alert alert-danger">
+                <i class="bi bi-exclamation-octagon me-1"></i> Hay productos controlados vencidos con stock. Revise la secci&oacute;n Stock por lote.
+            </div>
+            <div th:if="${porVencer != null and !#lists.isEmpty(porVencer)}" class="alert alert-warning">
+                <i class="bi bi-calendar-event me-1"></i> Hay lotes de productos controlados por vencer en los pr&oacute;ximos 30 d&iacute;as.
+            </div>
+            <div th:if="${excesoVenta != null and !#lists.isEmpty(excesoVenta)}" class="alert alert-danger">
+                <i class="bi bi-exclamation-triangle me-1"></i> <strong>Alerta de exceso de venta:</strong> Se detectaron productos controlados con volumen de venta elevado en los &uacute;ltimos 7 d&iacute;as.
+                <ul class="mb-0 mt-1" style="font-size:13px;">
+                    <li th:each="a : ${excesoVenta}" th:text="${a.get('producto').nombre + ' - ' + a.get('totalVendido') + ' unidades en ' + a.get('numTransacciones') + ' transacciones'}">-</li>
+                </ul>
+            </div>
+
+            <div class="row g-3">
+                <!-- Stock controlado por lote -->
+                <div class="col-lg-6">
+                    <div class="content-card">
+                        <div class="content-card-header">
+                            <h3><i class="bi bi-boxes me-2"></i>Stock controlado por producto / lote</h3>
+                        </div>
+                        <div class="content-card-body table-responsive">
+                            <table class="table table-sm table-hover">
+                                <thead><tr><th>Producto</th><th>Lote</th><th>Almac&eacute;n</th><th>Ubicaci&oacute;n</th><th>Vencimiento</th><th>Stock</th><th>M&iacute;nimo</th><th>Estado</th><th></th></tr></thead>
+                                <tbody>
+                                <tr th:if="${#lists.isEmpty(stockControlado)}"><td colspan="9" class="text-muted">No hay stock controlado registrado. Configure productos como &quot;Requiere receta&quot; en Productos y registre entradas.</td></tr>
+                                <tr th:each="s : ${stockControlado}">
+                                    <td th:text="${s.producto != null ? s.producto.nombre : '-'}">-</td>
+                                    <td th:text="${s.lote}">-</td>
+                                    <td th:text="${s.almacen != null ? s.almacen.nombre : 'Global'}">-</td>
+                                    <td th:text="${s.ubicacionAlmacen != null ? s.ubicacionAlmacen : '-'}">-</td>
+                                    <td th:text="${s.fechaVencimiento != null ? #temporals.format(s.fechaVencimiento) : '-'}">-</td>
+                                    <td th:text="${s.cantidad}">0</td>
+                                    <td th:text="${s.stockMinimo != null ? s.stockMinimo : '-'}">-</td>
+                                    <td>
+                                        <span th:if="${s.fechaVencimiento != null and s.fechaVencimiento.isBefore(T(java.time.LocalDate).now())}" class="badge bg-danger">Vencido</span>
+                                        <span th:if="${s.stockMinimo != null and s.cantidad != null and s.cantidad lt s.stockMinimo}" class="badge bg-warning text-dark">Stock bajo</span>
+                                    </td>
+                                    <td><a th:href="@{/web/digemid/kardex/{id}(id=${s.producto != null ? s.producto.id : 0})}" class="btn btn-sm btn-outline-secondary" th:if="${s.producto != null}">Kardex</a></td>
+                                </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+                <!-- Últimas recetas -->
+                <div class="col-lg-6">
+                    <div class="content-card">
+                        <div class="content-card-header">
+                            <h3><i class="bi bi-file-medical me-2"></i>Registro de recetas</h3>
+                        </div>
+                        <div class="content-card-body table-responsive">
+                            <p class="text-muted small mb-2">Al vender productos controlados se registra la receta autom&aacute;ticamente. Tambi&eacute;n puede registrar manualmente abajo.</p>
+                            <table class="table table-sm table-hover" style="font-size:12px;">
+                                <thead><tr><th>N&ordm;</th><th>Tipo</th><th>Producto</th><th>Paciente</th><th>DNI</th><th>M&eacute;dico</th><th>CMP</th><th>Prescrita</th><th>Vendida</th><th>Fecha</th></tr></thead>
+                                <tbody>
+                                <tr th:if="${#lists.isEmpty(ultimasRecetas)}"><td colspan="10" class="text-muted">Sin registros recientes.</td></tr>
+                                <tr th:each="r : ${ultimasRecetas}">
+                                    <td th:text="${r.numeroReceta}">-</td>
+                                    <td th:text="${r.tipoReceta != null ? r.tipoReceta : '-'}">-</td>
+                                    <td th:text="${r.producto != null ? r.producto.nombre : '-'}">-</td>
+                                    <td th:text="${r.nombrePaciente != null ? r.nombrePaciente : '-'}">-</td>
+                                    <td th:text="${r.documentoPaciente != null ? r.documentoPaciente : '-'}">-</td>
+                                    <td th:text="${r.nombreMedico != null ? r.nombreMedico : '-'}">-</td>
+                                    <td th:text="${r.cmpMedico != null ? r.cmpMedico : '-'}">-</td>
+                                    <td th:text="${r.cantidadPrescrita != null ? r.cantidadPrescrita : '-'}">-</td>
+                                    <td th:text="${r.cantidad}">0</td>
+                                    <td th:text="${r.fechaRegistro != null ? #temporals.format(r.fechaRegistro) : '-'}">-</td>
+                                </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Distribuciones pendientes -->
+            <div class="content-card mt-3">
+                <div class="content-card-header">
+                    <h3><i class="bi bi-arrow-left-right me-2"></i>Distribuciones de productos controlados</h3>
+                </div>
+                <div class="content-card-body table-responsive">
+                    <table class="table table-sm table-hover">
+                        <thead><tr><th>Producto</th><th>Origen</th><th>Destino</th><th>Cant.</th><th>Estado</th><th>Fecha</th><th>RUC</th><th>Cliente</th><th>Tipo</th><th></th></tr></thead>
+                        <tbody>
+                        <tr th:if="${#lists.isEmpty(distribuciones)}"><td colspan="10" class="text-muted">No hay distribuciones.</td></tr>
+                        <tr th:each="d : ${distribuciones}">
+                            <td th:text="${d.producto != null ? d.producto.nombre : '-'}">-</td>
+                            <td th:text="${d.almacenOrigen != null ? d.almacenOrigen.nombre : '-'}">-</td>
+                            <td th:text="${d.almacenDestino != null ? d.almacenDestino.nombre : '-'}">-</td>
+                            <td th:text="${d.cantidad}">0</td>
+                            <td><span class="badge" th:classappend="${d.estado == 'ENVIADO'} ? 'bg-warning' : 'bg-success'" th:text="${d.estado}">-</span></td>
+                            <td th:text="${d.fechaEnvio != null ? #temporals.format(d.fechaEnvio) : '-'}">-</td>
+                            <td th:text="${d.clienteRuc != null ? d.clienteRuc : '-'}">-</td>
+                            <td th:text="${d.clienteRazonSocial != null ? d.clienteRazonSocial : '-'}">-</td>
+                            <td th:text="${d.tipoEstablecimiento != null ? d.tipoEstablecimiento : '-'}">-</td>
+                            <td th:if="${d.estado == 'ENVIADO'}">
+                                <form th:action="@{/web/digemid/distribucion/recibir/{id}(id=${d.id})}" method="post" class="d-inline">
+                                    <button type="submit" class="btn btn-sm btn-success">Confirmar recepci&oacute;n</button>
+                                </form>
+                            </td>
+                        </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- ====== FORMULARIO DE REGISTRO DE RECETA MANUAL ====== -->
+            <div class="content-card mt-3">
+                <div class="content-card-header"><h3><i class="bi bi-file-medical me-2"></i>Registrar receta manualmente</h3></div>
+                <div class="content-card-body">
+                    <form th:action="@{/web/digemid/recetas}" method="post">
+                        <div class="row g-2">
+                            <div class="col-md-3"><label class="form-label">Producto controlado</label>
+                                <select name="producto" class="form-select form-select-sm" required>
+                                    <option value="">Seleccionar...</option>
+                                    <option th:each="p : ${productosParaForm}" th:value="${p.id}" th:text="${p.nombre + ' (' + p.codigo + ')'}">-</option>
+                                </select>
+                            </div>
+                            <div class="col-md-2"><label class="form-label">N&ordm; receta</label><input type="text" name="numeroReceta" class="form-control form-control-sm" required></div>
+                            <div class="col-md-2"><label class="form-label">Tipo receta</label>
+                                <select name="tipoReceta" class="form-select form-select-sm">
+                                    <option value="RECETA_SIMPLE">Receta simple</option>
+                                    <option value="RECETA_RETENIDA">Receta retenida</option>
+                                    <option value="RECETA_ESPECIAL">Receta especial</option>
+                                </select>
+                            </div>
+                            <div class="col-md-2"><label class="form-label">F. emisi&oacute;n receta</label><input type="date" name="fechaEmisionReceta" class="form-control form-control-sm"></div>
+                            <div class="col-md-1"><label class="form-label">Prescrita</label><input type="number" name="cantidadPrescrita" class="form-control form-control-sm" min="1"></div>
+                            <div class="col-md-1"><label class="form-label">Vendida</label><input type="number" name="cantidad" class="form-control form-control-sm" min="1" required></div>
+                        </div>
+                        <div class="row g-2 mt-1">
+                            <div class="col-md-3"><label class="form-label">M&eacute;dico</label><input type="text" name="nombreMedico" class="form-control form-control-sm" placeholder="Nombre completo"></div>
+                            <div class="col-md-2"><label class="form-label">CMP</label><input type="text" name="cmpMedico" class="form-control form-control-sm" placeholder="Colegiatura"></div>
+                            <div class="col-md-2"><label class="form-label">Especialidad</label><input type="text" name="especialidadMedico" class="form-control form-control-sm"></div>
+                            <div class="col-md-3"><label class="form-label">Paciente</label><input type="text" name="nombrePaciente" class="form-control form-control-sm" placeholder="Nombre completo"></div>
+                            <div class="col-md-2"><label class="form-label">DNI paciente</label><input type="text" name="documentoPaciente" class="form-control form-control-sm" maxlength="20"></div>
+                        </div>
+                        <div class="row g-2 mt-1">
+                            <div class="col-md-4"><label class="form-label">Direcci&oacute;n paciente</label><input type="text" name="direccionPaciente" class="form-control form-control-sm"></div>
+                            <div class="col-md-4"><label class="form-label">Observaciones</label><input type="text" name="observaciones" class="form-control form-control-sm"></div>
+                            <div class="col-md-2 d-flex align-items-end"><button type="submit" class="btn btn-primary btn-sm w-100"><i class="bi bi-save me-1"></i> Registrar receta</button></div>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            <!-- ====== FORMULARIOS OPERATIVOS ====== -->
+            <div class="row g-3 mt-3">
+                <!-- Registrar Entrada de Controlado -->
+                <div class="col-lg-4">
+                    <div class="content-card">
+                        <div class="content-card-header"><h3><i class="bi bi-box-arrow-in-down me-2"></i>Registrar entrada</h3></div>
+                        <div class="content-card-body">
+                            <form th:action="@{/web/digemid/entrada}" method="post">
+                                <div class="mb-2">
+                                    <label class="form-label">Producto controlado</label>
+                                    <select name="productoId" class="form-select form-select-sm" required>
+                                        <option value="">Seleccionar...</option>
+                                        <option th:each="p : ${productosParaForm}" th:value="${p.id}" th:text="${p.nombre + ' (' + p.codigo + ')'}">-</option>
+                                    </select>
+                                </div>
+                                <div class="mb-2">
+                                    <label class="form-label">Almac&eacute;n</label>
+                                    <select name="almacenId" class="form-select form-select-sm">
+                                        <option value="">Global</option>
+                                        <option th:each="a : ${almacenes}" th:value="${a.id}" th:text="${a.nombre}">-</option>
+                                    </select>
+                                </div>
+                                <div class="row">
+                                    <div class="col-6 mb-2"><label class="form-label">Lote</label><input type="text" name="lote" class="form-control form-control-sm"></div>
+                                    <div class="col-6 mb-2"><label class="form-label">Cantidad</label><input type="number" name="cantidad" class="form-control form-control-sm" min="1" required></div>
+                                </div>
+                                <div class="row">
+                                    <div class="col-6 mb-2"><label class="form-label">F. vencimiento</label><input type="date" name="fechaVencimiento" class="form-control form-control-sm"></div>
+                                    <div class="col-6 mb-2"><label class="form-label">Ubicaci&oacute;n</label><input type="text" name="ubicacion" class="form-control form-control-sm" placeholder="Ej: Estante A3"></div>
+                                </div>
+                                <div class="mb-2"><label class="form-label">Referencia</label><input type="text" name="referencia" class="form-control form-control-sm" placeholder="Ej: Factura 001-123"></div>
+                                <button type="submit" class="btn btn-primary btn-sm w-100"><i class="bi bi-plus-circle me-1"></i> Registrar entrada</button>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Destrucción autorizada -->
+                <div class="col-lg-4">
+                    <div class="content-card">
+                        <div class="content-card-header"><h3><i class="bi bi-fire me-2"></i>Destrucci&oacute;n autorizada</h3></div>
+                        <div class="content-card-body">
+                            <form th:action="@{/web/digemid/destruccion}" method="post">
+                                <div class="mb-2">
+                                    <label class="form-label">Producto controlado</label>
+                                    <select name="productoId" class="form-select form-select-sm" required>
+                                        <option value="">Seleccionar...</option>
+                                        <option th:each="p : ${productosParaForm}" th:value="${p.id}" th:text="${p.nombre + ' (' + p.codigo + ')'}">-</option>
+                                    </select>
+                                </div>
+                                <div class="mb-2">
+                                    <label class="form-label">Almac&eacute;n</label>
+                                    <select name="almacenId" class="form-select form-select-sm">
+                                        <option value="">Global</option>
+                                        <option th:each="a : ${almacenes}" th:value="${a.id}" th:text="${a.nombre}">-</option>
+                                    </select>
+                                </div>
+                                <div class="mb-2"><label class="form-label">Cantidad</label><input type="number" name="cantidad" class="form-control form-control-sm" min="1" required></div>
+                                <div class="mb-2"><label class="form-label">Documento/Acta</label><input type="text" name="documento" class="form-control form-control-sm" placeholder="Acta de destrucci&oacute;n Nro..."></div>
+                                <div class="mb-2"><label class="form-label">Motivo</label><textarea name="motivo" class="form-control form-control-sm" rows="2"></textarea></div>
+                                <button type="submit" class="btn btn-danger btn-sm w-100"><i class="bi bi-fire me-1"></i> Registrar destrucci&oacute;n</button>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Distribución controlada -->
+                <div class="col-lg-4">
+                    <div class="content-card">
+                        <div class="content-card-header"><h3><i class="bi bi-truck me-2"></i>Nueva distribuci&oacute;n</h3></div>
+                        <div class="content-card-body">
+                            <form th:action="@{/web/digemid/distribucion}" method="post">
+                                <div class="mb-2">
+                                    <label class="form-label">Producto</label>
+                                    <select name="productoId" class="form-select form-select-sm" required>
+                                        <option value="">Seleccionar...</option>
+                                        <option th:each="p : ${productosParaForm}" th:value="${p.id}" th:text="${p.nombre + ' (' + p.codigo + ')'}">-</option>
+                                    </select>
+                                </div>
+                                <div class="row">
+                                    <div class="col-6 mb-2">
+                                        <label class="form-label">Origen</label>
+                                        <select name="almacenOrigenId" class="form-select form-select-sm" required>
+                                            <option th:each="a : ${almacenes}" th:value="${a.id}" th:text="${a.nombre}">-</option>
+                                        </select>
+                                    </div>
+                                    <div class="col-6 mb-2">
+                                        <label class="form-label">Destino</label>
+                                        <select name="almacenDestinoId" class="form-select form-select-sm" required>
+                                            <option th:each="a : ${almacenes}" th:value="${a.id}" th:text="${a.nombre}">-</option>
+                                        </select>
+                                    </div>
+                                </div>
+                                <div class="row">
+                                    <div class="col-6 mb-2"><label class="form-label">Cantidad</label><input type="number" name="cantidad" class="form-control form-control-sm" min="1" required></div>
+                                    <div class="col-6 mb-2"><label class="form-label">Lote</label><input type="text" name="lote" class="form-control form-control-sm"></div>
+                                </div>
+                                <hr class="my-2"><small class="text-muted fw-bold">Datos del cliente (droguer&iacute;as)</small>
+                                <div class="row">
+                                    <div class="col-6 mb-2"><label class="form-label">RUC</label><input type="text" name="clienteRuc" class="form-control form-control-sm" maxlength="20"></div>
+                                    <div class="col-6 mb-2"><label class="form-label">Raz&oacute;n social</label><input type="text" name="clienteRazonSocial" class="form-control form-control-sm"></div>
+                                </div>
+                                <div class="mb-2">
+                                    <label class="form-label">Tipo establecimiento</label>
+                                    <select name="tipoEstablecimiento" class="form-select form-select-sm">
+                                        <option value="">No aplica</option>
+                                        <option value="FARMACIA">Farmacia</option>
+                                        <option value="CLINICA">Cl&iacute;nica</option>
+                                        <option value="HOSPITAL">Hospital</option>
+                                        <option value="DROGUERIA">Droguer&iacute;a</option>
+                                    </select>
+                                </div>
+                                <div class="row">
+                                    <div class="col-6 mb-2"><label class="form-label">Factura</label><input type="text" name="numeroFactura" class="form-control form-control-sm"></div>
+                                    <div class="col-6 mb-2"><label class="form-label">Gu&iacute;a remisi&oacute;n</label><input type="text" name="numeroGuiaRemision" class="form-control form-control-sm"></div>
+                                </div>
+                                <div class="mb-2"><label class="form-label">Referencia</label><input type="text" name="referencia" class="form-control form-control-sm"></div>
+                                <button type="submit" class="btn btn-dark btn-sm w-100"><i class="bi bi-truck me-1"></i> Crear distribuci&oacute;n</button>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+</div>
+<style>
+.draggable-panel {
+    position: relative;
+    z-index: 50;
+    margin: 12px 0;
+    border-radius: 10px;
+    box-shadow: 0 8px 30px rgba(0,0,0,.18);
+    overflow: hidden;
+    animation: panelSlideIn .25s ease-out;
+    border: 2px solid rgba(0,0,0,.1);
+}
+.draggable-panel.is-dragging {
+    position: fixed;
+    z-index: 9999;
+    opacity: .92;
+    box-shadow: 0 15px 50px rgba(0,0,0,.35);
+    cursor: grabbing;
+}
+.draggable-panel-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 10px 16px;
+    background: linear-gradient(135deg, #1e3c72, #2a5298);
+    color: white;
+    font-weight: 600;
+    font-size: 14px;
+    cursor: grab;
+    user-select: none;
+}
+.draggable-panel-header:active { cursor: grabbing; }
+.draggable-panel-body {
+    background: #fff;
+    max-height: 350px;
+    overflow-y: auto;
+    padding: 0;
+}
+.draggable-panel-body table { margin-bottom: 0 !important; }
+.draggable-panel-body table thead { position: sticky; top: 0; z-index: 2; }
+@keyframes panelSlideIn {
+    from { opacity: 0; transform: translateY(-15px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+</style>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+<script th:src="@{/js/app.js}"></script>
+<script>
+function togglePanel(id) {
+    var panel = document.getElementById(id);
+    if (!panel) return;
+    if (panel.style.display === 'none' || panel.style.display === '') {
+        document.querySelectorAll('.draggable-panel').forEach(function(p) {
+            if (p.id !== id) p.style.display = 'none';
+        });
+        panel.style.display = 'block';
+        panel.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    } else {
+        panel.style.display = 'none';
+    }
+}
+
+var _dragPanel = null, _dragOffsetX = 0, _dragOffsetY = 0, _dragOrigParent = null, _dragOrigNext = null;
+
+function startDrag(e, panelId) {
+    if (e.button !== 0) return;
+    var panel = document.getElementById(panelId);
+    if (!panel) return;
+
+    _dragOrigParent = panel.parentNode;
+    _dragOrigNext = panel.nextSibling;
+
+    var rect = panel.getBoundingClientRect();
+    _dragOffsetX = e.clientX - rect.left;
+    _dragOffsetY = e.clientY - rect.top;
+
+    panel.style.width = rect.width + 'px';
+    panel.style.left = rect.left + 'px';
+    panel.style.top = rect.top + 'px';
+    panel.classList.add('is-dragging');
+
+    _dragPanel = panel;
+    document.addEventListener('mousemove', onDrag);
+    document.addEventListener('mouseup', stopDrag);
+    e.preventDefault();
+}
+
+function onDrag(e) {
+    if (!_dragPanel) return;
+    _dragPanel.style.left = (e.clientX - _dragOffsetX) + 'px';
+    _dragPanel.style.top = (e.clientY - _dragOffsetY) + 'px';
+}
+
+function stopDrag(e) {
+    if (!_dragPanel) return;
+    _dragPanel.classList.remove('is-dragging');
+    _dragPanel.style.position = '';
+    _dragPanel.style.left = '';
+    _dragPanel.style.top = '';
+    _dragPanel.style.width = '';
+    _dragPanel = null;
+    document.removeEventListener('mousemove', onDrag);
+    document.removeEventListener('mouseup', stopDrag);
+}
+</script>
+</body>
+</html>

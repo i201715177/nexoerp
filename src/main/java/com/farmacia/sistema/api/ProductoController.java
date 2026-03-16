@@ -3,6 +3,7 @@ package com.farmacia.sistema.api;
 import com.farmacia.sistema.domain.producto.Producto;
 import com.farmacia.sistema.domain.producto.ProductoService;
 import jakarta.validation.Valid;
+import org.springframework.data.domain.Page;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -23,6 +24,14 @@ public class ProductoController {
     @GetMapping
     public List<Producto> listar() {
         return service.listarTodos();
+    }
+
+    @GetMapping("/paginado")
+    public Page<Producto> listarPaginado(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size,
+            @RequestParam(required = false) String q) {
+        return service.listarPaginado(page, size, q);
     }
 
     @GetMapping("/{id}")

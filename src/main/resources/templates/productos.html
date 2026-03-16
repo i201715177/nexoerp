@@ -10,47 +10,7 @@
 </head>
 <body>
 <div class="app-layout">
-    <!-- Sidebar -->
-    <aside class="sidebar" id="sidebar">
-        <div class="sidebar-header">
-            <span class="sidebar-brand"><i class="bi bi-diagram-3"></i> NexoERP</span>
-            <button class="sidebar-toggle d-lg-none" onclick="toggleSidebar()"><i class="bi bi-x-lg"></i></button>
-        </div>
-        <nav class="sidebar-nav">
-            <div class="sidebar-section-title">Operaciones</div>
-            <a class="sidebar-link active" href="/web/productos"><i class="bi bi-box-seam"></i> Productos</a>
-            <a class="sidebar-link" href="/web/clientes"><i class="bi bi-people"></i> Clientes</a>
-            <a class="sidebar-link" href="/web/proveedores" sec:authorize="hasAnyRole('ADMIN','SAAS_ADMIN')"><i class="bi bi-truck"></i> Proveedores</a>
-            <a class="sidebar-link" href="/web/compras" sec:authorize="hasAnyRole('ADMIN','SAAS_ADMIN')"><i class="bi bi-cart-plus"></i> Compras</a>
-            <a class="sidebar-link" href="/web/ventas"><i class="bi bi-receipt"></i> Ventas</a>
-            <a class="sidebar-link" href="/web/caja"><i class="bi bi-cash-stack"></i> Caja</a>
-            <a class="sidebar-link" href="/web/requerimientos"><i class="bi bi-box-arrow-in-down"></i> Requerimientos</a>
-            <div class="sidebar-section-title">Gestión</div>
-            <a class="sidebar-link" href="/web/finanzas" sec:authorize="hasAnyRole('ADMIN','SAAS_ADMIN')"><i class="bi bi-graph-up"></i> Finanzas</a>
-            <a class="sidebar-link" href="/web/inventario"><i class="bi bi-clipboard-data"></i> Inventario</a>
-            <a class="sidebar-link" href="/web/facturacion-electronica" sec:authorize="hasAnyRole('ADMIN','SAAS_ADMIN')"><i class="bi bi-file-earmark-check"></i> Facturación E.</a>
-            <a class="sidebar-link" href="/web/guias-remision" sec:authorize="hasAnyRole('ADMIN','SAAS_ADMIN')"><i class="bi bi-truck"></i> Guías Remisión</a>
-            <a class="sidebar-link" href="/web/reportes"><i class="bi bi-file-earmark-bar-graph"></i> Reportes</a>
-            <a class="sidebar-link" href="/web/sucursales" sec:authorize="hasAnyRole('ADMIN','SAAS_ADMIN')"><i class="bi bi-building"></i> Sucursales</a>
-            <div class="sidebar-section-title">Sistema</div>
-            <a class="sidebar-link" href="/web/auditoria" sec:authorize="hasAnyRole('ADMIN','SAAS_ADMIN')"><i class="bi bi-shield-check"></i> Auditor&iacute;a</a>
-            <a class="sidebar-link" href="/web/admin/empresas" sec:authorize="hasRole('SAAS_ADMIN')"><i class="bi bi-gear"></i> Admin SaaS</a>
-        </nav>
-        <div class="sidebar-footer">
-            <div sec:authorize="hasRole('SAAS_ADMIN')">
-                <form th:if="${empresasTodas != null and !#lists.isEmpty(empresasTodas)}"
-                      th:action="@{/web/empresas/cambiar}" method="post" class="mb-2">
-                    <select name="tenantId" class="form-select form-select-sm"
-                            onchange="this.form.submit()" style="background:#243656; color:#c8d6e5; border-color:rgba(255,255,255,.12); font-size:12px;">
-                        <option th:each="e : ${empresasTodas}" th:value="${e.id}"
-                                th:selected="${empresaActual != null and e.id == empresaActual.id}"
-                                th:text="${e.nombre}">Empresa</option>
-                    </select>
-                    <input type="hidden" name="redirect" value="/web/productos">
-                </form>
-            </div>
-        </div>
-    </aside>
+    <div th:replace="~{fragments/sidebar :: sidebar('productos')}"></div>
     <div id="sidebarBackdrop" class="sidebar-backdrop"></div>
 
     <!-- Main -->
@@ -164,13 +124,13 @@
                     <div class="content-card-header d-flex justify-content-between align-items-center flex-wrap gap-2">
                         <h3><i class="bi bi-table me-2"></i>Catálogo de productos</h3>
                         <div class="d-flex gap-2 flex-wrap">
-                            <a th:href="@{/web/productos/excel/plantilla}" class="btn btn-sm btn-outline-success" title="Descargar plantilla Excel para carga masiva">
+                            <a target="_blank" th:href="@{/web/productos/excel/plantilla}" class="btn btn-sm btn-outline-success" title="Descargar plantilla Excel para carga masiva">
                                 <i class="bi bi-download me-1"></i> Plantilla
                             </a>
                             <button type="button" class="btn btn-sm btn-success" data-bs-toggle="modal" data-bs-target="#modalImportar" title="Importar productos desde Excel">
                                 <i class="bi bi-upload me-1"></i> Importar Excel
                             </button>
-                            <a th:href="@{/web/productos/excel/exportar}" class="btn btn-sm btn-outline-primary" title="Exportar todos los productos a Excel">
+                            <a target="_blank" th:href="@{/web/productos/excel/exportar}" class="btn btn-sm btn-outline-primary" title="Exportar todos los productos a Excel">
                                 <i class="bi bi-file-earmark-excel me-1"></i> Exportar
                             </a>
                         </div>
@@ -213,8 +173,8 @@
                             </div>
                         </div>
                         <div class="export-bar">
-                            <a th:href="@{/web/productos/excel/profesional}" class="btn-export btn-export-excel"><i class="bi bi-file-earmark-excel"></i> Excel</a>
-                            <a th:href="@{/web/productos/pdf}" class="btn-export btn-export-pdf"><i class="bi bi-file-earmark-pdf"></i> PDF</a>
+                            <a target="_blank" th:href="@{/web/productos/excel/profesional}" class="btn-export btn-export-excel"><i class="bi bi-file-earmark-excel"></i> Excel</a>
+                            <a target="_blank" th:href="@{/web/productos/pdf}" class="btn-export btn-export-pdf"><i class="bi bi-file-earmark-pdf"></i> PDF</a>
                         </div>
                         <table class="data-table" id="tablaProductos">
                             <thead>
@@ -274,8 +234,8 @@
                     </div>
                 </div>
 
-                <!-- Form (solo para ADMIN / SAAS_ADMIN) -->
-                <div class="content-card" sec:authorize="hasAnyRole('ADMIN','SAAS_ADMIN')">
+                <!-- Form Agregar/Editar producto (incl. DIGEMID / productos controlados) -->
+                <div class="content-card" sec:authorize="hasAnyRole('ADMIN','GERENTE','VENDEDOR')">
                     <div class="content-card-header">
                         <h3><i class="bi bi-plus-circle me-2"></i><span th:text="${editando ? 'Editar producto' : 'Nuevo producto'}">Nuevo producto</span></h3>
                     </div>
@@ -290,7 +250,23 @@
                             <div class="row g-3">
                                 <div class="col-12 form-section">
                                     <label class="form-label">Nombre *</label>
-                                    <input type="text" class="form-control" th:field="*{nombre}" required>
+                                    <input type="text" class="form-control" th:field="*{nombre}" required id="productoNombre">
+                                </div>
+                                <!-- Alerta DIGEMID auto-detección -->
+                                <div class="col-12" id="alertaDigemid" style="display:none;">
+                                    <div class="alert alert-warning border-danger mb-0 p-2" style="background:linear-gradient(135deg,#fff3cd,#ffeeba);border-left:4px solid #dc3545!important;">
+                                        <div class="d-flex align-items-center">
+                                            <i class="bi bi-shield-exclamation text-danger fs-3 me-2"></i>
+                                            <div>
+                                                <strong class="text-danger" id="digemidTitulo">PRODUCTO CONTROLADO DIGEMID</strong>
+                                                <div class="small" id="digemidDetalle">-</div>
+                                                <div class="small text-muted" id="digemidObs">-</div>
+                                            </div>
+                                            <button type="button" class="btn btn-sm btn-outline-success ms-auto" id="btnAplicarDigemid" onclick="aplicarDigemid()">
+                                                <i class="bi bi-check-lg"></i> Aplicar clasificaci&oacute;n
+                                            </button>
+                                        </div>
+                                    </div>
                                 </div>
                                 <div class="col-6 form-section">
                                     <label class="form-label">Laboratorio *</label>
@@ -335,6 +311,83 @@
                                 <div class="col-4 form-section">
                                     <label class="form-label">Stock máximo</label>
                                     <input type="number" min="0" class="form-control" th:field="*{stockMaximo}">
+                                </div>
+                                <div class="col-12 mt-2 border-top pt-3"><h6 class="text-primary"><i class="bi bi-shield-check me-1"></i> DIGEMID (productos controlados)</h6></div>
+                                <div class="col-6 form-section">
+                                    <label class="form-label">Principio activo</label>
+                                    <input type="text" class="form-control" th:field="*{principioActivo}" placeholder="Ej. Paracetamol" id="productoPrincipioActivo">
+                                </div>
+                                <div class="col-3 form-section">
+                                    <label class="form-label">Concentración</label>
+                                    <input type="text" class="form-control" th:field="*{concentracion}" placeholder="Ej. 500 mg">
+                                </div>
+                                <div class="col-3 form-section">
+                                    <label class="form-label">Forma farmacéutica</label>
+                                    <input type="text" class="form-control" th:field="*{formaFarmaceutica}" placeholder="Tableta, Jarabe...">
+                                </div>
+                                <div class="col-4 form-section">
+                                    <label class="form-label">Registro sanitario</label>
+                                    <input type="text" class="form-control" th:field="*{registroSanitario}">
+                                </div>
+                                <div class="col-2 form-section">
+                                    <label class="form-label">Lote</label>
+                                    <input type="text" class="form-control" th:field="*{lote}">
+                                </div>
+                                <div class="col-2 form-section">
+                                    <label class="form-label">Fecha venc.</label>
+                                    <input type="date" class="form-control" th:field="*{fechaVencimiento}">
+                                </div>
+                                <div class="col-3 form-section">
+                                    <label class="form-label">Clasificaci&oacute;n DIGEMID</label>
+                                    <select class="form-select" th:field="*{tipoProductoControlado}">
+                                        <option value="">-- No controlado --</option>
+                                        <option value="ESTUPEFACIENTE">Estupefaciente</option>
+                                        <option value="PSICOTROPICO">Psicotr&oacute;pico</option>
+                                        <option value="SUJETO_FISCALIZACION">Sujeto a fiscalizaci&oacute;n</option>
+                                    </select>
+                                </div>
+                                <div class="col-3 form-section">
+                                    <label class="form-label">Lista de control</label>
+                                    <select class="form-select" th:field="*{listaControl}">
+                                        <option value="">--</option>
+                                        <option value="LISTA_I">Lista I</option>
+                                        <option value="LISTA_II">Lista II</option>
+                                        <option value="LISTA_III">Lista III</option>
+                                        <option value="LISTA_IV">Lista IV</option>
+                                    </select>
+                                </div>
+                                <div class="col-3 form-section">
+                                    <label class="form-label">Tipo control DIGEMID</label>
+                                    <select class="form-select" th:field="*{tipoControlDigemid}">
+                                        <option value="">--</option>
+                                        <option value="LISTA_I">Lista I</option>
+                                        <option value="LISTA_II">Lista II</option>
+                                        <option value="LISTA_III">Lista III</option>
+                                        <option value="LISTA_IV">Lista IV</option>
+                                        <option value="OTRO">Otro</option>
+                                    </select>
+                                </div>
+                                <div class="col-3 form-section d-flex align-items-end">
+                                    <div class="form-check">
+                                        <input type="checkbox" class="form-check-input" th:field="*{requiereReceta}" id="requiereReceta">
+                                        <label class="form-check-label" for="requiereReceta">Requiere receta</label>
+                                    </div>
+                                </div>
+                                <div class="col-3 form-section">
+                                    <label class="form-label">Tipo receta</label>
+                                    <select class="form-select" th:field="*{tipoReceta}">
+                                        <option value="">--</option>
+                                        <option value="RECETA_SIMPLE">Receta simple</option>
+                                        <option value="RECETA_RETENIDA">Receta retenida</option>
+                                        <option value="RECETA_ESPECIAL">Receta especial</option>
+                                        <option value="RECETA_ESPECIAL_NUMERADA">Receta especial numerada</option>
+                                    </select>
+                                </div>
+                                <div class="col-3 form-section d-flex align-items-end">
+                                    <div class="form-check">
+                                        <input type="checkbox" class="form-check-input" th:field="*{controlStockEspecial}" id="controlStockEspecial">
+                                        <label class="form-check-label" for="controlStockEspecial">Control stock especial</label>
+                                    </div>
                                 </div>
                                 <div class="col-12 form-section">
                                     <label class="form-label">Descripción</label>
@@ -488,6 +541,123 @@ function actualizarContador() {
     var el = document.getElementById('contadorFiltro');
     if (el) el.textContent = visibles + ' de ' + filas.length;
 }
+
+// ═══════════════════════════════════════════════════════
+// AUTO-DETECCIÓN DIGEMID
+// ═══════════════════════════════════════════════════════
+var _digemidTimeout = null;
+var _digemidResultado = null;
+
+function buscarEnDigemid(termino) {
+    if (!termino || termino.trim().length < 3) {
+        document.getElementById('alertaDigemid').style.display = 'none';
+        _digemidResultado = null;
+        return;
+    }
+    clearTimeout(_digemidTimeout);
+    _digemidTimeout = setTimeout(function() {
+        fetch('/api/catalogo-digemid/buscar?q=' + encodeURIComponent(termino.trim()))
+            .then(function(r) { return r.json(); })
+            .then(function(data) {
+                if (data && data.length > 0) {
+                    _digemidResultado = data[0];
+                    mostrarAlertaDigemid(data[0]);
+                } else {
+                    document.getElementById('alertaDigemid').style.display = 'none';
+                    _digemidResultado = null;
+                }
+            })
+            .catch(function() {});
+    }, 400);
+}
+
+function mostrarAlertaDigemid(info) {
+    var alerta = document.getElementById('alertaDigemid');
+    var titulo = document.getElementById('digemidTitulo');
+    var detalle = document.getElementById('digemidDetalle');
+    var obs = document.getElementById('digemidObs');
+
+    var esControlado = info.tipoProductoControlado && info.tipoProductoControlado.length > 0;
+
+    if (esControlado) {
+        titulo.textContent = 'PRODUCTO CONTROLADO DIGEMID - ' + info.tipoProductoControlado;
+        titulo.className = 'text-danger fw-bold';
+        var detalleTexto = 'Lista: ' + (info.listaControl || '-') +
+            ' | Receta: ' + (info.tipoReceta || '-').replace(/_/g, ' ') +
+            ' | Principio activo: ' + info.principioActivo;
+        if (info.nombreComercial) detalleTexto += ' | Nombres comerciales: ' + info.nombreComercial;
+        detalle.textContent = detalleTexto;
+    } else {
+        titulo.textContent = 'REQUIERE RECETA MÉDICA';
+        titulo.className = 'text-warning fw-bold';
+        detalle.textContent = 'Principio activo: ' + info.principioActivo +
+            ' | Tipo receta: ' + (info.tipoReceta || '-').replace(/_/g, ' ');
+        if (info.nombreComercial) detalle.textContent += ' | Nombres: ' + info.nombreComercial;
+    }
+
+    obs.textContent = info.observacion || '';
+    alerta.style.display = 'block';
+}
+
+function aplicarDigemid() {
+    if (!_digemidResultado) return;
+    var d = _digemidResultado;
+
+    var pa = document.getElementById('productoPrincipioActivo');
+    if (pa && (!pa.value || pa.value.trim() === '')) pa.value = d.principioActivo;
+
+    if (d.tipoProductoControlado) {
+        var sel = document.getElementById('tipoProductoControlado');
+        if (sel) sel.value = d.tipoProductoControlado;
+    }
+    if (d.listaControl) {
+        var lc = document.getElementById('listaControl');
+        if (lc) lc.value = d.listaControl;
+        var tcd = document.getElementById('tipoControlDigemid');
+        if (tcd) tcd.value = d.listaControl;
+    }
+    if (d.requiereReceta) {
+        var rr = document.getElementById('requiereReceta');
+        if (rr) rr.checked = true;
+    }
+    if (d.tipoReceta) {
+        var tr = document.getElementById('tipoReceta');
+        if (tr) tr.value = d.tipoReceta;
+    }
+    if (d.controlStockEspecial) {
+        var cse = document.getElementById('controlStockEspecial');
+        if (cse) cse.checked = true;
+    }
+
+    var btn = document.getElementById('btnAplicarDigemid');
+    btn.innerHTML = '<i class="bi bi-check-circle"></i> Aplicado';
+    btn.classList.remove('btn-outline-success');
+    btn.classList.add('btn-success');
+    btn.disabled = true;
+}
+
+// Escuchar cambios en nombre y principio activo
+document.addEventListener('DOMContentLoaded', function() {
+    var nombre = document.getElementById('productoNombre');
+    var pa = document.getElementById('productoPrincipioActivo');
+
+    if (nombre) {
+        nombre.addEventListener('input', function() {
+            buscarEnDigemid(this.value);
+        });
+        nombre.addEventListener('blur', function() {
+            buscarEnDigemid(this.value);
+        });
+    }
+    if (pa) {
+        pa.addEventListener('input', function() {
+            buscarEnDigemid(this.value);
+        });
+        pa.addEventListener('blur', function() {
+            buscarEnDigemid(this.value);
+        });
+    }
+});
 </script>
 </body>
 </html>

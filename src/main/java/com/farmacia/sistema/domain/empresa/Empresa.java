@@ -53,6 +53,45 @@ public class Empresa {
     @Column(name = "max_usuarios")
     private Integer maxUsuarios;
 
+    // ── Facturación electrónica SUNAT (por empresa/tenant) ──
+
+    @Lob
+    @Column(name = "certificado_pfx")
+    private byte[] certificadoPfx;
+
+    @Column(name = "certificado_password", length = 255)
+    private String certificadoPassword;
+
+    @Column(name = "sol_usuario", length = 50)
+    private String solUsuario;
+
+    @Column(name = "sol_password", length = 100)
+    private String solPassword;
+
+    @Column(name = "sunat_habilitado", nullable = false)
+    private boolean sunatHabilitado = false;
+
+    @Column(name = "sunat_modo", length = 20)
+    private String sunatModo = "DEMO";
+
+    @Column(name = "serie_factura", length = 10)
+    private String serieFactura = "F001";
+
+    @Column(name = "serie_boleta", length = 10)
+    private String serieBoleta = "B001";
+
+    @Column(name = "serie_nota_credito", length = 10)
+    private String serieNotaCredito = "FC01";
+
+    @Column(name = "serie_nota_debito", length = 10)
+    private String serieNotaDebito = "FD01";
+
+    @Column(name = "serie_guia_remision", length = 10)
+    private String serieGuiaRemision = "T001";
+
+    @Column(name = "certificado_nombre_archivo", length = 255)
+    private String certificadoNombreArchivo;
+
     public Long getId() {
         return id;
     }
@@ -119,6 +158,36 @@ public class Empresa {
     public Integer getMaxUsuariosEfectivo() {
         if (maxUsuarios != null) return maxUsuarios;
         return plan != null ? plan.getMaxUsuarios() : null;
+    }
+
+    public byte[] getCertificadoPfx() { return certificadoPfx; }
+    public void setCertificadoPfx(byte[] certificadoPfx) { this.certificadoPfx = certificadoPfx; }
+    public String getCertificadoPassword() { return certificadoPassword; }
+    public void setCertificadoPassword(String certificadoPassword) { this.certificadoPassword = certificadoPassword; }
+    public String getSolUsuario() { return solUsuario; }
+    public void setSolUsuario(String solUsuario) { this.solUsuario = solUsuario; }
+    public String getSolPassword() { return solPassword; }
+    public void setSolPassword(String solPassword) { this.solPassword = solPassword; }
+    public boolean isSunatHabilitado() { return sunatHabilitado; }
+    public void setSunatHabilitado(boolean sunatHabilitado) { this.sunatHabilitado = sunatHabilitado; }
+    public String getSunatModo() { return sunatModo; }
+    public void setSunatModo(String sunatModo) { this.sunatModo = sunatModo; }
+    public String getSerieFactura() { return serieFactura; }
+    public void setSerieFactura(String serieFactura) { this.serieFactura = serieFactura; }
+    public String getSerieBoleta() { return serieBoleta; }
+    public void setSerieBoleta(String serieBoleta) { this.serieBoleta = serieBoleta; }
+    public String getSerieNotaCredito() { return serieNotaCredito; }
+    public void setSerieNotaCredito(String serieNotaCredito) { this.serieNotaCredito = serieNotaCredito; }
+    public String getSerieNotaDebito() { return serieNotaDebito; }
+    public void setSerieNotaDebito(String serieNotaDebito) { this.serieNotaDebito = serieNotaDebito; }
+    public String getSerieGuiaRemision() { return serieGuiaRemision; }
+    public void setSerieGuiaRemision(String serieGuiaRemision) { this.serieGuiaRemision = serieGuiaRemision; }
+    public String getCertificadoNombreArchivo() { return certificadoNombreArchivo; }
+    public void setCertificadoNombreArchivo(String certificadoNombreArchivo) { this.certificadoNombreArchivo = certificadoNombreArchivo; }
+
+    public boolean tieneCertificadoConfigurado() {
+        return certificadoPfx != null && certificadoPfx.length > 0
+                && certificadoPassword != null && !certificadoPassword.isBlank();
     }
 }
 

@@ -9,6 +9,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
+import java.util.Optional;
 
 @Service
 @Transactional
@@ -63,8 +64,17 @@ public class ClienteService {
         return repository.save(existente);
     }
 
+    public Cliente guardar(Cliente cliente) {
+        return repository.save(cliente);
+    }
+
     public void eliminar(Long id) {
         repository.deleteById(id);
+    }
+
+    @Transactional(readOnly = true)
+    public Optional<Cliente> buscarPorNumeroDocumento(String numeroDocumento) {
+        return repository.findByNumeroDocumento(numeroDocumento);
     }
 
     private static void normalizarDocumento(Cliente c) {

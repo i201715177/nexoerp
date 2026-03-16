@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="es" xmlns:th="http://www.thymeleaf.org" xmlns:sec="http://www.thymeleaf.org/extras/spring-security">
 <head>
     <meta charset="UTF-8">
@@ -11,45 +11,7 @@
 <body>
 <div class="app-layout">
     <!-- Sidebar -->
-    <aside class="sidebar" id="sidebar">
-        <div class="sidebar-header">
-            <span class="sidebar-brand"><i class="bi bi-diagram-3"></i> NexoERP</span>
-            <button class="sidebar-toggle d-lg-none" onclick="toggleSidebar()"><i class="bi bi-x-lg"></i></button>
-        </div>
-        <nav class="sidebar-nav">
-            <div class="sidebar-section-title">Operaciones</div>
-            <a class="sidebar-link" href="/web/productos"><i class="bi bi-box-seam"></i> Productos</a>
-            <a class="sidebar-link" href="/web/clientes"><i class="bi bi-people"></i> Clientes</a>
-            <a class="sidebar-link" href="/web/proveedores" sec:authorize="hasAnyRole('ADMIN','SAAS_ADMIN')"><i class="bi bi-truck"></i> Proveedores</a>
-            <a class="sidebar-link active" href="/web/compras" sec:authorize="hasAnyRole('ADMIN','SAAS_ADMIN')"><i class="bi bi-cart-plus"></i> Compras</a>
-            <a class="sidebar-link" href="/web/ventas"><i class="bi bi-receipt"></i> Ventas</a>
-            <a class="sidebar-link" href="/web/caja"><i class="bi bi-cash-stack"></i> Caja</a>
-            <div class="sidebar-section-title">Gesti&oacute;n</div>
-            <a class="sidebar-link" href="/web/finanzas" sec:authorize="hasAnyRole('ADMIN','SAAS_ADMIN')"><i class="bi bi-graph-up"></i> Finanzas</a>
-            <a class="sidebar-link" href="/web/inventario"><i class="bi bi-clipboard-data"></i> Inventario</a>
-            <a class="sidebar-link" href="/web/facturacion-electronica" sec:authorize="hasAnyRole('ADMIN','SAAS_ADMIN')"><i class="bi bi-file-earmark-check"></i> Facturación E.</a>
-            <a class="sidebar-link" href="/web/guias-remision" sec:authorize="hasAnyRole('ADMIN','SAAS_ADMIN')"><i class="bi bi-truck"></i> Guías Remisión</a>
-            <a class="sidebar-link" href="/web/reportes"><i class="bi bi-file-earmark-bar-graph"></i> Reportes</a>
-            <a class="sidebar-link" href="/web/sucursales" sec:authorize="hasAnyRole('ADMIN','SAAS_ADMIN')"><i class="bi bi-building"></i> Sucursales</a>
-            <div class="sidebar-section-title">Sistema</div>
-            <a class="sidebar-link" href="/web/auditoria" sec:authorize="hasAnyRole('ADMIN','SAAS_ADMIN')"><i class="bi bi-shield-check"></i> Auditor&iacute;a</a>
-            <a class="sidebar-link" href="/web/admin/empresas" sec:authorize="hasRole('SAAS_ADMIN')"><i class="bi bi-gear"></i> Admin SaaS</a>
-        </nav>
-        <div class="sidebar-footer">
-            <div sec:authorize="hasRole('SAAS_ADMIN')">
-                <form th:if="${empresasTodas != null and !#lists.isEmpty(empresasTodas)}"
-                      th:action="@{/web/empresas/cambiar}" method="post" class="mb-2">
-                    <select name="tenantId" class="form-select form-select-sm"
-                            onchange="this.form.submit()" style="background:#243656; color:#c8d6e5; border-color:rgba(255,255,255,.12); font-size:12px;">
-                        <option th:each="e : ${empresasTodas}" th:value="${e.id}"
-                                th:selected="${empresaActual != null and e.id == empresaActual.id}"
-                                th:text="${e.nombre}">Empresa</option>
-                    </select>
-                    <input type="hidden" name="redirect" value="/web/compras">
-                </form>
-            </div>
-        </div>
-    </aside>
+        <div th:replace="~{fragments/sidebar :: sidebar('compras')}"></div>
     <div id="sidebarBackdrop" class="sidebar-backdrop"></div>
 
     <!-- Main -->
@@ -129,8 +91,8 @@
                     </div>
                     <div class="content-card-body no-padding">
                         <div class="export-bar">
-                            <a th:href="@{/web/compras/excel}" class="btn-export btn-export-excel"><i class="bi bi-file-earmark-excel"></i> Excel</a>
-                            <a th:href="@{/web/compras/pdf}" class="btn-export btn-export-pdf"><i class="bi bi-file-earmark-pdf"></i> PDF</a>
+                            <a target="_blank" th:href="@{/web/compras/excel}" class="btn-export btn-export-excel"><i class="bi bi-file-earmark-excel"></i> Excel</a>
+                            <a target="_blank" th:href="@{/web/compras/pdf}" class="btn-export btn-export-pdf"><i class="bi bi-file-earmark-pdf"></i> PDF</a>
                         </div>
                         <table class="data-table data-table-compact">
                             <thead>
@@ -222,7 +184,6 @@
                                             <i class="bi bi-search"></i>
                                         </button>
                                     </div>
-                                    <small id="compSunatMsg" class="text-muted d-none mt-1"></small>
                                 </div>
                                 <div class="col-12 form-section">
                                     <label class="form-label">Proveedor *</label>
@@ -419,9 +380,52 @@
     </div>
 </div>
 
+<!-- Alerta flotante: resultado búsqueda SUNAT/RENIEC -->
+<div id="alertaFlotanteSunat" style="display:none; position:fixed; z-index:9999; min-width:320px; max-width:480px; top:80px; right:30px; box-shadow:0 8px 32px rgba(0,0,0,.25); border-radius:10px; overflow:hidden; cursor:default;">
+    <div id="alertaFlotanteHeader" style="background:#f0ad4e; color:#fff; padding:6px 12px; display:flex; justify-content:space-between; align-items:center; font-weight:600; font-size:13px; user-select:none; cursor:move;">
+        <span><i class="bi bi-info-circle me-1"></i>Datos SUNAT / RENIEC</span>
+        <button type="button" onclick="cerrarAlertaFlotante()" style="background:none; border:none; color:#fff; font-size:18px; cursor:pointer; line-height:1; padding:0 2px;" title="Cerrar">&times;</button>
+    </div>
+    <div id="alertaFlotanteBody" style="background:#fff; padding:12px 14px; font-size:13px; line-height:1.6; color:#333;"></div>
+</div>
+
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 <script th:src="@{/js/app.js}"></script>
 <script>
+function mostrarAlertaFlotante(html, colorHeader) {
+    var alerta = document.getElementById('alertaFlotanteSunat');
+    var header = document.getElementById('alertaFlotanteHeader');
+    var body = document.getElementById('alertaFlotanteBody');
+    if (!alerta || !body) return;
+    body.innerHTML = html;
+    if (header && colorHeader) header.style.background = colorHeader;
+    alerta.style.display = 'block';
+}
+function cerrarAlertaFlotante() {
+    var alerta = document.getElementById('alertaFlotanteSunat');
+    if (alerta) alerta.style.display = 'none';
+}
+(function initAlertaDraggable() {
+    document.addEventListener('DOMContentLoaded', function() {
+        var alerta = document.getElementById('alertaFlotanteSunat');
+        var header = document.getElementById('alertaFlotanteHeader');
+        if (!alerta || !header) return;
+        var drag = { active: false, startX: 0, startY: 0, startLeft: 0, startTop: 0 };
+        header.addEventListener('mousedown', function (e) {
+            if (e.target.tagName === 'BUTTON') return;
+            e.preventDefault();
+            drag.active = true; drag.startX = e.clientX; drag.startY = e.clientY;
+            var rect = alerta.getBoundingClientRect();
+            drag.startLeft = rect.left; drag.startTop = rect.top;
+            alerta.style.right = 'auto'; alerta.style.left = drag.startLeft + 'px'; alerta.style.top = drag.startTop + 'px';
+            document.addEventListener('mousemove', onMove);
+            document.addEventListener('mouseup', onUp);
+        });
+        function onMove(e) { if (!drag.active) return; alerta.style.left = (drag.startLeft + e.clientX - drag.startX) + 'px'; alerta.style.top = (drag.startTop + e.clientY - drag.startY) + 'px'; }
+        function onUp() { drag.active = false; document.removeEventListener('mousemove', onMove); document.removeEventListener('mouseup', onUp); }
+    });
+})();
+
 (function() {
     function abrirModalEditar(tr) {
         if (!tr) return;
@@ -448,30 +452,27 @@
 function buscarProveedorCompra() {
     var tipo = document.getElementById('compTipoDoc');
     var num = document.getElementById('compNumDoc');
-    var msg = document.getElementById('compSunatMsg');
     var btn = document.getElementById('btnBuscarCompra');
     var sel = document.getElementById('compProveedorId');
     if (!tipo || !num || !sel) return;
     var numero = (num.value || '').trim().replace(/\D/g, '');
-    if (tipo.value === 'DNI' && numero.length !== 8) { mostrarMsgComp(msg, 'Ingrese 8 d\u00edgitos para DNI.', 'danger'); num.focus(); return; }
-    if (tipo.value === 'RUC' && numero.length !== 11) { mostrarMsgComp(msg, 'Ingrese 11 d\u00edgitos para RUC.', 'danger'); num.focus(); return; }
+    if (tipo.value === 'DNI' && numero.length !== 8) { mostrarAlertaFlotante('<div style="color:#721c24;"><i class="bi bi-x-circle-fill me-1"></i>Ingrese 8 d\u00edgitos para DNI.</div>', '#dc3545'); num.focus(); return; }
+    if (tipo.value === 'RUC' && numero.length !== 11) { mostrarAlertaFlotante('<div style="color:#721c24;"><i class="bi bi-x-circle-fill me-1"></i>Ingrese 11 d\u00edgitos para RUC.</div>', '#dc3545'); num.focus(); return; }
 
-    // Primero buscar si ya existe en el dropdown
     var encontrado = false;
     for (var i = 0; i < sel.options.length; i++) {
         if (sel.options[i].getAttribute('data-doc') === numero) {
             sel.value = sel.options[i].value;
-            mostrarMsgComp(msg, '\u2705 Proveedor encontrado: ' + sel.options[i].text, 'success');
+            mostrarAlertaFlotante('<div style="color:#155724;"><i class="bi bi-check-circle-fill me-1"></i><strong>Proveedor encontrado en el sistema</strong></div><div class="mt-1">' + sel.options[i].text + '</div>', '#28a745');
             encontrado = true;
             break;
         }
     }
     if (encontrado) return;
 
-    // Si no existe, consultar SUNAT/RENIEC
     btn.disabled = true;
     btn.innerHTML = '<span class="spinner-border spinner-border-sm"></span>';
-    mostrarMsgComp(msg, 'Consultando SUNAT/RENIEC...', 'info');
+    mostrarAlertaFlotante('<div style="color:#0c5460;"><i class="bi bi-hourglass-split me-1"></i>Consultando SUNAT/RENIEC...</div>', '#17a2b8');
 
     fetch('/api/sunat/consultar?tipo=' + tipo.value + '&numero=' + numero)
         .then(function(r) { return r.json().then(function(d) { return {ok: r.ok, data: d}; }); })
@@ -479,36 +480,38 @@ function buscarProveedorCompra() {
             btn.disabled = false;
             btn.innerHTML = '<i class="bi bi-search"></i>';
             if (!res.ok || res.data.error) {
-                mostrarMsgComp(msg, res.data.error || 'No se encontraron datos.', 'danger');
+                mostrarAlertaFlotante('<div style="color:#721c24;"><i class="bi bi-x-circle-fill me-1"></i>' + (res.data.error || 'No se encontraron datos.') + '</div>', '#dc3545');
                 return;
             }
             var d = res.data;
             var esDni = tipo.value === 'DNI';
-            var info = '<i class="bi bi-exclamation-triangle-fill"></i> <strong>' + (d.razonSocial || 'Contribuyente encontrado') + '</strong>';
-            if (esDni && d.nombres) {
-                info += '<br><i class="bi bi-person-fill"></i> ' + d.nombres;
-                if (d.apellidoPaterno) info += ' ' + d.apellidoPaterno;
-                if (d.apellidoMaterno) info += ' ' + d.apellidoMaterno;
+            var html = '<div style="color:#856404;"><i class="bi bi-exclamation-triangle-fill me-1"></i><strong>No registrado como proveedor</strong></div>';
+            html += '<table style="width:100%; margin-top:6px; font-size:13px; border-collapse:collapse;">';
+            html += '<tr><td style="padding:2px 8px 2px 0; font-weight:600; white-space:nowrap;">Nombre:</td><td>' + (d.razonSocial || '') + '</td></tr>';
+            if (esDni) {
+                if (d.nombres) html += '<tr><td style="padding:2px 8px 2px 0; font-weight:600;">Nombres:</td><td>' + d.nombres + '</td></tr>';
+                if (d.apellidoPaterno) html += '<tr><td style="padding:2px 8px 2px 0; font-weight:600;">Ap. Paterno:</td><td>' + d.apellidoPaterno + '</td></tr>';
+                if (d.apellidoMaterno) html += '<tr><td style="padding:2px 8px 2px 0; font-weight:600;">Ap. Materno:</td><td>' + d.apellidoMaterno + '</td></tr>';
             }
-            if (d.estado) info += '<br>Estado: <strong>' + d.estado + '</strong>';
-            if (d.condicion) info += ' | Condici\u00f3n: <strong>' + d.condicion + '</strong>';
-            if (d.direccion) info += '<br><i class="bi bi-geo-alt-fill"></i> ' + d.direccion;
-            if (d.tipo) info += '<br><i class="bi bi-building"></i> Tipo: ' + d.tipo;
-            if (d.actividadEconomica) info += '<br><i class="bi bi-briefcase"></i> Actividad: ' + d.actividadEconomica;
-            info += '<br><small>Este proveedor no est\u00e1 registrado. <a href="/web/proveedores">Reg\u00edstrelo primero en Proveedores</a> y volver\u00e1 a aparecer aqu\u00ed.</small>';
-            mostrarMsgComp(msg, info, 'warning');
+            if (d.estado) html += '<tr><td style="padding:2px 8px 2px 0; font-weight:600;">Estado:</td><td>' + d.estado + '</td></tr>';
+            if (d.condicion) html += '<tr><td style="padding:2px 8px 2px 0; font-weight:600;">Condici\u00f3n:</td><td>' + d.condicion + '</td></tr>';
+            if (d.direccion) html += '<tr><td style="padding:2px 8px 2px 0; font-weight:600;"><i class="bi bi-geo-alt"></i> Direcci\u00f3n:</td><td>' + d.direccion + '</td></tr>';
+            else if (esDni) html += '<tr><td colspan="2" style="padding:2px 0; color:#856404;"><em>Direcci\u00f3n no disponible en API gratuita</em></td></tr>';
+            if (d.departamento || d.provincia || d.distrito) {
+                var ubic = [d.distrito, d.provincia, d.departamento].filter(Boolean).join(' - ');
+                html += '<tr><td style="padding:2px 8px 2px 0; font-weight:600;">Ubicaci\u00f3n:</td><td>' + ubic + '</td></tr>';
+            }
+            if (d.tipo) html += '<tr><td style="padding:2px 8px 2px 0; font-weight:600;">Tipo:</td><td>' + d.tipo + '</td></tr>';
+            if (d.actividadEconomica) html += '<tr><td style="padding:2px 8px 2px 0; font-weight:600;">Actividad:</td><td>' + d.actividadEconomica + '</td></tr>';
+            html += '</table>';
+            html += '<div class="mt-2" style="font-size:12px; color:#666;"><a href="/web/proveedores" target="_blank">Reg\u00edstrelo en Proveedores</a> para seleccionarlo aqu\u00ed.</div>';
+            mostrarAlertaFlotante(html, '#f0ad4e');
         })
         .catch(function(err) {
             btn.disabled = false;
             btn.innerHTML = '<i class="bi bi-search"></i>';
-            mostrarMsgComp(msg, 'Error de conexi\u00f3n. Intente de nuevo.', 'danger');
+            mostrarAlertaFlotante('<div style="color:#721c24;"><i class="bi bi-x-circle-fill me-1"></i>Error de conexi\u00f3n. Intente de nuevo.</div>', '#dc3545');
         });
-}
-function mostrarMsgComp(el, texto, tipo) {
-    if (!el) return;
-    el.className = 'small mt-1 alert alert-' + (tipo === 'danger' ? 'danger' : tipo === 'success' ? 'success' : tipo === 'warning' ? 'warning' : 'info') + ' py-1 px-2';
-    el.innerHTML = texto;
-    el.classList.remove('d-none');
 }
 </script>
 </body>

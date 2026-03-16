@@ -77,6 +77,10 @@ public class EmpresaService {
         return repository.save(existente);
     }
 
+    public Empresa guardarDirecto(Empresa empresa) {
+        return repository.save(empresa);
+    }
+
     public void eliminar(Long id) {
         repository.deleteById(id);
     }

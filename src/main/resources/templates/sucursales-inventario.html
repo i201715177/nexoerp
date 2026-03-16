@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="es" xmlns:th="http://www.thymeleaf.org" xmlns:sec="http://www.thymeleaf.org/extras/spring-security">
 <head>
     <meta charset="UTF-8">
@@ -11,45 +11,7 @@
 <body>
 <div class="app-layout">
     <!-- Sidebar -->
-    <aside class="sidebar" id="sidebar">
-        <div class="sidebar-header">
-            <span class="sidebar-brand"><i class="bi bi-diagram-3"></i> NexoERP</span>
-            <button class="sidebar-toggle d-lg-none" onclick="toggleSidebar()"><i class="bi bi-x-lg"></i></button>
-        </div>
-        <nav class="sidebar-nav">
-            <div class="sidebar-section-title">Operaciones</div>
-            <a class="sidebar-link" href="/web/productos"><i class="bi bi-box-seam"></i> Productos</a>
-            <a class="sidebar-link" href="/web/clientes"><i class="bi bi-people"></i> Clientes</a>
-            <a class="sidebar-link" href="/web/proveedores" sec:authorize="hasAnyRole('ADMIN','SAAS_ADMIN')"><i class="bi bi-truck"></i> Proveedores</a>
-            <a class="sidebar-link" href="/web/compras" sec:authorize="hasAnyRole('ADMIN','SAAS_ADMIN')"><i class="bi bi-cart-plus"></i> Compras</a>
-            <a class="sidebar-link" href="/web/ventas"><i class="bi bi-receipt"></i> Ventas</a>
-            <a class="sidebar-link" href="/web/caja"><i class="bi bi-cash-stack"></i> Caja</a>
-            <div class="sidebar-section-title">Gesti&oacute;n</div>
-            <a class="sidebar-link" href="/web/finanzas" sec:authorize="hasAnyRole('ADMIN','SAAS_ADMIN')"><i class="bi bi-graph-up"></i> Finanzas</a>
-            <a class="sidebar-link" href="/web/inventario"><i class="bi bi-clipboard-data"></i> Inventario</a>
-            <a class="sidebar-link" href="/web/facturacion-electronica" sec:authorize="hasAnyRole('ADMIN','SAAS_ADMIN')"><i class="bi bi-file-earmark-check"></i> Facturación E.</a>
-            <a class="sidebar-link" href="/web/guias-remision" sec:authorize="hasAnyRole('ADMIN','SAAS_ADMIN')"><i class="bi bi-truck"></i> Guías Remisión</a>
-            <a class="sidebar-link" href="/web/reportes"><i class="bi bi-file-earmark-bar-graph"></i> Reportes</a>
-            <a class="sidebar-link active" href="/web/sucursales" sec:authorize="hasAnyRole('ADMIN','SAAS_ADMIN')"><i class="bi bi-building"></i> Sucursales</a>
-            <div class="sidebar-section-title">Sistema</div>
-            <a class="sidebar-link" href="/web/auditoria" sec:authorize="hasAnyRole('ADMIN','SAAS_ADMIN')"><i class="bi bi-shield-check"></i> Auditor&iacute;a</a>
-            <a class="sidebar-link" href="/web/admin/empresas" sec:authorize="hasRole('SAAS_ADMIN')"><i class="bi bi-gear"></i> Admin SaaS</a>
-        </nav>
-        <div class="sidebar-footer">
-            <div sec:authorize="hasRole('SAAS_ADMIN')">
-                <form th:if="${empresasTodas != null and !#lists.isEmpty(empresasTodas)}"
-                      th:action="@{/web/empresas/cambiar}" method="post" class="mb-2">
-                    <select name="tenantId" class="form-select form-select-sm"
-                            onchange="this.form.submit()" style="background:#243656; color:#c8d6e5; border-color:rgba(255,255,255,.12); font-size:12px;">
-                        <option th:each="e : ${empresasTodas}" th:value="${e.id}"
-                                th:selected="${empresaActual != null and e.id == empresaActual.id}"
-                                th:text="${e.nombre}">Empresa</option>
-                    </select>
-                    <input type="hidden" name="redirect" value="/web/sucursales/inventario">
-                </form>
-            </div>
-        </div>
-    </aside>
+        <div th:replace="~{fragments/sidebar :: sidebar('sucursales')}"></div>
     <div id="sidebarBackdrop" class="sidebar-backdrop"></div>
 
     <!-- Main -->

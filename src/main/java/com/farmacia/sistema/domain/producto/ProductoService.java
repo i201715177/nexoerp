@@ -6,6 +6,15 @@ import com.farmacia.sistema.domain.inventario.StockAlmacenRepository;
 import com.farmacia.sistema.tenant.TenantContext;
 import jakarta.persistence.EntityNotFoundException;
 import jakarta.validation.Valid;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.Cacheable;
+import org.springframework.cache.annotation.Caching;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -16,6 +25,8 @@ import java.util.stream.Collectors;
 @Service
 @Transactional
 public class ProductoService {
+
+    private static final Logger log = LoggerFactory.getLogger(ProductoService.class);
 
     private final ProductoRepository repository;
     private final StockAlmacenRepository stockAlmacenRepository;
@@ -32,15 +43,29 @@ public class ProductoService {
         this.movimientoRepository = movimientoRepository;
     }
 
+    @Cacheable(value = "productos", key = "T(com.farmacia.sistema.tenant.TenantContext).getTenantId()")
     public List<Producto> listarTodos() {
         Long tenantId = TenantContext.getTenantId();
+        log.debug("Cargando productos del tenant {}", tenantId);
         if (tenantId != null) {
             return repository.findByTenantId(tenantId);
         }
         return repository.findAll();
     }
 
-    /** Marcas distintas (no nulas ni vacías) para filtros, ordenadas. */
+    public Page<Producto> listarPaginado(int page, int size, String query) {
+        Long tenantId = TenantContext.getTenantId();
+        Pageable pageable = PageRequest.of(page, size, Sort.by("nombre").ascending());
+        if (tenantId == null) {
+            return repository.findAll(pageable);
+        }
+        if (query != null && !query.isBlank()) {
+            return repository.buscarPaginado(tenantId, query.trim(), pageable);
+        }
+        return repository.findByTenantId(tenantId, pageable);
+    }
+
+    @Cacheable(value = "marcasDistintas", key = "T(com.farmacia.sistema.tenant.TenantContext).getTenantId()")
     public List<String> listarMarcasDistintas() {
         return listarTodos().stream()
                 .map(Producto::getMarca)
@@ -50,11 +75,16 @@ public class ProductoService {
                 .collect(Collectors.toList());
     }
 
+    @Cacheable(value = "productoPorId", key = "#id")
     public Producto obtenerPorId(Long id) {
         return repository.findById(id)
                 .orElseThrow(() -> new EntityNotFoundException("Producto no encontrado"));
     }
 
+    @Caching(evict = {
+            @CacheEvict(value = "productos", allEntries = true),
+            @CacheEvict(value = "marcasDistintas", allEntries = true)
+    })
     public Producto crear(@Valid Producto producto) {
         if (producto.getCodigo() == null || producto.getCodigo().isBlank()) {
             producto.setCodigo(generarCodigo());
@@ -83,6 +113,11 @@ public class ProductoService {
                 .orElseThrow(() -> new EntityNotFoundException("Producto no encontrado"));
     }
 
+    @Caching(evict = {
+            @CacheEvict(value = "productos", allEntries = true),
+            @CacheEvict(value = "productoPorId", key = "#id"),
+            @CacheEvict(value = "marcasDistintas", allEntries = true)
+    })
     public Producto actualizar(Long id, @Valid Producto datos) {
         validarStock(datos.getStockActual(), datos.getStockMinimo(), datos.getStockMaximo());
         Producto existente = obtenerPorId(id);
@@ -100,6 +135,18 @@ public class ProductoService {
         existente.setStockMinimo(datos.getStockMinimo());
         existente.setStockMaximo(datos.getStockMaximo());
         existente.setActivo(datos.isActivo());
+        existente.setPrincipioActivo(datos.getPrincipioActivo());
+        existente.setConcentracion(datos.getConcentracion());
+        existente.setFormaFarmaceutica(datos.getFormaFarmaceutica());
+        existente.setRegistroSanitario(datos.getRegistroSanitario());
+        existente.setLote(datos.getLote());
+        existente.setFechaVencimiento(datos.getFechaVencimiento());
+        existente.setTipoProductoControlado(datos.getTipoProductoControlado());
+        existente.setTipoControlDigemid(datos.getTipoControlDigemid());
+        existente.setListaControl(datos.getListaControl());
+        existente.setRequiereReceta(datos.isRequiereReceta());
+        existente.setTipoReceta(datos.getTipoReceta());
+        existente.setControlStockEspecial(datos.isControlStockEspecial());
         return repository.save(existente);
     }
 
@@ -123,6 +170,11 @@ public class ProductoService {
         }
     }
 
+    @Caching(evict = {
+            @CacheEvict(value = "productos", allEntries = true),
+            @CacheEvict(value = "productoPorId", key = "#id"),
+            @CacheEvict(value = "marcasDistintas", allEntries = true)
+    })
     public void eliminar(Long id) {
         stockAlmacenRepository.deleteByProductoId(id);
         loteProductoRepository.deleteByProductoId(id);
@@ -130,7 +182,10 @@ public class ProductoService {
         repository.deleteById(id);
     }
 
-    /** Actualiza solo el stock (para ajustes de inventario; no valida stock mínimo). */
+    @Caching(evict = {
+            @CacheEvict(value = "productos", allEntries = true),
+            @CacheEvict(value = "productoPorId", key = "#id")
+    })
     public void actualizarStock(Long id, int nuevoStock) {
         if (nuevoStock < 0) throw new IllegalArgumentException("El stock no puede ser negativo");
         Producto p = obtenerPorId(id);

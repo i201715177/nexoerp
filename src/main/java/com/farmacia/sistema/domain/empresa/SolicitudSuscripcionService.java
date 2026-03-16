@@ -37,4 +37,14 @@ public class SolicitudSuscripcionService {
         }
         repository.deleteById(id);
     }
+
+    @Transactional(readOnly = true)
+    public long contarPendientes() {
+        return repository.countByEstado("PENDIENTE");
+    }
+
+    @Transactional(readOnly = true)
+    public List<SolicitudSuscripcion> listarUltimasPendientes() {
+        return repository.findTop5ByEstadoOrderByFechaSolicitudDesc("PENDIENTE");
+    }
 }

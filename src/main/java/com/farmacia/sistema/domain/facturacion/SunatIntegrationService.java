@@ -12,9 +12,9 @@ import java.math.RoundingMode;
 import java.time.format.DateTimeFormatter;
 
 /**
- * Servicio preparatorio para integración con SUNAT.
- * Genera XML UBL 2.1 y gestiona el envío cuando se configure el certificado digital.
- * Actualmente genera la estructura XML pero NO envía a SUNAT (requiere certificado).
+ * Servicio de facturación electrónica SUNAT multi-tenant.
+ * Cada empresa tiene su propio certificado digital, series y configuración.
+ * Genera XML UBL 2.1 y gestiona el envío cuando el certificado esté configurado.
  */
 @Service
 public class SunatIntegrationService {
@@ -23,17 +23,27 @@ public class SunatIntegrationService {
     private static final DateTimeFormatter FMT_SUNAT = DateTimeFormatter.ofPattern("yyyy-MM-dd");
 
     @Value("${app.sunat.certificado.habilitado:false}")
-    private boolean certificadoHabilitado;
+    private boolean certificadoHabilitadoGlobal;
 
     @Value("${app.sunat.modo:DEMO}")
-    private String modo;
+    private String modoGlobal;
 
     public boolean isHabilitado() {
-        return certificadoHabilitado;
+        return certificadoHabilitadoGlobal;
     }
 
     public String getModo() {
-        return modo;
+        return modoGlobal;
+    }
+
+    public boolean isHabilitado(Empresa empresa) {
+        if (empresa == null) return certificadoHabilitadoGlobal;
+        return empresa.isSunatHabilitado() && empresa.tieneCertificadoConfigurado();
+    }
+
+    public String getModo(Empresa empresa) {
+        if (empresa == null) return modoGlobal;
+        return empresa.getSunatModo() != null ? empresa.getSunatModo() : modoGlobal;
     }
 
     /**
@@ -148,21 +158,28 @@ public class SunatIntegrationService {
     }
 
     /**
-     * Envía el comprobante a SUNAT. Solo funciona si el certificado digital está configurado.
+     * Envía el comprobante a SUNAT. Lee el certificado desde la entidad Empresa (multi-tenant).
      * @return Estado del envío: "ACEPTADO", "RECHAZADO", o "NO_CONFIGURADO"
      */
     public String enviarASunat(String xml, Empresa empresa) {
-        if (!certificadoHabilitado) {
-            log.info("Envío a SUNAT deshabilitado. Configure el certificado digital para activar.");
+        if (!isHabilitado(empresa)) {
+            log.info("Envío a SUNAT deshabilitado para empresa {}. Configure el certificado digital.",
+                    empresa != null ? empresa.getNombre() : "desconocida");
             return "NO_CONFIGURADO";
         }
 
+        String modo = getModo(empresa);
         // TODO: Implementar envío real a SUNAT vía SOAP cuando el certificado esté configurado
-        // 1. Firmar XML con certificado digital
-        // 2. Comprimir en ZIP
-        // 3. Enviar vía SOAP a SUNAT (beta o producción según modo)
-        // 4. Procesar CDR (Constancia de Recepción)
-        log.info("Modo SUNAT: {}. Envío pendiente de implementación con certificado.", modo);
+        // 1. Leer empresa.getCertificadoPfx() y empresa.getCertificadoPassword()
+        // 2. Firmar XML con el certificado digital de la empresa
+        // 3. Comprimir en ZIP
+        // 4. Enviar vía SOAP a SUNAT (beta o producción según empresa.getSunatModo())
+        //    - BETA: https://e-beta.sunat.gob.pe/ol-ti-itcpfegem-beta/billService
+        //    - PRODUCCION: https://e-factura.sunat.gob.pe/ol-ti-itcpfegem/billService
+        // 5. Usar empresa.getSolUsuario() y empresa.getSolPassword() para autenticación
+        // 6. Procesar CDR (Constancia de Recepción)
+        log.info("Empresa: {} | Modo SUNAT: {} | Certificado: OK | Envío pendiente de implementación.",
+                empresa.getNombre(), modo);
         return "PENDIENTE";
     }
 

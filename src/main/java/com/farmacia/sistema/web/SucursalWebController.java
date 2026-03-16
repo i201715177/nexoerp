@@ -20,7 +20,7 @@ import java.util.Map;
 
 @Controller
 @RequestMapping("/web/sucursales")
-@PreAuthorize("hasAnyRole('ADMIN', 'SAAS_ADMIN')")
+@PreAuthorize("hasAnyRole('ADMIN', 'GERENTE')")
 public class SucursalWebController {
 
     private final SucursalService sucursalService;

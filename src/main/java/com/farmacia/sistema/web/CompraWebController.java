@@ -25,7 +25,7 @@ import java.util.List;
 
 @Controller
 @RequestMapping("/web/compras")
-@PreAuthorize("hasAnyRole('ADMIN', 'SAAS_ADMIN')")
+@PreAuthorize("hasAnyRole('ADMIN', 'GERENTE', 'VENDEDOR')")
 public class CompraWebController {
 
     private final CompraService compraService;

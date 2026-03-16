@@ -19,7 +19,7 @@ import java.util.List;
 
 @Controller
 @RequestMapping("/web/auditoria")
-@PreAuthorize("hasAnyRole('ADMIN', 'SAAS_ADMIN')")
+@PreAuthorize("hasAnyRole('ADMIN', 'GERENTE', 'VENDEDOR', 'AUDITOR')")
 public class AuditoriaWebController {
 
     private final AuditoriaAccionRepository auditoriaAccionRepository;

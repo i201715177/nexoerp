@@ -2,6 +2,8 @@ package com.farmacia.sistema.domain.sunat;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import io.github.resilience4j.circuitbreaker.annotation.CircuitBreaker;
+import io.github.resilience4j.retry.annotation.Retry;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
@@ -40,6 +42,8 @@ public class SunatConsultaService {
         this.dniApiUrl = dniApiUrl;
     }
 
+    @CircuitBreaker(name = "sunatApi", fallbackMethod = "consultarRucFallback")
+    @Retry(name = "sunatApi")
     public Map<String, String> consultarRuc(String ruc) {
         Map<String, String> resultado = new LinkedHashMap<>();
         if (ruc == null || !ruc.matches("\\d{11}")) {
@@ -226,10 +230,11 @@ public class SunatConsultaService {
             return resultado;
         }
 
-        String direccion = txt(json, "direccion", "address");
-        String departamento = txt(json, "departamento", "department");
-        String provincia = txt(json, "provincia", "province");
-        String distrito = txt(json, "distrito", "district");
+        String direccion = txt(json, "direccion", "direccion_completa",
+                "domicilio", "address", "direccionCompleta", "domicilio_fiscal");
+        String departamento = txt(json, "departamento", "department", "desc_dpto");
+        String provincia = txt(json, "provincia", "province", "desc_prov");
+        String distrito = txt(json, "distrito", "district", "desc_dist");
 
         StringBuilder ubicacion = new StringBuilder();
         if (!distrito.isEmpty()) ubicacion.append(distrito);
@@ -259,6 +264,14 @@ public class SunatConsultaService {
         resultado.put("distrito", distrito);
         resultado.put("ubigeo", txt(json, "ubigeo"));
 
+        return resultado;
+    }
+
+    @SuppressWarnings("unused")
+    private Map<String, String> consultarRucFallback(String ruc, Throwable t) {
+        log.warn("CircuitBreaker abierto para SUNAT RUC. Fallback activado. Error: {}", t.getMessage());
+        Map<String, String> resultado = new LinkedHashMap<>();
+        resultado.put("error", "El servicio SUNAT no está disponible temporalmente. Ingrese los datos manualmente.");
         return resultado;
     }
 

@@ -1,0 +1,57 @@
+﻿<!DOCTYPE html>
+<html lang="es" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Reporte recetas - NexoERP</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+    <link rel="stylesheet" th:href="@{/css/app.css}">
+</head>
+<body>
+<div class="app-layout">
+        <div th:replace="~{fragments/sidebar :: sidebar('digemid')}"></div>
+    <div class="main-wrapper">
+        <header class="topbar">
+            <h1 class="topbar-title">Reporte regulatorio - Recetas</h1>
+            <a class="btn btn-sm btn-outline-secondary" th:href="@{/web/digemid}">Volver</a>
+        </header>
+        <main class="main-content">
+            <form method="get" class="row g-2 align-items-end mb-3">
+                <div class="col-auto"><label class="form-label">Desde</label><input type="date" name="desde" class="form-control form-control-sm" th:value="${#temporals.format(desde, 'yyyy-MM-dd')}"></div>
+                <div class="col-auto"><label class="form-label">Hasta</label><input type="date" name="hasta" class="form-control form-control-sm" th:value="${#temporals.format(hasta, 'yyyy-MM-dd')}"></div>
+                <div class="col-auto"><button type="submit" class="btn btn-sm btn-primary"><i class="bi bi-funnel me-1"></i> Filtrar</button></div>
+            </form>
+            <p class="text-muted">Mostrando desde <strong th:text="${#temporals.format(desde)}">-</strong> hasta <strong th:text="${#temporals.format(hasta)}">-</strong></p>
+            <div class="content-card">
+                <div class="content-card-body table-responsive">
+                    <table class="table table-sm">
+                        <thead><tr><th>Fecha reg.</th><th>F. emisi&oacute;n</th><th>N&ordm; receta</th><th>Tipo</th><th>Producto</th><th>Lote</th><th>Prescrita</th><th>Vendida</th><th>Paciente</th><th>DNI</th><th>Direcci&oacute;n</th><th>M&eacute;dico</th><th>CMP</th><th>Especialidad</th></tr></thead>
+                        <tbody>
+                        <tr th:if="${#lists.isEmpty(recetas)}"><td colspan="14" class="text-muted">Sin recetas en el periodo.</td></tr>
+                        <tr th:each="r : ${recetas}">
+                            <td th:text="${r.fechaRegistro != null ? #temporals.format(r.fechaRegistro) : '-'}">-</td>
+                            <td th:text="${r.fechaEmisionReceta != null ? #temporals.format(r.fechaEmisionReceta) : '-'}">-</td>
+                            <td th:text="${r.numeroReceta}">-</td>
+                            <td th:text="${r.tipoReceta != null ? r.tipoReceta : '-'}">-</td>
+                            <td th:text="${r.producto != null ? r.producto.nombre : '-'}">-</td>
+                            <td th:text="${r.producto != null and r.producto.lote != null ? r.producto.lote : '-'}">-</td>
+                            <td th:text="${r.cantidadPrescrita != null ? r.cantidadPrescrita : '-'}">-</td>
+                            <td th:text="${r.cantidad}">0</td>
+                            <td th:text="${r.nombrePaciente != null ? r.nombrePaciente : '-'}">-</td>
+                            <td th:text="${r.documentoPaciente != null ? r.documentoPaciente : '-'}">-</td>
+                            <td th:text="${r.direccionPaciente != null ? r.direccionPaciente : '-'}">-</td>
+                            <td th:text="${r.nombreMedico != null ? r.nombreMedico : '-'}">-</td>
+                            <td th:text="${r.cmpMedico != null ? r.cmpMedico : '-'}">-</td>
+                            <td th:text="${r.especialidadMedico != null ? r.especialidadMedico : '-'}">-</td>
+                        </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </main>
+    </div>
+</div>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>

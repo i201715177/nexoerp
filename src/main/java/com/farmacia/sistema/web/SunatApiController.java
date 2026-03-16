@@ -26,13 +26,17 @@ public class SunatApiController {
 
         numero = numero != null ? numero.trim().replaceAll("\\D", "") : "";
 
+        String tipoNorm = tipo != null ? tipo.trim().toUpperCase() : "";
+        // RUT se trata como RUC (11 dígitos)
+        if ("RUT".equals(tipoNorm)) tipoNorm = "RUC";
+
         Map<String, String> resultado;
-        if ("RUC".equalsIgnoreCase(tipo)) {
+        if ("RUC".equals(tipoNorm)) {
             resultado = sunatConsultaService.consultarRuc(numero);
-        } else if ("DNI".equalsIgnoreCase(tipo)) {
+        } else if ("DNI".equals(tipoNorm)) {
             resultado = sunatConsultaService.consultarDni(numero);
         } else {
-            resultado = Map.of("error", "Tipo de documento no soportado. Use DNI o RUC.");
+            resultado = Map.of("error", "Tipo de documento no soportado. Use DNI, RUC o RUT.");
         }
 
         if (resultado.containsKey("error")) {

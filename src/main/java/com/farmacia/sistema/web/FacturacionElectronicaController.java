@@ -83,8 +83,12 @@ public class FacturacionElectronicaController {
         model.addAttribute("totalND", totalND);
         model.addAttribute("totalGR", totalGR);
         model.addAttribute("pendientesSunat", pendientesSunat);
-        model.addAttribute("sunatHabilitado", sunatService.isHabilitado());
-        model.addAttribute("sunatModo", sunatService.getModo());
+
+        Long tid = TenantContext.getTenantId();
+        Empresa empresa = tid != null ? empresaService.obtenerPorId(tid) : empresaService.empresaPorDefecto();
+        model.addAttribute("sunatHabilitado", sunatService.isHabilitado(empresa));
+        model.addAttribute("sunatModo", sunatService.getModo(empresa));
+        model.addAttribute("empresaSunat", empresa);
 
         return "facturacion-electronica";
     }

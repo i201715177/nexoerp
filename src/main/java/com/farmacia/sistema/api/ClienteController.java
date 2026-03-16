@@ -46,5 +46,12 @@ public class ClienteController {
     public void eliminar(@PathVariable Long id) {
         service.eliminar(id);
     }
+
+    @GetMapping("/buscar-doc")
+    public ResponseEntity<?> buscarPorDocumento(@RequestParam String numero) {
+        return service.buscarPorNumeroDocumento(numero)
+                .map(c -> ResponseEntity.ok(c))
+                .orElse(ResponseEntity.notFound().build());
+    }
 }
 

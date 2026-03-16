@@ -6,6 +6,8 @@ import org.apache.poi.xssf.streaming.SXSSFWorkbook;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.Caching;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
@@ -80,12 +82,98 @@ public class ProductoImportService {
                 cell.setCellStyle(requiredStyle);
             }
 
+            // Ejemplos de productos (mezcla de normales y controlados DIGEMID)
+            // Formato: Codigo, Nombre, Descripcion, Laboratorio, Presentacion, Categoria, Marca, Unidad, CodBarras, PrecioVenta, Costo, StockAct, StockMin, StockMax
             Object[][] ejemplos = {
-                    {"", "Paracetamol 500mg", "Tabletas analgesicas", "Medifarma", "Caja x 100 tab", "Analgesicos", "Panadol", "CAJA", "7750075000100", 8.50, 4.20, 500, 50, 1000},
-                    {"", "Ibuprofeno 400mg", "Antiinflamatorio", "Medifarma", "Caja x 100 tab", "Analgesicos", "Motrin", "CAJA", "7750075000117", 12.00, 5.80, 350, 40, 800},
-                    {"", "Amoxicilina 500mg", "Antibiotico amplio espectro", "Medifarma", "Caja x 21 cap", "Antibioticos", "Amoxil", "CAJA", "7750075000148", 22.00, 10.50, 150, 25, 400},
-                    {"", "Omeprazol 20mg", "Inhibidor bomba protones", "Medifarma", "Caja x 30 cap", "Gastricos", "Losec", "CAJA", "7750075000179", 16.00, 7.00, 400, 50, 800},
-                    {"", "Vitamina C 500mg", "Acido ascorbico", "Medifarma", "Frasco x 100 tab", "Vitaminas", "Redoxon", "FRASCO", "7750075000193", 25.00, 12.00, 250, 30, 500},
+                    {"", "Paracetamol 500 MG TABLETA", "Analgésico no opioide", "GENFAR", "Blister x 10 comp", "Analgesicos", "GENFAR", "UND", "7750000000010", 1.20, 0.70, 50, 10, 200},
+                    {"", "Paracetamol 1G SOBRE", "Analgésico en sobre", "BAYER", "Sobre", "Analgesicos", "BAYER", "UND", "7750000000011", 1.80, 1.00, 40, 10, 150},
+                    {"", "Ibuprofeno 400 MG TABLETA", "Antiinflamatorio no esteroideo", "ACME", "Blister x 10 comp", "Antiinflamatorios", "ACME", "UND", "7750000000012", 1.50, 0.80, 60, 10, 200},
+                    {"", "Ibuprofeno 600 MG TABLETA", "Antiinflamatorio no esteroideo", "ACME", "Blister x 10 comp", "Antiinflamatorios", "ACME", "UND", "7750000000013", 1.80, 1.00, 40, 10, 150},
+                    {"", "Diclofenaco 50 MG TABLETA", "Antiinflamatorio no esteroideo", "ROCHE", "Blister x 10 comp", "Antiinflamatorios", "ROCHE", "UND", "7750000000014", 1.40, 0.80, 55, 10, 200},
+                    {"", "Diclofenaco 75 MG AMPOLLA", "Antiinflamatorio inyectable", "ROCHE", "Caja x 5 amp", "Antiinflamatorios", "ROCHE", "UND", "7750000000015", 3.50, 2.20, 25, 5, 80},
+                    {"", "Amoxicilina 500 MG CÁPSULA", "Antibiótico amplio espectro", "MEDIFARMA", "Caja x 12 caps", "Antibioticos", "MEDIFARMA", "UND", "7750000000016", 2.20, 1.20, 80, 15, 250},
+                    {"", "Amoxicilina + Clavulanico 875/125", "Antibiótico combinado", "MEDIFARMA", "Caja x 10 comp", "Antibioticos", "MEDIFARMA", "UND", "7750000000017", 4.20, 2.80, 35, 5, 120},
+                    {"", "Azitromicina 500 MG TABLETA", "Antibiótico macrólido", "ROCHE", "Caja x 3 comp", "Antibioticos", "ROCHE", "UND", "7750000000018", 6.50, 4.20, 30, 5, 80},
+                    {"", "Ciprofloxacino 500 MG TABLETA", "Antibiótico quinolona", "BAYER", "Caja x 10 comp", "Antibioticos", "BAYER", "UND", "7750000000019", 3.80, 2.40, 40, 5, 120},
+                    {"", "Loperamida 2 MG CÁPSULA", "Antidiarreico", "GENFAR", "Blister x 10 caps", "Gastrointestinales", "GENFAR", "UND", "7750000000020", 1.10, 0.60, 70, 10, 200},
+                    {"", "Omeprazol 20 MG CÁPSULA", "Inhibidor bomba protones", "ACME", "Blister x 10 caps", "Gastrointestinales", "ACME", "UND", "7750000000021", 1.60, 0.90, 65, 10, 200},
+                    {"", "Ranitidina 150 MG TABLETA", "Antiácido H2", "ACME", "Blister x 10 comp", "Gastrointestinales", "ACME", "UND", "7750000000022", 1.40, 0.80, 45, 10, 160},
+                    {"", "Salbutamol Inhalador 100MCG", "Broncodilatador inhalador", "GLAXO", "Inhalador 200 dosis", "Respiratorios", "GLAXO", "UND", "7750000000023", 18.00, 12.00, 20, 5, 60},
+                    {"", "Loratadina 10 MG TABLETA", "Antihistamínico", "GENFAR", "Blister x 10 comp", "Antialergicos", "GENFAR", "UND", "7750000000024", 1.30, 0.70, 75, 10, 220},
+                    {"", "Cetirizina 10 MG TABLETA", "Antihistamínico", "GENFAR", "Blister x 10 comp", "Antialergicos", "GENFAR", "UND", "7750000000025", 1.40, 0.80, 70, 10, 220},
+                    {"", "Acetilcisteína 600 MG SOBRE", "Mucolítico", "ROCHE", "Sobre", "Respiratorios", "ROCHE", "UND", "7750000000026", 2.80, 1.60, 35, 5, 120},
+                    {"", "Ambroxol Jarabe 15MG/5ML", "Mucolítico jarabe", "MEDIFARMA", "Frasco 120ml", "Respiratorios", "MEDIFARMA", "UND", "7750000000027", 5.50, 3.20, 30, 5, 90},
+                    {"", "Bromhexina Jarabe 4MG/5ML", "Mucolítico jarabe", "MEDIFARMA", "Frasco 120ml", "Respiratorios", "MEDIFARMA", "UND", "7750000000028", 4.80, 2.80, 28, 5, 80},
+                    {"", "Ácido Fólico 5 MG TABLETA", "Suplemento ácido fólico", "ACME", "Blister x 10 comp", "Vitaminas", "ACME", "UND", "7750000000029", 0.90, 0.40, 90, 10, 250},
+                    {"", "Vitamina C 1G EFERVESCENTE", "Vitamina C efervescente", "ACME", "Tira x 10 tab", "Vitaminas", "ACME", "UND", "7750000000030", 1.70, 0.90, 80, 10, 240},
+                    {"", "Metformina 850 MG TABLETA", "Antidiabético oral", "GENFAR", "Blister x 10 comp", "Antidiabeticos", "GENFAR", "UND", "7750000000031", 1.30, 0.70, 85, 10, 260},
+                    {"", "Glibenclamida 5 MG TABLETA", "Antidiabético sulfonilurea", "GENFAR", "Blister x 10 comp", "Antidiabeticos", "GENFAR", "UND", "7750000000032", 1.10, 0.60, 70, 10, 220},
+                    {"", "Atorvastatina 20 MG TABLETA", "Hipolipemiante", "BAYER", "Caja x 10 comp", "Cardiovasculares", "BAYER", "UND", "7750000000033", 4.50, 2.80, 40, 5, 120},
+                    {"", "Losartán 50 MG TABLETA", "Antihipertensivo ARA-II", "BAYER", "Caja x 10 comp", "Cardiovasculares", "BAYER", "UND", "7750000000034", 2.20, 1.30, 80, 10, 260},
+                    {"", "Enalapril 10 MG TABLETA", "IECA antihipertensivo", "ACME", "Blister x 10 comp", "Cardiovasculares", "ACME", "UND", "7750000000035", 1.70, 1.00, 70, 10, 220},
+                    {"", "Amlodipino 5 MG TABLETA", "Antihipertensivo calcioant.", "ACME", "Blister x 10 comp", "Cardiovasculares", "ACME", "UND", "7750000000036", 1.80, 1.00, 65, 10, 220},
+                    {"", "Propranolol 40 MG TABLETA", "Beta-bloqueador", "GENFAR", "Blister x 10 comp", "Cardiovasculares", "GENFAR", "UND", "7750000000037", 1.60, 0.90, 55, 10, 200},
+                    {"", "Aspirina 100 MG TABLETA", "Antiagregante plaquetario", "BAYER", "Blister x 10 comp", "Antiagregantes", "BAYER", "UND", "7750000000038", 1.50, 0.90, 90, 10, 260},
+                    {"", "Clorfenamina 4 MG TABLETA", "Antihistamínico sedante", "GENFAR", "Blister x 10 comp", "Antialergicos", "GENFAR", "UND", "7750000000039", 0.90, 0.40, 80, 10, 240},
+                    {"", "Suero Oral SOBRE", "Solución rehidratación oral", "ACME", "Sobre", "Gastrointestinales", "ACME", "UND", "7750000000040", 1.20, 0.60, 60, 10, 200},
+                    {"", "Solución Fisiológica 0.9% 500ML", "Solución parenteral", "ACME", "Frasco 500ml", "Soluciones", "ACME", "UND", "7750000000041", 2.50, 1.50, 50, 10, 180},
+                    {"", "Solución Glucosada 5% 500ML", "Solución parenteral", "ACME", "Frasco 500ml", "Soluciones", "ACME", "UND", "7750000000042", 2.60, 1.60, 45, 10, 160},
+                    {"", "Suero Ringer Lactato 500ML", "Solución parenteral", "ACME", "Frasco 500ml", "Soluciones", "ACME", "UND", "7750000000043", 2.70, 1.70, 40, 10, 150},
+                    {"", "Gasa Estéril 10X10", "Gasa estéril para curaciones", "MEDINSUMO", "Paq x 10 und", "Dispositivos", "MEDINSUMO", "UND", "7750000000044", 3.00, 1.80, 80, 10, 240},
+                    {"", "Algodón Hidrófilo 100G", "Algodón para curaciones", "MEDINSUMO", "Bolsa 100g", "Dispositivos", "MEDINSUMO", "UND", "7750000000045", 2.20, 1.30, 70, 10, 220},
+                    {"", "Jeringa 5ML DESCARTABLE", "Jeringa estéril", "MEDINSUMO", "Unidad", "Dispositivos", "MEDINSUMO", "UND", "7750000000046", 0.80, 0.40, 200, 20, 600},
+                    {"", "Mascarilla Quirúrgica", "Mascarilla triple capa", "MEDINSUMO", "Paq x 50 und", "Dispositivos", "MEDINSUMO", "UND", "7750000000047", 0.50, 0.20, 500, 50, 1500},
+                    {"", "Clorhexidina Solución 2%", "Antiséptico tópico", "ACME", "Frasco 120ml", "Antisepticos", "ACME", "UND", "7750000000048", 4.00, 2.30, 35, 5, 120},
+                    {"", "Alcohol 70% Frasco 120ML", "Antiséptico tópico", "ACME", "Frasco 120ml", "Antisepticos", "ACME", "UND", "7750000000049", 3.50, 2.00, 40, 5, 130},
+                    {"", "Metamizol 1G AMPOLLA", "Analgésico antipirético", "ACME", "Caja x 5 amp", "Analgesicos", "ACME", "UND", "7750000000050", 3.20, 2.00, 30, 5, 100},
+                    {"", "Buscapina Compuesta TABLETA", "Antiespasmódico + analgésico", "BOEHRINGER", "Blister x 10 comp", "Antiespasmodicos", "BOEHRINGER", "UND", "7750000000051", 2.80, 1.70, 40, 5, 120},
+                    {"", "Nafazolina Gotas Nasales", "Descongestivo nasal", "ACME", "Frasco 15ml", "Respiratorios", "ACME", "UND", "7750000000052", 4.20, 2.60, 25, 5, 80},
+                    {"", "Clobetasol Crema 0.05%", "Corticoide tópico potente", "ACME", "Tubo 30g", "Dermatologicos", "ACME", "UND", "7750000000053", 6.00, 3.80, 20, 5, 70},
+                    {"", "Hidrocortisona Crema 1%", "Corticoide tópico suave", "ACME", "Tubo 30g", "Dermatologicos", "ACME", "UND", "7750000000054", 4.50, 2.80, 25, 5, 80},
+                    {"", "Ketoconazol Crema 2%", "Antimicótico tópico", "ACME", "Tubo 30g", "Dermatologicos", "ACME", "UND", "7750000000055", 5.00, 3.00, 25, 5, 80},
+                    {"", "Ketoconazol Shampoo 2%", "Antimicótico shampoo", "ACME", "Frasco 120ml", "Dermatologicos", "ACME", "UND", "7750000000056", 7.50, 4.60, 20, 5, 70},
+                    {"", "Clotrimazol Crema 1%", "Antimicótico tópico", "ACME", "Tubo 30g", "Dermatologicos", "ACME", "UND", "7750000000057", 4.20, 2.60, 30, 5, 90},
+                    {"", "Lidocaína Gel 2%", "Anestésico local tópico", "ACME", "Tubo 30g", "Dermatologicos", "ACME", "UND", "7750000000058", 5.20, 3.20, 20, 5, 70},
+                    {"", "Salicilato de Metilo Ungüento", "Ungüento analgésico tópico", "ACME", "Tubo 30g", "Dermatologicos", "ACME", "UND", "7750000000059", 4.80, 2.90, 25, 5, 80},
+                    // A partir de aquí: productos CONTROLADOS (solo se diferencian por el nombre; el control regulatorio real se maneja en los campos DIGEMID del formulario)
+                    {"", "Clonazepam 0.5 MG TABLETA", "Psicótropo benzodiacepina (CONTROLADO)", "ROCHE", "Blister x 10 comp", "Psicotropicos", "ROCHE", "UND", "7750000000060", 3.80, 2.20, 30, 5, 100},
+                    {"", "Clonazepam 2 MG TABLETA", "Psicótropo benzodiacepina (CONTROLADO)", "ROCHE", "Blister x 10 comp", "Psicotropicos", "ROCHE", "UND", "7750000000061", 5.20, 3.20, 20, 5, 60},
+                    {"", "Alprazolam 0.5 MG TABLETA", "Ansiolítico benzodiacepina (CONTROLADO)", "BAYER", "Blister x 10 comp", "Psicotropicos", "BAYER", "UND", "7750000000062", 3.60, 2.10, 30, 5, 90},
+                    {"", "Alprazolam 1 MG TABLETA", "Ansiolítico benzodiacepina (CONTROLADO)", "BAYER", "Blister x 10 comp", "Psicotropicos", "BAYER", "UND", "7750000000063", 4.80, 2.90, 20, 5, 70},
+                    {"", "Diazepam 5 MG TABLETA", "Ansiolítico benzodiacepina (CONTROLADO)", "GENFAR", "Blister x 10 comp", "Psicotropicos", "GENFAR", "UND", "7750000000064", 2.20, 1.30, 40, 5, 120},
+                    {"", "Diazepam 10 MG TABLETA", "Ansiolítico benzodiacepina (CONTROLADO)", "GENFAR", "Blister x 10 comp", "Psicotropicos", "GENFAR", "UND", "7750000000065", 2.80, 1.70, 30, 5, 100},
+                    {"", "Lorazepam 2 MG TABLETA", "Ansiolítico benzodiacepina (CONTROLADO)", "ACME", "Blister x 10 comp", "Psicotropicos", "ACME", "UND", "7750000000066", 3.20, 1.90, 25, 5, 80},
+                    {"", "Tramadol 50 MG CÁPSULA", "Analgésico opioide (CONTROLADO)", "ACME", "Caja x 10 caps", "Opiaceos", "ACME", "UND", "7750000000067", 4.20, 2.60, 25, 5, 80},
+                    {"", "Tramadol 100 MG AMPOLLA", "Analgésico opioide (CONTROLADO)", "ACME", "Caja x 5 amp", "Opiaceos", "ACME", "UND", "7750000000068", 6.80, 4.20, 20, 5, 60},
+                    {"", "Codeína 30 MG TABLETA", "Opioide débil (CONTROLADO)", "ACME", "Blister x 10 comp", "Opiaceos", "ACME", "UND", "7750000000069", 3.60, 2.10, 25, 5, 80},
+                    {"", "Codeína Jarabe 10MG/5ML", "Opioide jarabe (CONTROLADO)", "ACME", "Frasco 120ml", "Opiaceos", "ACME", "UND", "7750000000070", 5.20, 3.10, 18, 3, 60},
+                    {"", "Morfina 10 MG AMPOLLA", "Opioide fuerte (CONTROLADO)", "ACME", "Caja x 5 amp", "Opiaceos", "ACME", "UND", "7750000000071", 16.00, 10.50, 10, 2, 30},
+                    {"", "Morfina 30 MG AMPOLLA", "Opioide fuerte (CONTROLADO)", "ACME", "Caja x 5 amp", "Opiaceos", "ACME", "UND", "7750000000072", 26.00, 18.00, 6, 1, 18},
+                    {"", "Fentanilo Ampolla 0.1MG/2ML", "Opioide muy potente (CONTROLADO)", "ACME", "Caja x 5 amp", "Opiaceos", "ACME", "UND", "7750000000073", 32.00, 22.00, 6, 1, 18},
+                    {"", "Fentanilo Parche 25MCG/H", "Opioide transdérmico (CONTROLADO)", "ACME", "Caja x 5 parches", "Opiaceos", "ACME", "UND", "7750000000074", 48.00, 35.00, 4, 1, 12},
+                    {"", "Carbamazepina 200 MG TABLETA", "Antiepiléptico (CONTROLADO)", "ACME", "Blister x 10 comp", "Psicotropicos", "ACME", "UND", "7750000000075", 3.20, 2.00, 25, 5, 80},
+                    {"", "Valproato Sódico 500 MG TAB", "Antiepiléptico (CONTROLADO)", "ACME", "Blister x 10 comp", "Psicotropicos", "ACME", "UND", "7750000000076", 4.20, 2.60, 25, 5, 80},
+                    {"", "Zolpidem 10 MG TABLETA", "Hipnótico (CONTROLADO)", "ACME", "Blister x 10 comp", "Psicotropicos", "ACME", "UND", "7750000000077", 4.60, 2.80, 20, 5, 70},
+                    {"", "Flunitrazepam 1 MG TABLETA", "Hipnótico (CONTROLADO)", "ACME", "Blister x 10 comp", "Psicotropicos", "ACME", "UND", "7750000000078", 5.80, 3.40, 16, 3, 50},
+                    {"", "Metilfenidato 10 MG TABLETA", "Psicoestimulante TDAH (CONTROLADO)", "ACME", "Blister x 10 comp", "Psicotropicos", "ACME", "UND", "7750000000079", 6.40, 3.80, 18, 3, 54},
+                    {"", "Metilfenidato 20 MG TABLETA", "Psicoestimulante TDAH (CONTROLADO)", "ACME", "Blister x 10 comp", "Psicotropicos", "ACME", "UND", "7750000000080", 7.80, 4.60, 14, 2, 42},
+                    {"", "Insulina NPH FRASCO 10ML", "Insulina intermedia", "NOVO NORDISK", "Frasco 10ml", "Antidiabeticos", "NOVO", "UND", "7750000000081", 28.00, 20.00, 15, 3, 40},
+                    {"", "Insulina Regular FRASCO 10ML", "Insulina de acción rápida", "NOVO NORDISK", "Frasco 10ml", "Antidiabeticos", "NOVO", "UND", "7750000000082", 27.00, 19.00, 15, 3, 40},
+                    {"", "Clopidogrel 75 MG TABLETA", "Antiagregante plaquetario", "BAYER", "Caja x 10 comp", "Cardiovasculares", "BAYER", "UND", "7750000000083", 5.20, 3.10, 25, 5, 80},
+                    {"", "Levotiroxina 50 MCG TABLETA", "Hormona tiroidea", "ACME", "Blister x 10 comp", "Endocrinologia", "ACME", "UND", "7750000000084", 2.00, 1.20, 35, 5, 100},
+                    {"", "Levotiroxina 100 MCG TABLETA", "Hormona tiroidea", "ACME", "Blister x 10 comp", "Endocrinologia", "ACME", "UND", "7750000000085", 2.40, 1.40, 30, 5, 90},
+                    {"", "Tamsulosina 0.4 MG CÁPSULA", "Alfa-bloqueador urinario", "ACME", "Caja x 10 caps", "Urologia", "ACME", "UND", "7750000000086", 4.80, 2.90, 20, 5, 70},
+                    {"", "Pantoprazol 40 MG TABLETA", "Inhibidor bomba protones", "ACME", "Blister x 10 comp", "Gastrointestinales", "ACME", "UND", "7750000000087", 2.60, 1.60, 40, 5, 120},
+                    {"", "Esomeprazol 40 MG TABLETA", "Inhibidor bomba protones", "ACME", "Blister x 10 comp", "Gastrointestinales", "ACME", "UND", "7750000000088", 3.20, 2.00, 35, 5, 110},
+                    {"", "Adrenalina 1MG/ML AMPOLLA", "Uso en emergencias", "ACME", "Caja x 5 amp", "Urgencias", "ACME", "UND", "7750000000089", 7.50, 4.80, 10, 2, 30},
+                    {"", "Amikacina 500MG/2ML AMP", "Antibiótico aminoglucósido", "ACME", "Caja x 5 amp", "Antibioticos", "ACME", "UND", "7750000000090", 9.50, 6.20, 12, 2, 36},
+                    {"", "Ceftriaxona 1G AMPOLLA", "Cefalosporina de 3ra gen.", "ACME", "Caja x 1 amp", "Antibioticos", "ACME", "UND", "7750000000091", 6.80, 4.20, 20, 3, 60},
+                    {"", "Meropenem 1G AMPOLLA", "Carbapenémico", "ACME", "Caja x 1 amp", "Antibioticos", "ACME", "UND", "7750000000092", 28.00, 20.00, 8, 2, 24},
+                    {"", "Vancomicina 1G AMPOLLA", "Glicopéptido", "ACME", "Caja x 1 amp", "Antibioticos", "ACME", "UND", "7750000000093", 26.00, 18.00, 8, 2, 24},
+                    {"", "Linezolid 600 MG TABLETA", "Antibiótico reserva", "ACME", "Caja x 10 comp", "Antibioticos", "ACME", "UND", "7750000000094", 35.00, 25.00, 6, 1, 18},
+                    {"", "Aciclovir 400 MG TABLETA", "Antiviral", "ACME", "Blister x 10 comp", "Antivirales", "ACME", "UND", "7750000000095", 3.20, 2.00, 25, 5, 80},
+                    {"", "Fluconazol 150 MG CÁPSULA", "Antimicótico sistémico", "ACME", "Blister x 1 caps", "Antimicoticos", "ACME", "UND", "7750000000096", 4.20, 2.60, 20, 3, 60},
+                    {"", "Lopinavir/Ritonavir TABLETA", "Antirretroviral combinado", "ACME", "Caja x 60 comp", "Antirretrovirales", "ACME", "UND", "7750000000097", 120.00, 90.00, 5, 1, 15}
             };
 
             for (int r = 0; r < ejemplos.length; r++) {
@@ -674,6 +762,10 @@ public class ProductoImportService {
         }
     }
 
+    @Caching(evict = {
+            @CacheEvict(value = "productos", allEntries = true),
+            @CacheEvict(value = "marcasDistintas", allEntries = true)
+    })
     public ImportResult importarDesdeExcel(MultipartFile file) throws IOException {
         if (file.isEmpty()) {
             throw new IllegalArgumentException("El archivo esta vacio");

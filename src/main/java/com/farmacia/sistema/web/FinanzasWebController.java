@@ -19,7 +19,7 @@ import java.util.Map;
 
 @Controller
 @RequestMapping("/web/finanzas")
-@PreAuthorize("hasAnyRole('ADMIN', 'SAAS_ADMIN')")
+@PreAuthorize("hasAnyRole('ADMIN', 'GERENTE', 'VENDEDOR')")
 public class FinanzasWebController {
 
     private final FinanzasService finanzasService;

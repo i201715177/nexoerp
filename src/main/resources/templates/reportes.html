@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="es" xmlns:th="http://www.thymeleaf.org" xmlns:sec="http://www.thymeleaf.org/extras/spring-security">
 <head>
     <meta charset="UTF-8">
@@ -11,45 +11,7 @@
 <body>
 <div class="app-layout">
     <!-- Sidebar -->
-    <aside class="sidebar" id="sidebar">
-        <div class="sidebar-header">
-            <span class="sidebar-brand"><i class="bi bi-diagram-3"></i> NexoERP</span>
-            <button class="sidebar-toggle d-lg-none" onclick="toggleSidebar()"><i class="bi bi-x-lg"></i></button>
-        </div>
-        <nav class="sidebar-nav">
-            <div class="sidebar-section-title">Operaciones</div>
-            <a class="sidebar-link" href="/web/productos"><i class="bi bi-box-seam"></i> Productos</a>
-            <a class="sidebar-link" href="/web/clientes"><i class="bi bi-people"></i> Clientes</a>
-            <a class="sidebar-link" href="/web/proveedores" sec:authorize="hasAnyRole('ADMIN','SAAS_ADMIN')"><i class="bi bi-truck"></i> Proveedores</a>
-            <a class="sidebar-link" href="/web/compras" sec:authorize="hasAnyRole('ADMIN','SAAS_ADMIN')"><i class="bi bi-cart-plus"></i> Compras</a>
-            <a class="sidebar-link" href="/web/ventas"><i class="bi bi-receipt"></i> Ventas</a>
-            <a class="sidebar-link" href="/web/caja"><i class="bi bi-cash-stack"></i> Caja</a>
-            <div class="sidebar-section-title">Gesti&oacute;n</div>
-            <a class="sidebar-link" href="/web/finanzas" sec:authorize="hasAnyRole('ADMIN','SAAS_ADMIN')"><i class="bi bi-graph-up"></i> Finanzas</a>
-            <a class="sidebar-link" href="/web/inventario"><i class="bi bi-clipboard-data"></i> Inventario</a>
-            <a class="sidebar-link" href="/web/facturacion-electronica" sec:authorize="hasAnyRole('ADMIN','SAAS_ADMIN')"><i class="bi bi-file-earmark-check"></i> Facturación E.</a>
-            <a class="sidebar-link" href="/web/guias-remision" sec:authorize="hasAnyRole('ADMIN','SAAS_ADMIN')"><i class="bi bi-truck"></i> Guías Remisión</a>
-            <a class="sidebar-link active" href="/web/reportes"><i class="bi bi-file-earmark-bar-graph"></i> Reportes</a>
-            <a class="sidebar-link" href="/web/sucursales" sec:authorize="hasAnyRole('ADMIN','SAAS_ADMIN')"><i class="bi bi-building"></i> Sucursales</a>
-            <div class="sidebar-section-title">Sistema</div>
-            <a class="sidebar-link" href="/web/auditoria" sec:authorize="hasAnyRole('ADMIN','SAAS_ADMIN')"><i class="bi bi-shield-check"></i> Auditor&iacute;a</a>
-            <a class="sidebar-link" href="/web/admin/empresas" sec:authorize="hasRole('SAAS_ADMIN')"><i class="bi bi-gear"></i> Admin SaaS</a>
-        </nav>
-        <div class="sidebar-footer">
-            <div sec:authorize="hasRole('SAAS_ADMIN')">
-                <form th:if="${empresasTodas != null and !#lists.isEmpty(empresasTodas)}"
-                      th:action="@{/web/empresas/cambiar}" method="post" class="mb-2">
-                    <select name="tenantId" class="form-select form-select-sm"
-                            onchange="this.form.submit()" style="background:#243656; color:#c8d6e5; border-color:rgba(255,255,255,.12); font-size:12px;">
-                        <option th:each="e : ${empresasTodas}" th:value="${e.id}"
-                                th:selected="${empresaActual != null and e.id == empresaActual.id}"
-                                th:text="${e.nombre}">Empresa</option>
-                    </select>
-                    <input type="hidden" name="redirect" value="/web/reportes">
-                </form>
-            </div>
-        </div>
-    </aside>
+        <div th:replace="~{fragments/sidebar :: sidebar('reportes')}"></div>
     <div id="sidebarBackdrop" class="sidebar-backdrop"></div>
 
     <!-- Main -->
@@ -79,28 +41,28 @@
         <main class="main-content">
             <!-- KPIs fila 1 -->
             <div class="kpi-row">
-                <div class="kpi-card">
+                <div class="kpi-card" id="cardVentasPeriodo" style="cursor:pointer;" title="Clic para ver detalle de ventas del per&iacute;odo">
                     <div class="kpi-icon blue"><i class="bi bi-cash-coin"></i></div>
                     <div class="kpi-body">
                         <div class="kpi-label">Ventas en el per&iacute;odo</div>
                         <div class="kpi-value">S/ <span th:text="${ventasPeriodo}">0.00</span></div>
                     </div>
                 </div>
-                <div class="kpi-card">
+                <div class="kpi-card" id="cardUtilidad" style="cursor:pointer;" title="Clic para ver detalle de utilidad por producto">
                     <div class="kpi-icon green"><i class="bi bi-graph-up-arrow"></i></div>
                     <div class="kpi-body">
                         <div class="kpi-label">Utilidad bruta</div>
                         <div class="kpi-value">S/ <span th:text="${utilidadPeriodo}">0.00</span></div>
                     </div>
                 </div>
-                <div class="kpi-card">
+                <div class="kpi-card" id="cardCxP" style="cursor:pointer;" title="Clic para ver detalle de cuentas por pagar">
                     <div class="kpi-icon red"><i class="bi bi-credit-card"></i></div>
                     <div class="kpi-body">
                         <div class="kpi-label">Cuentas por pagar</div>
                         <div class="kpi-value">S/ <span th:text="${cxpPendiente}">0.00</span></div>
                     </div>
                 </div>
-                <div class="kpi-card">
+                <div class="kpi-card" id="cardCxC" style="cursor:pointer;" title="Clic para ver detalle de cuentas por cobrar">
                     <div class="kpi-icon yellow"><i class="bi bi-receipt-cutoff"></i></div>
                     <div class="kpi-body">
                         <div class="kpi-label">Cuentas por cobrar</div>
@@ -111,21 +73,21 @@
 
             <!-- KPIs fila 2 -->
             <div class="kpi-row">
-                <div class="kpi-card">
+                <div class="kpi-card" id="cardVentasDia" style="cursor:pointer;" title="Clic para ver detalle de ventas del d&iacute;a">
                     <div class="kpi-icon blue"><i class="bi bi-calendar-day"></i></div>
                     <div class="kpi-body">
                         <div class="kpi-label">Ventas del d&iacute;a</div>
                         <div class="kpi-value">S/ <span th:text="${ventasDia}">0.00</span></div>
                     </div>
                 </div>
-                <div class="kpi-card">
+                <div class="kpi-card" id="cardVentasMes" style="cursor:pointer;" title="Clic para ver detalle de ventas del mes">
                     <div class="kpi-icon green"><i class="bi bi-calendar-month"></i></div>
                     <div class="kpi-body">
                         <div class="kpi-label">Ventas del mes</div>
                         <div class="kpi-value">S/ <span th:text="${ventasMes}">0.00</span></div>
                     </div>
                 </div>
-                <div class="kpi-card">
+                <div class="kpi-card" id="cardVentasAnio" style="cursor:pointer;" title="Clic para ver detalle de ventas del a&ntilde;o">
                     <div class="kpi-icon yellow"><i class="bi bi-calendar-range"></i></div>
                     <div class="kpi-body">
                         <div class="kpi-label">Ventas del a&ntilde;o</div>
@@ -275,11 +237,11 @@
                     <div class="content-card-body">
                         <p class="text-muted mb-3">Exporta los datos del per&iacute;odo actual a archivos descargables.</p>
                         <div class="export-bar">
-                            <a class="btn-export btn-export-excel"
+                            <a target="_blank" class="btn-export btn-export-excel"
                                th:href="@{/web/reportes/excel(desde=${desde}, hasta=${hasta})}">
                                 <i class="bi bi-file-earmark-excel"></i> Excel
                             </a>
-                            <a class="btn-export btn-export-pdf"
+                            <a target="_blank" class="btn-export btn-export-pdf"
                                th:href="@{/web/reportes/pdf(desde=${desde}, hasta=${hasta})}">
                                 <i class="bi bi-file-earmark-pdf"></i> PDF
                             </a>
@@ -294,7 +256,707 @@
     </div>
 </div>
 
+<!-- Modal arrastrable detalle ventas -->
+<div id="modalDetalleVentas" style="display:none; position:fixed; top:5%; left:5%; width:90%; max-height:88vh;
+    background:#fff; border-radius:12px; box-shadow:0 8px 32px rgba(0,0,0,.35); z-index:9999; overflow:hidden;
+    border:1px solid #dee2e6;">
+    <div id="modalDetalleHeader" style="background:linear-gradient(135deg,#28a745,#218838); color:#fff; padding:12px 18px;
+        display:flex; justify-content:space-between; align-items:center; cursor:move; user-select:none; border-radius:12px 12px 0 0;">
+        <div style="display:flex; align-items:center; gap:10px;">
+            <i class="bi bi-bar-chart-line-fill" style="font-size:20px;"></i>
+            <strong id="modalDetalleTitulo" style="font-size:15px;">Detalle de Ventas del Mes</strong>
+        </div>
+        <div style="display:flex; align-items:center; gap:12px;">
+            <span id="modalDetalleResumen" style="font-size:12px; opacity:.9;"></span>
+            <button onclick="cerrarModalDetalle()" style="background:none; border:none; color:#fff; font-size:22px; cursor:pointer; line-height:1;">&times;</button>
+        </div>
+    </div>
+    <div id="modalDetalleBody" style="padding:14px; overflow-y:auto; max-height:calc(88vh - 55px); font-size:13px;">
+        <div style="text-align:center; padding:40px;">
+            <span class="spinner-border text-success"></span>
+            <p class="mt-2 text-muted">Cargando detalle...</p>
+        </div>
+    </div>
+</div>
+
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 <script th:src="@{/js/app.js}"></script>
+<script>
+function formatFechaISO(d) {
+    return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
+}
+
+var _ventasDataCache = null;
+
+function abrirDetalleVentas(titulo, desde, hasta) {
+    var modal = document.getElementById('modalDetalleVentas');
+    var body = document.getElementById('modalDetalleBody');
+    var tit = document.getElementById('modalDetalleTitulo');
+    var resumen = document.getElementById('modalDetalleResumen');
+    var header = document.getElementById('modalDetalleHeader');
+    tit.textContent = titulo;
+    resumen.textContent = '';
+    header.style.background = 'linear-gradient(135deg,#28a745,#218838)';
+    body.innerHTML = '<div style="text-align:center;padding:40px;"><span class="spinner-border text-success"></span><p class="mt-2 text-muted">Cargando detalle...</p></div>';
+    modal.style.display = 'block';
+
+    fetch('/web/reportes/api/detalle-ventas?desde=' + desde + '&hasta=' + hasta)
+        .then(function(r) { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); })
+        .then(function(data) {
+            if (data.totalVentas === undefined) throw new Error('Respuesta inválida del servidor');
+            _ventasDataCache = data;
+            renderVentasModal(data, body, resumen);
+        })
+        .catch(function(err) {
+            resumen.textContent = '';
+            body.innerHTML = '<div style="text-align:center;padding:40px;color:#dc3545;"><i class="bi bi-exclamation-triangle" style="font-size:40px;"></i><p class="mt-2">Error al cargar: ' + err + '</p></div>';
+        });
+}
+
+function renderVentasModal(data, body, resumen) {
+    resumen.textContent = data.totalVentas + ' ventas | ' + data.totalItems + ' items | S/ ' + parseFloat(data.totalGeneral).toFixed(2);
+
+    if (!data.detalle || data.detalle.length === 0) {
+        body.innerHTML = '<div style="text-align:center;padding:40px;color:#6c757d;"><i class="bi bi-inbox" style="font-size:48px;"></i><p class="mt-2">No hay ventas en este per\u00edodo.</p></div>';
+        return;
+    }
+
+    var html = '';
+    var tg = parseFloat(data.totalGeneral), td = parseFloat(data.totalDescuento), ti = parseFloat(data.totalIgv);
+
+    // KPIs resumen
+    html += '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:6px;margin-bottom:10px;">';
+    html += '<div style="background:#e8f5e9;border-radius:8px;padding:8px 10px;text-align:center;"><div style="font-size:10px;color:#2e7d32;">TOTAL VENTAS</div><div style="font-size:16px;font-weight:700;color:#1b5e20;">S/ ' + tg.toFixed(2) + '</div></div>';
+    html += '<div style="background:#e3f2fd;border-radius:8px;padding:8px 10px;text-align:center;"><div style="font-size:10px;color:#1565c0;">TRANSACCIONES</div><div style="font-size:16px;font-weight:700;color:#0d47a1;">' + data.totalVentas + '</div></div>';
+    html += '<div style="background:#fff3e0;border-radius:8px;padding:8px 10px;text-align:center;"><div style="font-size:10px;color:#e65100;">ITEMS VENDIDOS</div><div style="font-size:16px;font-weight:700;color:#bf360c;">' + data.totalItems + '</div></div>';
+    html += '<div style="background:#fce4ec;border-radius:8px;padding:8px 10px;text-align:center;"><div style="font-size:10px;color:#c62828;">DESCUENTOS</div><div style="font-size:16px;font-weight:700;color:#b71c1c;">S/ ' + td.toFixed(2) + '</div></div>';
+    html += '<div style="background:#f3e5f5;border-radius:8px;padding:8px 10px;text-align:center;"><div style="font-size:10px;color:#6a1b9a;">IGV (18%)</div><div style="font-size:16px;font-weight:700;color:#4a148c;">S/ ' + ti.toFixed(2) + '</div></div>';
+    html += '<div style="background:#e0f7fa;border-radius:8px;padding:8px 10px;text-align:center;"><div style="font-size:10px;color:#00695c;">TOTAL + IGV</div><div style="font-size:16px;font-weight:700;color:#004d40;">S/ ' + (tg + ti).toFixed(2) + '</div></div>';
+    html += '</div>';
+
+    // Filtros avanzados
+    html += '<div style="display:flex;flex-wrap:wrap;gap:5px;margin-bottom:8px;align-items:center;">';
+    html += '<input type="text" id="filtroDetalle" placeholder="Buscar..." class="form-control form-control-sm" style="max-width:180px;" oninput="filtrarTablaVentas()">';
+    if (data.meses && data.meses.length > 1) {
+        html += '<select id="filtroMes" class="form-select form-select-sm" style="max-width:120px;" onchange="filtrarTablaVentas()"><option value="">Mes</option>';
+        for (var m = 0; m < data.meses.length; m++) html += '<option value="' + data.meses[m] + '">' + data.meses[m] + '</option>';
+        html += '</select>';
+    }
+    html += '<select id="filtroTrimestre" class="form-select form-select-sm" style="max-width:90px;" onchange="filtrarTablaVentas()"><option value="">Trim.</option><option>Q1</option><option>Q2</option><option>Q3</option><option>Q4</option></select>';
+    if (data.vendedores && data.vendedores.length > 0) {
+        html += '<select id="filtroVendedor" class="form-select form-select-sm" style="max-width:140px;" onchange="filtrarTablaVentas()"><option value="">Vendedor</option>';
+        for (var v = 0; v < data.vendedores.length; v++) html += '<option value="' + data.vendedores[v] + '">' + data.vendedores[v] + '</option>';
+        html += '</select>';
+    }
+    if (data.categorias && data.categorias.length > 0) {
+        html += '<select id="filtroCategoria" class="form-select form-select-sm" style="max-width:140px;" onchange="filtrarTablaVentas()"><option value="">Categor\u00eda</option>';
+        for (var c = 0; c < data.categorias.length; c++) html += '<option value="' + data.categorias[c] + '">' + data.categorias[c] + '</option>';
+        html += '</select>';
+    }
+    html += '<select id="filtroEstado" class="form-select form-select-sm" style="max-width:100px;" onchange="filtrarTablaVentas()"><option value="">Estado</option><option value="EMITIDA">Emitida</option><option value="ANULADA">Anulada</option></select>';
+    html += '<select id="filtroEstadoPago" class="form-select form-select-sm" style="max-width:110px;" onchange="filtrarTablaVentas()"><option value="">Est. Pago</option><option value="Pagado">Pagado</option><option value="Parcial">Parcial</option><option value="Pendiente">Pendiente</option></select>';
+    html += '<span class="badge bg-success" style="font-size:11px;">' + data.desde + ' \u2014 ' + data.hasta + '</span>';
+    html += '</div>';
+
+    // Tabla completa ERP
+    var th = 'style="padding:4px 5px;font-size:10px;white-space:nowrap;"';
+    html += '<div style="overflow-x:auto;"><table class="table table-sm table-striped table-hover table-bordered" style="font-size:10.5px;margin:0;white-space:nowrap;" id="tablaDetalleVentas">';
+    html += '<thead style="background:#1a237e;color:#fff;position:sticky;top:0;"><tr>';
+    html += '<th '+th+'>#</th>';
+    html += '<th '+th+'>Fecha</th>';
+    html += '<th '+th+'>Hora</th>';
+    html += '<th '+th+'>A\u00f1o</th>';
+    html += '<th '+th+'>Mes</th>';
+    html += '<th '+th+'>Trim.</th>';
+    html += '<th '+th+'>Turno</th>';
+    html += '<th '+th+'>Doc. Cliente</th>';
+    html += '<th '+th+'>Cliente</th>';
+    html += '<th '+th+'>Tipo Cli.</th>';
+    html += '<th '+th+'>Direcci\u00f3n</th>';
+    html += '<th '+th+'>Producto</th>';
+    html += '<th '+th+'>Categor\u00eda</th>';
+    html += '<th '+th+'>U.M.</th>';
+    html += '<th '+th+' class="text-center">Cant.</th>';
+    html += '<th '+th+' class="text-end">P.Unit.</th>';
+    html += '<th '+th+' class="text-end">Subtotal</th>';
+    html += '<th '+th+' class="text-end">Desc.</th>';
+    html += '<th '+th+' class="text-end">IGV</th>';
+    html += '<th '+th+' class="text-end">Total</th>';
+    html += '<th '+th+'>Tipo Doc.</th>';
+    html += '<th '+th+'>Serie</th>';
+    html += '<th '+th+'>Correlativo</th>';
+    html += '<th '+th+'>M. Pago</th>';
+    html += '<th '+th+'>Est. Pago</th>';
+    html += '<th '+th+'>Vendedor</th>';
+    html += '<th '+th+'>Cajero</th>';
+    html += '<th '+th+'>Punto Venta</th>';
+    html += '<th '+th+'>Canal</th>';
+    html += '<th '+th+'>Estado</th>';
+    html += '<th '+th+'>Obs.</th>';
+    html += '</tr></thead><tbody>';
+
+    var td2 = 'style="padding:3px 5px;"';
+    for (var i = 0; i < data.detalle.length; i++) {
+        var d = data.detalle[i];
+        var estadoBadge = d.estado === 'EMITIDA' ? 'bg-success' : d.estado === 'ANULADA' ? 'bg-danger' : 'bg-secondary';
+        var tipoBadge = d.tipoComprobante === 'Factura' ? 'bg-primary' : 'bg-info text-dark';
+        var pagoBadge = d.estadoPago === 'Pagado' ? 'bg-success' : d.estadoPago === 'Parcial' ? 'bg-warning text-dark' : 'bg-danger';
+        var canalBadge = d.canal === 'Central' ? 'bg-dark' : 'bg-warning text-dark';
+        var turnoBadge = d.turno === 'Ma\u00f1ana' ? 'bg-info text-dark' : d.turno === 'Tarde' ? 'bg-warning text-dark' : 'bg-secondary';
+        html += '<tr data-mes="' + d.mes + '" data-trim="' + d.trimestre + '" data-vendedor="' + d.vendedor + '" data-cat="' + d.categoria + '" data-estado="' + d.estado + '" data-estadopago="' + d.estadoPago + '">';
+        html += '<td '+td2+'>' + (i+1) + '</td>';
+        html += '<td '+td2+'>' + d.fecha + '</td>';
+        html += '<td '+td2+'>' + d.hora + '</td>';
+        html += '<td '+td2+'>' + d.anio + '</td>';
+        html += '<td '+td2+'>' + d.mes + '</td>';
+        html += '<td '+td2+'>' + d.trimestre + '</td>';
+        html += '<td '+td2+'><span class="badge '+turnoBadge+'" style="font-size:9px;">' + d.turno + '</span></td>';
+        html += '<td '+td2+'>' + (d.clienteTipoDoc ? d.clienteTipoDoc+': ' : '') + (d.clienteDoc || '\u2014') + '</td>';
+        html += '<td '+td2+' style="padding:3px 5px;font-weight:600;">' + d.cliente + '</td>';
+        html += '<td '+td2+'>' + d.tipoCliente + '</td>';
+        html += '<td '+td2+' style="padding:3px 5px;max-width:120px;overflow:hidden;text-overflow:ellipsis;" title="'+(d.clienteDireccion||'')+'">' + (d.clienteDireccion || '\u2014') + '</td>';
+        html += '<td '+td2+' style="padding:3px 5px;font-weight:600;">' + d.producto + '</td>';
+        html += '<td '+td2+'>' + d.categoria + '</td>';
+        html += '<td '+td2+'>' + d.unidadMedida + '</td>';
+        html += '<td '+td2+' class="text-center">' + d.cantidad + '</td>';
+        html += '<td '+td2+' class="text-end">S/' + parseFloat(d.precioUnit).toFixed(2) + '</td>';
+        html += '<td '+td2+' class="text-end">S/' + parseFloat(d.subtotal).toFixed(2) + '</td>';
+        html += '<td '+td2+' class="text-end">' + (parseFloat(d.descuento) > 0 ? 'S/' + parseFloat(d.descuento).toFixed(2) : '\u2014') + '</td>';
+        html += '<td '+td2+' class="text-end">S/' + parseFloat(d.igv).toFixed(2) + '</td>';
+        html += '<td '+td2+' class="text-end" style="padding:3px 5px;font-weight:700;">S/' + parseFloat(d.totalItem).toFixed(2) + '</td>';
+        html += '<td '+td2+'><span class="badge '+tipoBadge+'" style="font-size:9px;">'+d.tipoComprobante+'</span></td>';
+        html += '<td '+td2+'>'+d.serie+'</td>';
+        html += '<td '+td2+'>'+d.correlativo+'</td>';
+        html += '<td '+td2+' style="padding:3px 5px;font-size:10px;">' + d.medioPago + '</td>';
+        html += '<td '+td2+'><span class="badge '+pagoBadge+'" style="font-size:9px;">'+d.estadoPago+'</span></td>';
+        html += '<td '+td2+'>' + d.vendedor + '</td>';
+        html += '<td '+td2+'>' + d.cajero + '</td>';
+        html += '<td '+td2+'>' + d.puntoVenta + '</td>';
+        html += '<td '+td2+'><span class="badge '+canalBadge+'" style="font-size:9px;">'+d.canal+'</span></td>';
+        html += '<td '+td2+'><span class="badge '+estadoBadge+'" style="font-size:9px;">'+d.estado+'</span></td>';
+        html += '<td '+td2+' style="padding:3px 5px;max-width:100px;overflow:hidden;text-overflow:ellipsis;" title="'+(d.observaciones||'')+'">'+(d.observaciones||'\u2014')+'</td>';
+        html += '</tr>';
+    }
+
+    html += '</tbody><tfoot style="background:#1a237e;color:#fff;font-weight:700;"><tr>';
+    html += '<td colspan="16" style="padding:5px 6px;text-align:right;font-size:11px;">TOTALES:</td>';
+    html += '<td style="padding:5px 6px;text-align:right;font-size:11px;">S/' + tg.toFixed(2) + '</td>';
+    html += '<td style="padding:5px 6px;text-align:right;font-size:11px;">S/' + td.toFixed(2) + '</td>';
+    html += '<td style="padding:5px 6px;text-align:right;font-size:11px;">S/' + ti.toFixed(2) + '</td>';
+    html += '<td style="padding:5px 6px;text-align:right;color:#69f0ae;font-size:12px;">S/' + (tg + ti).toFixed(2) + '</td>';
+    html += '<td colspan="11" style="padding:5px 6px;font-size:11px;">' + data.totalVentas + ' ventas | ' + data.totalItems + ' items</td>';
+    html += '</tr></tfoot></table></div>';
+
+    body.innerHTML = html;
+}
+
+function filtrarTablaDetalle() {
+    var filtro = (document.getElementById('filtroDetalle').value || '').toLowerCase();
+    var tabla = document.getElementById('tablaDetalleVentas');
+    if (!tabla) return;
+    var filas = tabla.querySelectorAll('tbody tr');
+    for (var i = 0; i < filas.length; i++) {
+        var texto = filas[i].textContent.toLowerCase();
+        filas[i].style.display = texto.indexOf(filtro) >= 0 ? '' : 'none';
+    }
+}
+
+function filtrarTablaVentas() {
+    var texto = (document.getElementById('filtroDetalle') ? document.getElementById('filtroDetalle').value : '').toLowerCase();
+    var mes = document.getElementById('filtroMes') ? document.getElementById('filtroMes').value : '';
+    var trim = document.getElementById('filtroTrimestre') ? document.getElementById('filtroTrimestre').value : '';
+    var vend = document.getElementById('filtroVendedor') ? document.getElementById('filtroVendedor').value : '';
+    var cat = document.getElementById('filtroCategoria') ? document.getElementById('filtroCategoria').value : '';
+    var estado = document.getElementById('filtroEstado') ? document.getElementById('filtroEstado').value : '';
+    var estPago = document.getElementById('filtroEstadoPago') ? document.getElementById('filtroEstadoPago').value : '';
+
+    var tabla = document.getElementById('tablaDetalleVentas');
+    if (!tabla) return;
+    var filas = tabla.querySelectorAll('tbody tr');
+    var visibles = 0;
+    for (var i = 0; i < filas.length; i++) {
+        var fila = filas[i];
+        var show = true;
+        if (texto && fila.textContent.toLowerCase().indexOf(texto) < 0) show = false;
+        if (mes && fila.getAttribute('data-mes') !== mes) show = false;
+        if (trim && fila.getAttribute('data-trim') !== trim) show = false;
+        if (vend && fila.getAttribute('data-vendedor') !== vend) show = false;
+        if (cat && fila.getAttribute('data-cat') !== cat) show = false;
+        if (estado && fila.getAttribute('data-estado') !== estado) show = false;
+        if (estPago && fila.getAttribute('data-estadopago') !== estPago) show = false;
+        fila.style.display = show ? '' : 'none';
+        if (show) visibles++;
+    }
+    var resumen = document.getElementById('modalDetalleResumen');
+    if (resumen && (mes || trim || vend || cat || estado || estPago || texto)) {
+        resumen.textContent = visibles + ' registros filtrados';
+    } else if (resumen && _ventasDataCache) {
+        resumen.textContent = _ventasDataCache.totalVentas + ' ventas | ' + _ventasDataCache.totalItems + ' items | S/ ' + parseFloat(_ventasDataCache.totalGeneral).toFixed(2);
+    }
+}
+
+function cerrarModalDetalle() {
+    document.getElementById('modalDetalleVentas').style.display = 'none';
+}
+
+function abrirModalGenerico(titulo, colorGrad, fetchUrl, renderFn) {
+    var modal = document.getElementById('modalDetalleVentas');
+    var body = document.getElementById('modalDetalleBody');
+    var tit = document.getElementById('modalDetalleTitulo');
+    var resumen = document.getElementById('modalDetalleResumen');
+    var header = document.getElementById('modalDetalleHeader');
+    tit.textContent = titulo;
+    resumen.textContent = '';
+    header.style.background = colorGrad;
+    body.innerHTML = '<div style="text-align:center;padding:40px;"><span class="spinner-border"></span><p class="mt-2 text-muted">Cargando...</p></div>';
+    modal.style.display = 'block';
+
+    fetch(fetchUrl)
+        .then(function(r) { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); })
+        .then(function(data) { renderFn(data, body, resumen); })
+        .catch(function(err) {
+            resumen.textContent = '';
+            body.innerHTML = '<div style="text-align:center;padding:40px;color:#dc3545;"><i class="bi bi-exclamation-triangle" style="font-size:40px;"></i><p class="mt-2">Error: ' + err + '</p></div>';
+        });
+}
+
+var _utilidadDataCache = null;
+
+function filtrarTablaUtilidad() {
+    if (!_utilidadDataCache) return;
+    var txt = (document.getElementById('filtroUtilidad') || {}).value || '';
+    txt = txt.toLowerCase();
+    var catSel = (document.getElementById('filtroUtilCat') || {}).value || '';
+    var rows = document.querySelectorAll('#tablaDetalleVentas tbody tr');
+    var totalV = 0, totalC = 0, totalM = 0, vis = 0;
+    rows.forEach(function(r) {
+        var show = true;
+        if (txt && r.textContent.toLowerCase().indexOf(txt) === -1) show = false;
+        if (catSel && r.getAttribute('data-cat') !== catSel) show = false;
+        r.style.display = show ? '' : 'none';
+        if (show) {
+            vis++;
+            totalV += parseFloat(r.getAttribute('data-ventas') || 0);
+            totalC += parseFloat(r.getAttribute('data-costo') || 0);
+            totalM += parseFloat(r.getAttribute('data-margen') || 0);
+        }
+    });
+    var kv = document.getElementById('kpiUtilVentas');
+    var kc = document.getElementById('kpiUtilCosto');
+    var km = document.getElementById('kpiUtilMargen');
+    var kp = document.getElementById('kpiUtilProd');
+    if (kv) kv.textContent = 'S/ ' + totalV.toFixed(2);
+    if (kc) kc.textContent = 'S/ ' + totalC.toFixed(2);
+    if (km) km.textContent = 'S/ ' + totalM.toFixed(2);
+    if (kp) kp.textContent = vis;
+}
+
+function abrirDetalleUtilidad(desde, hasta) {
+    abrirModalGenerico('Utilidad Bruta por Producto — Facturación SUNAT', 'linear-gradient(135deg,#28a745,#1e7e34)',
+        '/web/reportes/api/detalle-utilidad?desde=' + desde + '&hasta=' + hasta,
+        function(data, body, resumen) {
+            _utilidadDataCache = data;
+            resumen.textContent = data.totalProductos + ' productos | Ventas: S/ ' + parseFloat(data.totalVentas).toFixed(2) + ' | Margen: S/ ' + parseFloat(data.totalMargen).toFixed(2) + ' (' + parseFloat(data.margenPctGlobal || 0).toFixed(1) + '%)';
+            if (!data.detalle || data.detalle.length === 0) {
+                body.innerHTML = '<div style="text-align:center;padding:40px;color:#6c757d;"><i class="bi bi-inbox" style="font-size:48px;"></i><p class="mt-2">No hay datos de utilidad en este período.</p></div>';
+                return;
+            }
+            var html = '';
+            html += '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin-bottom:14px;">';
+            html += '<div style="background:linear-gradient(135deg,#28a745,#218838);color:#fff;border-radius:10px;padding:12px 14px;text-align:center;"><div style="font-size:11px;opacity:.85;">Total Ventas</div><div id="kpiUtilVentas" style="font-size:18px;font-weight:700;">S/ ' + parseFloat(data.totalVentas).toFixed(2) + '</div></div>';
+            html += '<div style="background:linear-gradient(135deg,#dc3545,#c82333);color:#fff;border-radius:10px;padding:12px 14px;text-align:center;"><div style="font-size:11px;opacity:.85;">Total Costo</div><div id="kpiUtilCosto" style="font-size:18px;font-weight:700;">S/ ' + parseFloat(data.totalCosto).toFixed(2) + '</div></div>';
+            html += '<div style="background:linear-gradient(135deg,#17a2b8,#138496);color:#fff;border-radius:10px;padding:12px 14px;text-align:center;"><div style="font-size:11px;opacity:.85;">Margen Bruto</div><div id="kpiUtilMargen" style="font-size:18px;font-weight:700;">S/ ' + parseFloat(data.totalMargen).toFixed(2) + '</div></div>';
+            html += '<div style="background:linear-gradient(135deg,#6f42c1,#5a32a3);color:#fff;border-radius:10px;padding:12px 14px;text-align:center;"><div style="font-size:11px;opacity:.85;">% Margen Global</div><div style="font-size:18px;font-weight:700;">' + parseFloat(data.margenPctGlobal || 0).toFixed(1) + '%</div></div>';
+            html += '<div style="background:linear-gradient(135deg,#fd7e14,#e76b00);color:#fff;border-radius:10px;padding:12px 14px;text-align:center;"><div style="font-size:11px;opacity:.85;">IGV Total (18%)</div><div style="font-size:18px;font-weight:700;">S/ ' + parseFloat(data.totalIgv || 0).toFixed(2) + '</div></div>';
+            html += '<div style="background:linear-gradient(135deg,#20c997,#1baa80);color:#fff;border-radius:10px;padding:12px 14px;text-align:center;"><div style="font-size:11px;opacity:.85;">Productos</div><div id="kpiUtilProd" style="font-size:18px;font-weight:700;">' + data.totalProductos + '</div></div>';
+            html += '</div>';
+
+            html += '<div style="margin-bottom:10px;display:flex;flex-wrap:wrap;gap:8px;align-items:center;">';
+            html += '<input type="text" id="filtroUtilidad" placeholder="🔍 Buscar producto, código, marca..." class="form-control form-control-sm" style="max-width:280px;" oninput="filtrarTablaUtilidad()">';
+            var cats = data.categorias || [];
+            html += '<select id="filtroUtilCat" class="form-select form-select-sm" style="max-width:180px;" onchange="filtrarTablaUtilidad()"><option value="">Todas las categorías</option>';
+            for (var c = 0; c < cats.length; c++) html += '<option value="'+cats[c]+'">'+cats[c]+'</option>';
+            html += '</select>';
+            html += '<span class="badge bg-success" style="font-size:12px;">Período: ' + data.desde + ' — ' + data.hasta + '</span>';
+            html += '</div>';
+
+            html += '<div style="overflow-x:auto;max-height:55vh;overflow-y:auto;"><table class="table table-sm table-striped table-hover table-bordered" style="font-size:11px;margin:0;white-space:nowrap;" id="tablaDetalleVentas">';
+            html += '<thead style="background:linear-gradient(135deg,#343a40,#495057);color:#fff;position:sticky;top:0;z-index:2;"><tr>';
+            var thStyle = 'padding:6px 8px;font-weight:600;font-size:10px;text-transform:uppercase;letter-spacing:.3px;';
+            html += '<th style="'+thStyle+'">#</th>';
+            html += '<th style="'+thStyle+'">Código</th>';
+            html += '<th style="'+thStyle+'">Producto</th>';
+            html += '<th style="'+thStyle+'">Categoría</th>';
+            html += '<th style="'+thStyle+'">Marca</th>';
+            html += '<th style="'+thStyle+'">Laboratorio</th>';
+            html += '<th style="'+thStyle+'">Presentación</th>';
+            html += '<th style="'+thStyle+'">U.M.</th>';
+            html += '<th style="'+thStyle+'text-align:right;">P. Venta</th>';
+            html += '<th style="'+thStyle+'text-align:right;">Costo Unit.</th>';
+            html += '<th style="'+thStyle+'text-align:right;">Stock</th>';
+            html += '<th style="'+thStyle+'text-align:right;">Ventas (S/)</th>';
+            html += '<th style="'+thStyle+'text-align:right;">Costo Total</th>';
+            html += '<th style="'+thStyle+'text-align:right;">IGV (18%)</th>';
+            html += '<th style="'+thStyle+'text-align:right;">Venta+IGV</th>';
+            html += '<th style="'+thStyle+'text-align:right;">Margen (S/)</th>';
+            html += '<th style="'+thStyle+'text-align:right;">% Margen</th>';
+            html += '</tr></thead><tbody>';
+
+            for (var i = 0; i < data.detalle.length; i++) {
+                var d = data.detalle[i];
+                var pct = parseFloat(d.margenPct);
+                var colorPct = pct >= 30 ? '#28a745' : pct >= 15 ? '#ffc107' : pct >= 0 ? '#fd7e14' : '#dc3545';
+                var bgRow = pct < 0 ? 'background:#ffe0e0;' : '';
+                html += '<tr style="'+bgRow+'" data-cat="'+d.categoria+'" data-ventas="'+d.totalVentas+'" data-costo="'+d.totalCosto+'" data-margen="'+d.totalMargen+'">';
+                html += '<td style="padding:4px 8px;">' + (i+1) + '</td>';
+                html += '<td style="padding:4px 8px;font-family:monospace;font-size:10px;">' + d.codigo + '</td>';
+                html += '<td style="padding:4px 8px;font-weight:600;max-width:180px;overflow:hidden;text-overflow:ellipsis;" title="'+d.producto+'">' + d.producto + '</td>';
+                html += '<td style="padding:4px 8px;"><span class="badge" style="background:#6f42c1;font-size:10px;">' + d.categoria + '</span></td>';
+                html += '<td style="padding:4px 8px;font-size:10px;">' + d.marca + '</td>';
+                html += '<td style="padding:4px 8px;font-size:10px;">' + d.laboratorio + '</td>';
+                html += '<td style="padding:4px 8px;font-size:10px;">' + d.presentacion + '</td>';
+                html += '<td style="padding:4px 8px;text-align:center;"><span class="badge bg-secondary" style="font-size:9px;">' + d.unidadMedida + '</span></td>';
+                html += '<td style="padding:4px 8px;text-align:right;">S/ ' + parseFloat(d.precioVenta).toFixed(2) + '</td>';
+                html += '<td style="padding:4px 8px;text-align:right;">S/ ' + parseFloat(d.costoUnit).toFixed(2) + '</td>';
+                html += '<td style="padding:4px 8px;text-align:right;">' + d.stockActual + '</td>';
+                html += '<td style="padding:4px 8px;text-align:right;font-weight:600;">S/ ' + parseFloat(d.totalVentas).toFixed(2) + '</td>';
+                html += '<td style="padding:4px 8px;text-align:right;">S/ ' + parseFloat(d.totalCosto).toFixed(2) + '</td>';
+                html += '<td style="padding:4px 8px;text-align:right;color:#fd7e14;">S/ ' + parseFloat(d.igv).toFixed(2) + '</td>';
+                html += '<td style="padding:4px 8px;text-align:right;">S/ ' + parseFloat(d.ventaConIgv).toFixed(2) + '</td>';
+                html += '<td style="padding:4px 8px;text-align:right;font-weight:700;color:' + (pct >= 0 ? '#28a745' : '#dc3545') + ';">S/ ' + parseFloat(d.totalMargen).toFixed(2) + '</td>';
+                html += '<td style="padding:4px 8px;text-align:right;"><span class="badge" style="background:'+colorPct+';font-size:11px;">' + pct.toFixed(1) + '%</span></td>';
+                html += '</tr>';
+            }
+            html += '</tbody><tfoot style="background:linear-gradient(135deg,#343a40,#495057);color:#fff;font-weight:700;"><tr>';
+            html += '<td colspan="11" style="padding:8px;text-align:right;font-size:12px;">TOTALES:</td>';
+            html += '<td style="padding:8px;text-align:right;">S/ ' + parseFloat(data.totalVentas).toFixed(2) + '</td>';
+            html += '<td style="padding:8px;text-align:right;">S/ ' + parseFloat(data.totalCosto).toFixed(2) + '</td>';
+            html += '<td style="padding:8px;text-align:right;">S/ ' + parseFloat(data.totalIgv || 0).toFixed(2) + '</td>';
+            html += '<td style="padding:8px;text-align:right;">—</td>';
+            html += '<td style="padding:8px;text-align:right;color:#28ff5a;font-size:14px;">S/ ' + parseFloat(data.totalMargen).toFixed(2) + '</td>';
+            html += '<td style="padding:8px;text-align:right;"><span class="badge bg-light text-dark" style="font-size:12px;">' + parseFloat(data.margenPctGlobal || 0).toFixed(1) + '%</span></td>';
+            html += '</tr></tfoot></table></div>';
+            body.innerHTML = html;
+        });
+}
+
+var _cxpDataCache = null;
+
+function filtrarTablaCxP() {
+    var txt = (document.getElementById('filtroCxP') || {}).value || '';
+    txt = txt.toLowerCase();
+    var estSel = (document.getElementById('filtroCxPEst') || {}).value || '';
+    var rows = document.querySelectorAll('#tablaDetalleVentas tbody tr');
+    var totalPend = 0, vis = 0, venc = 0;
+    rows.forEach(function(r) {
+        var show = true;
+        if (txt && r.textContent.toLowerCase().indexOf(txt) === -1) show = false;
+        if (estSel === 'VENCIDA' && r.getAttribute('data-vencida') !== 'true') show = false;
+        if (estSel === 'VIGENTE' && r.getAttribute('data-vencida') !== 'false') show = false;
+        r.style.display = show ? '' : 'none';
+        if (show) {
+            vis++;
+            totalPend += parseFloat(r.getAttribute('data-saldo') || 0);
+            if (r.getAttribute('data-vencida') === 'true') venc++;
+        }
+    });
+    var kp = document.getElementById('kpiCxpPend');
+    var kc = document.getElementById('kpiCxpCuentas');
+    var kv = document.getElementById('kpiCxpVenc');
+    if (kp) kp.textContent = 'S/ ' + totalPend.toFixed(2);
+    if (kc) kc.textContent = vis;
+    if (kv) kv.textContent = venc;
+}
+
+function abrirDetalleCxP() {
+    abrirModalGenerico('Cuentas por Pagar — Control de Proveedores SUNAT', 'linear-gradient(135deg,#dc3545,#c82333)',
+        '/web/reportes/api/detalle-cxp',
+        function(data, body, resumen) {
+            _cxpDataCache = data;
+            resumen.textContent = data.totalCuentas + ' cuentas | Pendiente: S/ ' + parseFloat(data.totalPendiente).toFixed(2) + ' | Vencidas: ' + (data.cuentasVencidas || 0);
+            if (!data.detalle || data.detalle.length === 0) {
+                body.innerHTML = '<div style="text-align:center;padding:40px;color:#6c757d;"><i class="bi bi-check-circle" style="font-size:48px;color:#28a745;"></i><p class="mt-2">No hay cuentas por pagar pendientes. ¡Todo al día!</p></div>';
+                return;
+            }
+            var html = '';
+            html += '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin-bottom:14px;">';
+            html += '<div style="background:linear-gradient(135deg,#dc3545,#c82333);color:#fff;border-radius:10px;padding:12px 14px;text-align:center;"><div style="font-size:11px;opacity:.85;">Total Pendiente</div><div id="kpiCxpPend" style="font-size:18px;font-weight:700;">S/ ' + parseFloat(data.totalPendiente).toFixed(2) + '</div></div>';
+            html += '<div style="background:linear-gradient(135deg,#28a745,#218838);color:#fff;border-radius:10px;padding:12px 14px;text-align:center;"><div style="font-size:11px;opacity:.85;">Total Pagado</div><div style="font-size:18px;font-weight:700;">S/ ' + parseFloat(data.totalPagado || 0).toFixed(2) + '</div></div>';
+            html += '<div style="background:linear-gradient(135deg,#17a2b8,#138496);color:#fff;border-radius:10px;padding:12px 14px;text-align:center;"><div style="font-size:11px;opacity:.85;">Monto Total</div><div style="font-size:18px;font-weight:700;">S/ ' + parseFloat(data.totalMonto || 0).toFixed(2) + '</div></div>';
+            html += '<div style="background:linear-gradient(135deg,#6f42c1,#5a32a3);color:#fff;border-radius:10px;padding:12px 14px;text-align:center;"><div style="font-size:11px;opacity:.85;">Cuentas</div><div id="kpiCxpCuentas" style="font-size:18px;font-weight:700;">' + data.totalCuentas + '</div></div>';
+            html += '<div style="background:linear-gradient(135deg,#ffc107,#e0a800);color:#333;border-radius:10px;padding:12px 14px;text-align:center;"><div style="font-size:11px;opacity:.85;">Vencidas</div><div id="kpiCxpVenc" style="font-size:18px;font-weight:700;color:#dc3545;">' + (data.cuentasVencidas || 0) + '</div></div>';
+            html += '</div>';
+
+            html += '<div style="margin-bottom:10px;display:flex;flex-wrap:wrap;gap:8px;align-items:center;">';
+            html += '<input type="text" id="filtroCxP" placeholder="🔍 Buscar proveedor, RUC, OC..." class="form-control form-control-sm" style="max-width:280px;" oninput="filtrarTablaCxP()">';
+            html += '<select id="filtroCxPEst" class="form-select form-select-sm" style="max-width:160px;" onchange="filtrarTablaCxP()"><option value="">Todos los estados</option><option value="VENCIDA">Vencidas</option><option value="VIGENTE">Vigentes</option></select>';
+            html += '</div>';
+
+            html += '<div style="overflow-x:auto;max-height:55vh;overflow-y:auto;"><table class="table table-sm table-striped table-hover table-bordered" style="font-size:11px;margin:0;white-space:nowrap;" id="tablaDetalleVentas">';
+            html += '<thead style="background:linear-gradient(135deg,#343a40,#495057);color:#fff;position:sticky;top:0;z-index:2;"><tr>';
+            var thS = 'padding:6px 8px;font-weight:600;font-size:10px;text-transform:uppercase;letter-spacing:.3px;';
+            html += '<th style="'+thS+'">#</th>';
+            html += '<th style="'+thS+'">Tipo Doc.</th>';
+            html += '<th style="'+thS+'">RUC / DNI</th>';
+            html += '<th style="'+thS+'">Proveedor</th>';
+            html += '<th style="'+thS+'">Contacto</th>';
+            html += '<th style="'+thS+'">Teléfono</th>';
+            html += '<th style="'+thS+'">Email</th>';
+            html += '<th style="'+thS+'">Dirección</th>';
+            html += '<th style="'+thS+'">Orden Compra</th>';
+            html += '<th style="'+thS+'">Estado OC</th>';
+            html += '<th style="'+thS+'">Ref. Factura</th>';
+            html += '<th style="'+thS+'">F. Emisión</th>';
+            html += '<th style="'+thS+'">F. Vencimiento</th>';
+            html += '<th style="'+thS+'text-align:right;">Días Venc.</th>';
+            html += '<th style="'+thS+'text-align:right;">Monto (S/)</th>';
+            html += '<th style="'+thS+'text-align:right;">IGV (18%)</th>';
+            html += '<th style="'+thS+'text-align:right;">Total + IGV</th>';
+            html += '<th style="'+thS+'text-align:right;">Pagado</th>';
+            html += '<th style="'+thS+'text-align:right;">Saldo Pend.</th>';
+            html += '<th style="'+thS+'">Estado</th>';
+            html += '<th style="'+thS+'">Obs.</th>';
+            html += '</tr></thead><tbody>';
+
+            for (var i = 0; i < data.detalle.length; i++) {
+                var d = data.detalle[i];
+                var dias = parseInt(d.diasVencimiento || 0);
+                var colorDias = d.vencida ? '#dc3545' : dias <= 7 ? '#ffc107' : '#28a745';
+                var badgeDias = d.vencida ? '<span class="badge bg-danger" style="font-size:10px;">Vencida ('+Math.abs(dias)+' d)</span>' : '<span class="badge" style="background:'+colorDias+';font-size:10px;">'+dias+' días</span>';
+                var badgeEstado = d.vencida ? '<span class="badge bg-danger" style="font-size:10px;">VENCIDA</span>' : '<span class="badge bg-warning text-dark" style="font-size:10px;">PENDIENTE</span>';
+                var badgeOC = d.ocEstado ? '<span class="badge ' + (d.ocEstado==='RECIBIDA'?'bg-success':d.ocEstado==='CANCELADA'?'bg-secondary':'bg-info') + '" style="font-size:9px;">'+d.ocEstado+'</span>' : '—';
+                var bgRow = d.vencida ? 'background:#fff3cd;' : '';
+
+                html += '<tr style="'+bgRow+'" data-vencida="'+d.vencida+'" data-saldo="'+d.saldoPendiente+'">';
+                html += '<td style="padding:4px 8px;">' + (i+1) + '</td>';
+                html += '<td style="padding:4px 8px;"><span class="badge bg-secondary" style="font-size:9px;">' + (d.tipoDocProv || '—') + '</span></td>';
+                html += '<td style="padding:4px 8px;font-family:monospace;font-size:10px;">' + d.rucProveedor + '</td>';
+                html += '<td style="padding:4px 8px;font-weight:600;max-width:160px;overflow:hidden;text-overflow:ellipsis;" title="'+d.proveedor+'">' + d.proveedor + '</td>';
+                html += '<td style="padding:4px 8px;font-size:10px;">' + (d.contacto || '—') + '</td>';
+                html += '<td style="padding:4px 8px;font-size:10px;">' + (d.telefono || '—') + '</td>';
+                html += '<td style="padding:4px 8px;font-size:10px;">' + (d.email || '—') + '</td>';
+                html += '<td style="padding:4px 8px;max-width:140px;overflow:hidden;text-overflow:ellipsis;font-size:10px;" title="'+(d.direccion||'')+'">' + (d.direccion || '—') + '</td>';
+                html += '<td style="padding:4px 8px;font-weight:600;">' + (d.ordenCompra || '—') + '</td>';
+                html += '<td style="padding:4px 8px;">' + badgeOC + '</td>';
+                html += '<td style="padding:4px 8px;font-size:10px;">' + (d.ocReferencia || '—') + '</td>';
+                html += '<td style="padding:4px 8px;">' + d.fechaEmision + '</td>';
+                html += '<td style="padding:4px 8px;">' + d.fechaVencimiento + '</td>';
+                html += '<td style="padding:4px 8px;text-align:right;">' + badgeDias + '</td>';
+                html += '<td style="padding:4px 8px;text-align:right;">S/ ' + parseFloat(d.montoTotal).toFixed(2) + '</td>';
+                html += '<td style="padding:4px 8px;text-align:right;color:#fd7e14;">S/ ' + parseFloat(d.igv || 0).toFixed(2) + '</td>';
+                html += '<td style="padding:4px 8px;text-align:right;">S/ ' + parseFloat(d.montoConIgv || 0).toFixed(2) + '</td>';
+                html += '<td style="padding:4px 8px;text-align:right;color:#28a745;">S/ ' + parseFloat(d.pagado || 0).toFixed(2) + '</td>';
+                html += '<td style="padding:4px 8px;text-align:right;font-weight:700;color:#dc3545;">S/ ' + parseFloat(d.saldoPendiente).toFixed(2) + '</td>';
+                html += '<td style="padding:4px 8px;">' + badgeEstado + '</td>';
+                html += '<td style="padding:4px 8px;max-width:100px;overflow:hidden;text-overflow:ellipsis;font-size:10px;" title="'+(d.observaciones||'')+'">' + (d.observaciones || '—') + '</td>';
+                html += '</tr>';
+            }
+            html += '</tbody><tfoot style="background:linear-gradient(135deg,#343a40,#495057);color:#fff;font-weight:700;"><tr>';
+            html += '<td colspan="14" style="padding:8px;text-align:right;font-size:12px;">TOTALES:</td>';
+            html += '<td style="padding:8px;text-align:right;">S/ ' + parseFloat(data.totalMonto || 0).toFixed(2) + '</td>';
+            html += '<td style="padding:8px;text-align:right;">—</td>';
+            html += '<td style="padding:8px;text-align:right;">—</td>';
+            html += '<td style="padding:8px;text-align:right;">S/ ' + parseFloat(data.totalPagado || 0).toFixed(2) + '</td>';
+            html += '<td style="padding:8px;text-align:right;color:#ff6b6b;font-size:14px;">S/ ' + parseFloat(data.totalPendiente).toFixed(2) + '</td>';
+            html += '<td colspan="2" style="padding:8px;">' + data.totalCuentas + ' cuentas</td>';
+            html += '</tr></tfoot></table></div>';
+            body.innerHTML = html;
+        });
+}
+
+var _cxcDataCache = null;
+
+function filtrarTablaCxC() {
+    var txt = (document.getElementById('filtroCxC') || {}).value || '';
+    txt = txt.toLowerCase();
+    var antSel = (document.getElementById('filtroCxCAnt') || {}).value || '';
+    var rows = document.querySelectorAll('#tablaDetalleVentas tbody tr');
+    var totalSaldo = 0, vis = 0;
+    rows.forEach(function(r) {
+        var show = true;
+        if (txt && r.textContent.toLowerCase().indexOf(txt) === -1) show = false;
+        if (antSel && r.getAttribute('data-ant') !== antSel) show = false;
+        r.style.display = show ? '' : 'none';
+        if (show) {
+            vis++;
+            totalSaldo += parseFloat(r.getAttribute('data-saldo') || 0);
+        }
+    });
+    var ks = document.getElementById('kpiCxcSaldo');
+    var kc = document.getElementById('kpiCxcCuentas');
+    if (ks) ks.textContent = 'S/ ' + totalSaldo.toFixed(2);
+    if (kc) kc.textContent = vis;
+}
+
+function abrirDetalleCxC() {
+    abrirModalGenerico('Cuentas por Cobrar — Facturación Electrónica SUNAT', 'linear-gradient(135deg,#ffc107,#e0a800)',
+        '/web/reportes/api/detalle-cxc',
+        function(data, body, resumen) {
+            _cxcDataCache = data;
+            resumen.textContent = data.totalCuentas + ' ventas con saldo | Por cobrar: S/ ' + parseFloat(data.totalSaldo).toFixed(2);
+            if (!data.detalle || data.detalle.length === 0) {
+                body.innerHTML = '<div style="text-align:center;padding:40px;color:#6c757d;"><i class="bi bi-check-circle" style="font-size:48px;color:#28a745;"></i><p class="mt-2">No hay cuentas por cobrar pendientes. ¡Todas cobradas!</p></div>';
+                return;
+            }
+            var html = '';
+            html += '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin-bottom:14px;">';
+            html += '<div style="background:linear-gradient(135deg,#ffc107,#e0a800);color:#333;border-radius:10px;padding:12px 14px;text-align:center;"><div style="font-size:11px;opacity:.85;">Total por Cobrar</div><div id="kpiCxcSaldo" style="font-size:18px;font-weight:700;">S/ ' + parseFloat(data.totalSaldo).toFixed(2) + '</div></div>';
+            html += '<div style="background:linear-gradient(135deg,#28a745,#218838);color:#fff;border-radius:10px;padding:12px 14px;text-align:center;"><div style="font-size:11px;opacity:.85;">Total Pagado</div><div style="font-size:18px;font-weight:700;">S/ ' + parseFloat(data.totalPagado || 0).toFixed(2) + '</div></div>';
+            html += '<div style="background:linear-gradient(135deg,#17a2b8,#138496);color:#fff;border-radius:10px;padding:12px 14px;text-align:center;"><div style="font-size:11px;opacity:.85;">Total Ventas</div><div style="font-size:18px;font-weight:700;">S/ ' + parseFloat(data.totalVentas || 0).toFixed(2) + '</div></div>';
+            html += '<div style="background:linear-gradient(135deg,#6f42c1,#5a32a3);color:#fff;border-radius:10px;padding:12px 14px;text-align:center;"><div style="font-size:11px;opacity:.85;">Cuentas</div><div id="kpiCxcCuentas" style="font-size:18px;font-weight:700;">' + data.totalCuentas + '</div></div>';
+            html += '</div>';
+
+            html += '<div style="margin-bottom:10px;display:flex;flex-wrap:wrap;gap:8px;align-items:center;">';
+            html += '<input type="text" id="filtroCxC" placeholder="🔍 Buscar cliente, RUC/DNI, comprobante..." class="form-control form-control-sm" style="max-width:280px;" oninput="filtrarTablaCxC()">';
+            html += '<select id="filtroCxCAnt" class="form-select form-select-sm" style="max-width:180px;" onchange="filtrarTablaCxC()"><option value="">Todas las antigüedades</option><option value="0-7 días">0-7 días</option><option value="8-30 días">8-30 días</option><option value="31-60 días">31-60 días</option><option value="60+ días">60+ días</option></select>';
+            html += '</div>';
+
+            html += '<div style="overflow-x:auto;max-height:55vh;overflow-y:auto;"><table class="table table-sm table-striped table-hover table-bordered" style="font-size:11px;margin:0;white-space:nowrap;" id="tablaDetalleVentas">';
+            html += '<thead style="background:linear-gradient(135deg,#343a40,#495057);color:#fff;position:sticky;top:0;z-index:2;"><tr>';
+            var thC = 'padding:6px 8px;font-weight:600;font-size:10px;text-transform:uppercase;letter-spacing:.3px;';
+            html += '<th style="'+thC+'">#</th>';
+            html += '<th style="'+thC+'">Venta ID</th>';
+            html += '<th style="'+thC+'">Fecha</th>';
+            html += '<th style="'+thC+'">Hora</th>';
+            html += '<th style="'+thC+'">Tipo Doc.</th>';
+            html += '<th style="'+thC+'">RUC / DNI</th>';
+            html += '<th style="'+thC+'">Cliente</th>';
+            html += '<th style="'+thC+'">Tipo Cliente</th>';
+            html += '<th style="'+thC+'">Dirección</th>';
+            html += '<th style="'+thC+'">Tipo Comprobante</th>';
+            html += '<th style="'+thC+'">Nro. Comprobante</th>';
+            html += '<th style="'+thC+'text-align:right;">Total Venta</th>';
+            html += '<th style="'+thC+'text-align:right;">IGV (18%)</th>';
+            html += '<th style="'+thC+'text-align:right;">Total + IGV</th>';
+            html += '<th style="'+thC+'text-align:right;">Pagado</th>';
+            html += '<th style="'+thC+'text-align:right;">Saldo</th>';
+            html += '<th style="'+thC+'">Medio Pago</th>';
+            html += '<th style="'+thC+'text-align:right;">Días Deuda</th>';
+            html += '<th style="'+thC+'">Antigüedad</th>';
+            html += '<th style="'+thC+'">Estado</th>';
+            html += '</tr></thead><tbody>';
+
+            for (var i = 0; i < data.detalle.length; i++) {
+                var d = data.detalle[i];
+                var diasD = parseInt(d.diasDeuda || 0);
+                var colorAnt = diasD <= 7 ? '#28a745' : diasD <= 30 ? '#ffc107' : diasD <= 60 ? '#fd7e14' : '#dc3545';
+                var badgeAnt = '<span class="badge" style="background:'+colorAnt+';font-size:10px;">' + (d.antiguedad || '') + '</span>';
+                var badgeTipoComp = d.tipoComprobante === 'Factura' ? '<span class="badge bg-primary" style="font-size:10px;">Factura</span>' : '<span class="badge bg-info text-dark" style="font-size:10px;">Boleta</span>';
+                var badgeTipoCli = d.tipoCliente === 'Empresa' ? '<span class="badge bg-primary" style="font-size:9px;">Empresa</span>' : d.tipoCliente === 'Persona Natural' ? '<span class="badge bg-success" style="font-size:9px;">P. Natural</span>' : '<span class="badge bg-secondary" style="font-size:9px;">General</span>';
+                var bgRow2 = diasD > 60 ? 'background:#ffe0e0;' : diasD > 30 ? 'background:#fff3cd;' : '';
+
+                html += '<tr style="'+bgRow2+'" data-ant="'+(d.antiguedad||'')+'" data-saldo="'+d.saldo+'">';
+                html += '<td style="padding:4px 8px;">' + (i+1) + '</td>';
+                html += '<td style="padding:4px 8px;font-family:monospace;font-size:10px;">#' + d.ventaId + '</td>';
+                html += '<td style="padding:4px 8px;">' + d.fecha + '</td>';
+                html += '<td style="padding:4px 8px;">' + d.hora + '</td>';
+                html += '<td style="padding:4px 8px;"><span class="badge bg-secondary" style="font-size:9px;">' + (d.clienteTipoDoc || '—') + '</span></td>';
+                html += '<td style="padding:4px 8px;font-family:monospace;font-size:10px;">' + (d.clienteDoc || '—') + '</td>';
+                html += '<td style="padding:4px 8px;font-weight:600;max-width:160px;overflow:hidden;text-overflow:ellipsis;" title="'+d.cliente+'">' + d.cliente + '</td>';
+                html += '<td style="padding:4px 8px;">' + badgeTipoCli + '</td>';
+                html += '<td style="padding:4px 8px;max-width:130px;overflow:hidden;text-overflow:ellipsis;font-size:10px;" title="'+(d.clienteDireccion||'')+'">' + (d.clienteDireccion || '—') + '</td>';
+                html += '<td style="padding:4px 8px;">' + badgeTipoComp + '</td>';
+                html += '<td style="padding:4px 8px;font-family:monospace;font-size:10px;">' + (d.comprobante || '—') + '</td>';
+                html += '<td style="padding:4px 8px;text-align:right;">S/ ' + parseFloat(d.total).toFixed(2) + '</td>';
+                html += '<td style="padding:4px 8px;text-align:right;color:#fd7e14;">S/ ' + parseFloat(d.igv || 0).toFixed(2) + '</td>';
+                html += '<td style="padding:4px 8px;text-align:right;">S/ ' + parseFloat(d.totalConIgv || 0).toFixed(2) + '</td>';
+                html += '<td style="padding:4px 8px;text-align:right;color:#28a745;">S/ ' + parseFloat(d.pagado).toFixed(2) + '</td>';
+                html += '<td style="padding:4px 8px;text-align:right;font-weight:700;color:#dc3545;">S/ ' + parseFloat(d.saldo).toFixed(2) + '</td>';
+                html += '<td style="padding:4px 8px;font-size:10px;">' + (d.medioPago || '—') + '</td>';
+                html += '<td style="padding:4px 8px;text-align:right;">' + diasD + '</td>';
+                html += '<td style="padding:4px 8px;">' + badgeAnt + '</td>';
+                html += '<td style="padding:4px 8px;"><span class="badge ' + (d.estado==='EMITIDA'?'bg-info':'bg-secondary') + '" style="font-size:9px;">' + (d.estado || '—') + '</span></td>';
+                html += '</tr>';
+            }
+            html += '</tbody><tfoot style="background:linear-gradient(135deg,#343a40,#495057);color:#fff;font-weight:700;"><tr>';
+            html += '<td colspan="11" style="padding:8px;text-align:right;font-size:12px;">TOTALES:</td>';
+            html += '<td style="padding:8px;text-align:right;">S/ ' + parseFloat(data.totalVentas || 0).toFixed(2) + '</td>';
+            html += '<td style="padding:8px;text-align:right;">—</td>';
+            html += '<td style="padding:8px;text-align:right;">—</td>';
+            html += '<td style="padding:8px;text-align:right;">S/ ' + parseFloat(data.totalPagado || 0).toFixed(2) + '</td>';
+            html += '<td style="padding:8px;text-align:right;color:#ff6b6b;font-size:14px;">S/ ' + parseFloat(data.totalSaldo).toFixed(2) + '</td>';
+            html += '<td colspan="4" style="padding:8px;">' + data.totalCuentas + ' cuentas</td>';
+            html += '</tr></tfoot></table></div>';
+            body.innerHTML = html;
+        });
+}
+
+document.addEventListener('DOMContentLoaded', function() {
+    var hoy = new Date();
+
+    document.getElementById('cardVentasPeriodo').addEventListener('click', function() {
+        var inputDesde = document.querySelector('input[name="desde"]');
+        var inputHasta = document.querySelector('input[name="hasta"]');
+        var d = inputDesde && inputDesde.value ? inputDesde.value : formatFechaISO(new Date(hoy.getFullYear(), hoy.getMonth(), hoy.getDate() - 30));
+        var h = inputHasta && inputHasta.value ? inputHasta.value : formatFechaISO(hoy);
+        abrirDetalleVentas('Detalle de Ventas del Per\u00edodo', d, h);
+    });
+
+    document.getElementById('cardVentasDia').addEventListener('click', function() {
+        abrirDetalleVentas('Detalle de Ventas del D\u00eda', formatFechaISO(hoy), formatFechaISO(hoy));
+    });
+
+    document.getElementById('cardVentasMes').addEventListener('click', function() {
+        var inicioMes = new Date(hoy.getFullYear(), hoy.getMonth(), 1);
+        abrirDetalleVentas('Detalle de Ventas del Mes', formatFechaISO(inicioMes), formatFechaISO(hoy));
+    });
+
+    document.getElementById('cardVentasAnio').addEventListener('click', function() {
+        var inicioAnio = new Date(hoy.getFullYear(), 0, 1);
+        abrirDetalleVentas('Detalle de Ventas del A\u00f1o', formatFechaISO(inicioAnio), formatFechaISO(hoy));
+    });
+
+    // Utilidad bruta
+    document.getElementById('cardUtilidad').addEventListener('click', function() {
+        var inputDesde = document.querySelector('input[name="desde"]');
+        var inputHasta = document.querySelector('input[name="hasta"]');
+        var d = inputDesde && inputDesde.value ? inputDesde.value : formatFechaISO(new Date(hoy.getFullYear(), hoy.getMonth(), hoy.getDate() - 30));
+        var h = inputHasta && inputHasta.value ? inputHasta.value : formatFechaISO(hoy);
+        abrirDetalleUtilidad(d, h);
+    });
+
+    // Cuentas por pagar
+    document.getElementById('cardCxP').addEventListener('click', function() {
+        abrirDetalleCxP();
+    });
+
+    // Cuentas por cobrar
+    document.getElementById('cardCxC').addEventListener('click', function() {
+        abrirDetalleCxC();
+    });
+
+    // Drag del modal
+    (function() {
+        var modal = document.getElementById('modalDetalleVentas');
+        var header = document.getElementById('modalDetalleHeader');
+        if (!modal || !header) return;
+        var drag = { active: false, startX: 0, startY: 0, startLeft: 0, startTop: 0 };
+        header.addEventListener('mousedown', function(e) {
+            if (e.target.tagName === 'BUTTON') return;
+            e.preventDefault();
+            drag.active = true;
+            drag.startX = e.clientX;
+            drag.startY = e.clientY;
+            var rect = modal.getBoundingClientRect();
+            drag.startLeft = rect.left;
+            drag.startTop = rect.top;
+            modal.style.left = drag.startLeft + 'px';
+            modal.style.top = drag.startTop + 'px';
+            document.addEventListener('mousemove', onDragMove);
+            document.addEventListener('mouseup', onDragUp);
+        });
+        function onDragMove(e) {
+            if (!drag.active) return;
+            modal.style.left = (drag.startLeft + e.clientX - drag.startX) + 'px';
+            modal.style.top = (drag.startTop + e.clientY - drag.startY) + 'px';
+        }
+        function onDragUp() {
+            drag.active = false;
+            document.removeEventListener('mousemove', onDragMove);
+            document.removeEventListener('mouseup', onDragUp);
+        }
+    })();
+});
+</script>
 </body>
 </html>

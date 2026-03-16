@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="es" xmlns:th="http://www.thymeleaf.org" xmlns:sec="http://www.thymeleaf.org/extras/spring-security">
 <head>
     <meta charset="UTF-8">
@@ -10,31 +10,7 @@
 </head>
 <body>
 <div class="app-layout">
-    <aside class="sidebar" id="sidebar">
-        <div class="sidebar-header">
-            <span class="sidebar-brand"><i class="bi bi-diagram-3"></i> NexoERP</span>
-            <button class="sidebar-toggle d-lg-none" onclick="toggleSidebar()"><i class="bi bi-x-lg"></i></button>
-        </div>
-        <nav class="sidebar-nav">
-            <div class="sidebar-section-title">Operaciones</div>
-            <a class="sidebar-link" href="/web/productos"><i class="bi bi-box-seam"></i> Productos</a>
-            <a class="sidebar-link" href="/web/clientes"><i class="bi bi-people"></i> Clientes</a>
-            <a class="sidebar-link" href="/web/proveedores" sec:authorize="hasAnyRole('ADMIN','SAAS_ADMIN')"><i class="bi bi-truck"></i> Proveedores</a>
-            <a class="sidebar-link" href="/web/compras" sec:authorize="hasAnyRole('ADMIN','SAAS_ADMIN')"><i class="bi bi-cart-plus"></i> Compras</a>
-            <a class="sidebar-link" href="/web/ventas"><i class="bi bi-receipt"></i> Ventas</a>
-            <a class="sidebar-link" href="/web/caja"><i class="bi bi-cash-stack"></i> Caja</a>
-            <div class="sidebar-section-title">Gesti&oacute;n</div>
-            <a class="sidebar-link" href="/web/finanzas" sec:authorize="hasAnyRole('ADMIN','SAAS_ADMIN')"><i class="bi bi-graph-up"></i> Finanzas</a>
-            <a class="sidebar-link" href="/web/inventario"><i class="bi bi-clipboard-data"></i> Inventario</a>
-            <a class="sidebar-link" href="/web/facturacion-electronica" sec:authorize="hasAnyRole('ADMIN','SAAS_ADMIN')"><i class="bi bi-file-earmark-check"></i> Facturaci&oacute;n E.</a>
-            <a class="sidebar-link active" href="/web/guias-remision" sec:authorize="hasAnyRole('ADMIN','SAAS_ADMIN')"><i class="bi bi-truck"></i> Gu&iacute;as Remisi&oacute;n</a>
-            <a class="sidebar-link" href="/web/reportes"><i class="bi bi-file-earmark-bar-graph"></i> Reportes</a>
-            <a class="sidebar-link" href="/web/sucursales" sec:authorize="hasAnyRole('ADMIN','SAAS_ADMIN')"><i class="bi bi-building"></i> Sucursales</a>
-            <div class="sidebar-section-title">Sistema</div>
-            <a class="sidebar-link" href="/web/auditoria" sec:authorize="hasAnyRole('ADMIN','SAAS_ADMIN')"><i class="bi bi-shield-check"></i> Auditor&iacute;a</a>
-            <a class="sidebar-link" href="/web/admin/empresas" sec:authorize="hasRole('SAAS_ADMIN')"><i class="bi bi-gear"></i> Admin SaaS</a>
-        </nav>
-    </aside>
+        <div th:replace="~{fragments/sidebar :: sidebar('guias')}"></div>
     <div id="sidebarBackdrop" class="sidebar-backdrop"></div>
 
     <div class="main-wrapper">
@@ -92,7 +68,7 @@
                                     <span class="badge-status" th:classappend="${g.estado == 'EMITIDA'} ? 'success' : 'danger'" th:text="${g.estado}">EMITIDA</span>
                                 </td>
                                 <td class="text-center">
-                                    <a th:href="@{/web/guias-remision/{id}/pdf(id=${g.id})}" class="btn-action primary" title="PDF"><i class="bi bi-file-earmark-pdf"></i></a>
+                                    <a target="_blank" th:href="@{/web/guias-remision/{id}/pdf(id=${g.id})}" class="btn-action primary" title="PDF"><i class="bi bi-file-earmark-pdf"></i></a>
                                     <form th:if="${g.estado == 'EMITIDA'}" th:action="@{/web/guias-remision/anular}" method="post" class="d-inline"
                                           onsubmit="return confirm('¿Anular esta guía de remisión?');">
                                         <input type="hidden" name="guiaId" th:value="${g.id}">
@@ -115,16 +91,20 @@
                         <form th:action="@{/web/guias-remision}" method="post">
                             <div class="row g-3">
                                 <div class="col-12 form-section">
-                                    <label class="form-label">Orden de compra (opcional)</label>
+                                    <label class="form-label fw-bold">Orden de compra</label>
                                     <select name="ordenCompraId" class="form-select" id="selOrden" onchange="cargarOrden()">
                                         <option value="">Sin orden (manual)</option>
                                         <option th:each="o : ${ordenes}" th:value="${o.id}"
-                                                th:data-prov="${o.proveedor != null ? o.proveedor.razonSocial : ''}"
-                                                th:data-dir="${o.proveedor != null and o.proveedor.direccion != null ? o.proveedor.direccion : ''}"
                                                 th:text="${'OC #' + o.id + ' - ' + (o.proveedor != null ? o.proveedor.razonSocial : '') + ' (' + o.estado + ')'}">OC</option>
                                     </select>
-                                    <small class="text-muted">Al seleccionar una orden, los productos se cargan autom&aacute;ticamente.</small>
+                                    <small class="text-muted">Al seleccionar una orden, todos los datos se llenan autom&aacute;ticamente.</small>
                                 </div>
+
+                                <!-- Info proveedor (se llena por AJAX) -->
+                                <div class="col-12" id="infoOrden" style="display:none;">
+                                    <div class="alert alert-info py-2 mb-0" id="infoOrdenContenido"></div>
+                                </div>
+
                                 <div class="col-12 form-section" id="divProveedor">
                                     <label class="form-label">Proveedor</label>
                                     <select name="proveedorId" class="form-select" id="selProveedor">
@@ -134,7 +114,7 @@
                                 </div>
                                 <div class="col-6 form-section">
                                     <label class="form-label">Motivo traslado</label>
-                                    <select name="motivoTraslado" class="form-select">
+                                    <select name="motivoTraslado" class="form-select" id="motivoTraslado">
                                         <option value="COMPRA">Compra</option>
                                         <option value="VENTA">Venta</option>
                                         <option value="TRASLADO_ENTRE_ESTABLECIMIENTOS">Traslado entre establecimientos</option>
@@ -145,40 +125,67 @@
                                 </div>
                                 <div class="col-6 form-section">
                                     <label class="form-label">Fecha traslado</label>
-                                    <input type="date" name="fechaTraslado" class="form-control">
+                                    <input type="date" name="fechaTraslado" class="form-control" id="fechaTraslado">
                                 </div>
                                 <div class="col-6 form-section">
-                                    <label class="form-label">Dir. partida</label>
+                                    <label class="form-label">Dir. partida (proveedor)</label>
                                     <input type="text" name="direccionPartida" class="form-control" id="dirPartida">
                                 </div>
                                 <div class="col-6 form-section">
-                                    <label class="form-label">Dir. llegada</label>
+                                    <label class="form-label">Dir. llegada (empresa)</label>
                                     <input type="text" name="direccionLlegada" class="form-control" id="dirLlegada">
                                 </div>
-                                <div class="col-12"><hr><small class="text-muted fw-bold">Datos del transporte</small></div>
+
+                                <!-- Tabla de productos de la orden -->
+                                <div class="col-12" id="divItemsOrden" style="display:none;">
+                                    <label class="form-label fw-bold"><i class="bi bi-box-seam me-1"></i>Productos de la orden</label>
+                                    <table class="table table-sm table-bordered mb-0" style="font-size:13px;" id="tablaItemsOrden">
+                                        <thead class="table-dark">
+                                            <tr><th>#</th><th>Producto</th><th class="text-center">Cantidad</th><th class="text-end">P. Unit.</th><th class="text-end">Subtotal</th></tr>
+                                        </thead>
+                                        <tbody id="tbodyItems"></tbody>
+                                        <tfoot><tr class="fw-bold"><td colspan="4" class="text-end">Total:</td><td class="text-end" id="totalOrden">0.00</td></tr></tfoot>
+                                    </table>
+                                </div>
+
+                                <div class="col-12">
+                                    <hr>
+                                    <div class="d-flex align-items-center justify-content-between">
+                                        <small class="text-muted fw-bold">Datos del transporte</small>
+                                        <button type="button" class="btn btn-sm btn-outline-primary" onclick="abrirModalTransportistas()">
+                                            <i class="bi bi-truck me-1"></i>Buscar transportista
+                                        </button>
+                                    </div>
+                                </div>
+                                <div class="col-12" id="infoTranspSeleccionado" style="display:none;">
+                                    <div class="alert alert-success py-2 mb-0 d-flex justify-content-between align-items-center">
+                                        <span id="infoTranspTexto"></span>
+                                        <button type="button" class="btn btn-sm btn-outline-danger" onclick="limpiarTransportista()"><i class="bi bi-x-lg"></i></button>
+                                    </div>
+                                </div>
                                 <div class="col-6 form-section">
                                     <label class="form-label">RUC transportista</label>
-                                    <input type="text" name="transportistaRuc" class="form-control" maxlength="11">
+                                    <input type="text" name="transportistaRuc" class="form-control" maxlength="11" id="transportistaRuc">
                                 </div>
                                 <div class="col-6 form-section">
                                     <label class="form-label">Nombre transportista</label>
-                                    <input type="text" name="transportistaNombre" class="form-control">
+                                    <input type="text" name="transportistaNombre" class="form-control" id="transportistaNombre">
                                 </div>
                                 <div class="col-4 form-section">
                                     <label class="form-label">DNI conductor</label>
-                                    <input type="text" name="conductorDni" class="form-control" maxlength="8">
+                                    <input type="text" name="conductorDni" class="form-control" maxlength="8" id="conductorDni">
                                 </div>
                                 <div class="col-4 form-section">
                                     <label class="form-label">Nombre conductor</label>
-                                    <input type="text" name="conductorNombre" class="form-control">
+                                    <input type="text" name="conductorNombre" class="form-control" id="conductorNombre">
                                 </div>
                                 <div class="col-4 form-section">
                                     <label class="form-label">Placa veh&iacute;culo</label>
-                                    <input type="text" name="placaVehiculo" class="form-control" maxlength="15">
+                                    <input type="text" name="placaVehiculo" class="form-control" maxlength="15" id="placaVehiculo">
                                 </div>
                                 <div class="col-6 form-section">
                                     <label class="form-label">Licencia conductor</label>
-                                    <input type="text" name="conductorLicencia" class="form-control">
+                                    <input type="text" name="conductorLicencia" class="form-control" id="conductorLicencia">
                                 </div>
                                 <div class="col-3 form-section">
                                     <label class="form-label">Peso total</label>
@@ -186,11 +193,11 @@
                                 </div>
                                 <div class="col-3 form-section">
                                     <label class="form-label">N&ordm; bultos</label>
-                                    <input type="number" name="numeroBultos" class="form-control" min="0">
+                                    <input type="number" name="numeroBultos" class="form-control" min="0" id="numeroBultos">
                                 </div>
                                 <div class="col-12 form-section">
                                     <label class="form-label">Observaciones</label>
-                                    <input type="text" name="observaciones" class="form-control">
+                                    <input type="text" name="observaciones" class="form-control" id="observaciones">
                                 </div>
                                 <div class="col-12 d-flex gap-2">
                                     <button type="submit" class="btn btn-primary"><i class="bi bi-check-lg"></i> Registrar gu&iacute;a</button>
@@ -203,18 +210,449 @@
         </main>
     </div>
 </div>
+<!-- Modal Transportistas -->
+<div class="modal fade" id="modalTransportistas" tabindex="-1">
+    <div class="modal-dialog modal-lg modal-dialog-scrollable">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title"><i class="bi bi-truck me-2"></i>Transportistas registrados</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <!-- Formulario agregar/editar -->
+                <div class="card mb-3" id="formTranspCard">
+                    <div class="card-header py-2 d-flex justify-content-between align-items-center">
+                        <small class="fw-bold" id="formTranspTitulo">Nuevo transportista</small>
+                        <button type="button" class="btn btn-sm btn-outline-secondary" id="btnCancelarEdicion" style="display:none;" onclick="cancelarEdicionTransp()">Cancelar</button>
+                    </div>
+                    <div class="card-body py-2">
+                        <input type="hidden" id="transpEditId">
+                        <div class="row g-2">
+                            <!-- Buscar por RUC/DNI -->
+                            <div class="col-8">
+                                <div class="d-flex gap-1">
+                                    <input type="text" class="form-control form-control-sm" id="transpNumDoc" placeholder="RUC (11) o DNI (8)" maxlength="11" style="min-width:130px;">
+                                    <button type="button" class="btn btn-sm btn-info flex-shrink-0" onclick="buscarTranspSunat()">
+                                        <i class="bi bi-search me-1"></i>Buscar
+                                    </button>
+                                </div>
+                            </div>
+                            <!-- Datos transportista -->
+                            <div class="col-4">
+                                <input type="text" class="form-control form-control-sm" id="transpRuc" placeholder="RUC" maxlength="11" readonly>
+                            </div>
+                            <div class="col-8">
+                                <input type="text" class="form-control form-control-sm" id="transpNombre" placeholder="Nombre / Raz&oacute;n social *">
+                            </div>
+                            <div class="col-3">
+                                <input type="text" class="form-control form-control-sm" id="transpCondDni" placeholder="DNI conductor" maxlength="8">
+                            </div>
+                            <div class="col-5">
+                                <input type="text" class="form-control form-control-sm" id="transpCondNombre" placeholder="Nombre conductor">
+                            </div>
+                            <div class="col-4">
+                                <input type="text" class="form-control form-control-sm" id="transpCondLicencia" placeholder="Licencia">
+                            </div>
+                            <div class="col-3">
+                                <input type="text" class="form-control form-control-sm" id="transpPlaca" placeholder="Placa" maxlength="15">
+                            </div>
+                            <div class="col-3">
+                                <input type="text" class="form-control form-control-sm" id="transpTelefono" placeholder="Tel&eacute;fono">
+                            </div>
+                            <div class="col-6 d-flex align-items-end">
+                                <button type="button" class="btn btn-sm btn-primary w-100" onclick="guardarTransportista()">
+                                    <i class="bi bi-save me-1"></i><span id="btnGuardarTranspTexto">Agregar</span>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <!-- Tabla de transportistas -->
+                <div id="msgTransp" style="display:none;" class="alert alert-info py-2"></div>
+                <table class="table table-sm table-hover table-bordered" style="font-size:13px;">
+                    <thead class="table-dark">
+                        <tr>
+                            <th>RUC / DNI</th>
+                            <th>Nombre</th>
+                            <th>Conductor</th>
+                            <th>Placa</th>
+                            <th class="text-center" style="width:140px;">Acciones</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tbodyTransportistas">
+                        <tr><td colspan="5" class="text-center text-muted">Cargando...</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Alerta flotante: resultado búsqueda SUNAT/RENIEC -->
+<div id="alertaFlotanteSunat" style="display:none; position:fixed; z-index:99999; min-width:320px; max-width:480px; top:80px; right:30px; box-shadow:0 8px 32px rgba(0,0,0,.25); border-radius:10px; overflow:hidden; cursor:default;">
+    <div id="alertaFlotanteHeader" style="background:#f0ad4e; color:#fff; padding:6px 12px; display:flex; justify-content:space-between; align-items:center; font-weight:600; font-size:13px; user-select:none; cursor:move;">
+        <span><i class="bi bi-info-circle me-1"></i>Datos SUNAT / RENIEC</span>
+        <button type="button" onclick="cerrarAlertaFlotante()" style="background:none; border:none; color:#fff; font-size:18px; cursor:pointer; line-height:1; padding:0 2px;" title="Cerrar">&times;</button>
+    </div>
+    <div id="alertaFlotanteBody" style="background:#fff; padding:12px 14px; font-size:13px; line-height:1.6; color:#333;"></div>
+</div>
+
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 <script th:src="@{/js/app.js}"></script>
 <script>
+var modalTranspInstance = null;
+var API_TRANSP = '/web/guias-remision/api/transportistas';
+
+document.addEventListener('DOMContentLoaded', function() {
+    var numDoc = document.getElementById('transpNumDoc');
+    if (numDoc) {
+        numDoc.addEventListener('input', function() {
+            var limpio = this.value.replace(/\D/g, '');
+            if (limpio !== this.value) this.value = limpio;
+        });
+    }
+    (function initAlertaDraggable() {
+        var alerta = document.getElementById('alertaFlotanteSunat');
+        var header = document.getElementById('alertaFlotanteHeader');
+        if (!alerta || !header) return;
+        var drag = { active: false, startX: 0, startY: 0, startLeft: 0, startTop: 0 };
+        header.addEventListener('mousedown', function (e) {
+            if (e.target.tagName === 'BUTTON') return;
+            e.preventDefault();
+            drag.active = true; drag.startX = e.clientX; drag.startY = e.clientY;
+            var rect = alerta.getBoundingClientRect();
+            drag.startLeft = rect.left; drag.startTop = rect.top;
+            alerta.style.right = 'auto'; alerta.style.left = drag.startLeft + 'px'; alerta.style.top = drag.startTop + 'px';
+            document.addEventListener('mousemove', onMove);
+            document.addEventListener('mouseup', onUp);
+        });
+        function onMove(e) { if (!drag.active) return; alerta.style.left = (drag.startLeft + e.clientX - drag.startX) + 'px'; alerta.style.top = (drag.startTop + e.clientY - drag.startY) + 'px'; }
+        function onUp() { drag.active = false; document.removeEventListener('mousemove', onMove); document.removeEventListener('mouseup', onUp); }
+    })();
+});
+
+function mostrarAlertaFlotante(html, colorHeader) {
+    var alerta = document.getElementById('alertaFlotanteSunat');
+    var header = document.getElementById('alertaFlotanteHeader');
+    var body = document.getElementById('alertaFlotanteBody');
+    if (!alerta || !body) return;
+    body.innerHTML = html;
+    if (header && colorHeader) header.style.background = colorHeader;
+    alerta.style.display = 'block';
+}
+function cerrarAlertaFlotante() {
+    var alerta = document.getElementById('alertaFlotanteSunat');
+    if (alerta) alerta.style.display = 'none';
+}
+function buscarTranspSunat() {
+    var numero = document.getElementById('transpNumDoc').value.trim().replace(/\D/g, '');
+    document.getElementById('transpNumDoc').value = numero;
+
+    if (!numero) { alert('Ingrese RUC (11 d\u00edgitos) o DNI (8 d\u00edgitos).'); return; }
+
+    var tipo = '';
+    if (numero.length === 11) { tipo = 'RUC'; }
+    else if (numero.length === 8) { tipo = 'DNI'; }
+    else { alert('Ingrese 8 d\u00edgitos para DNI o 11 para RUC.'); return; }
+
+    mostrarAlertaFlotante('<div style="color:#0c5460;"><i class="bi bi-hourglass-split me-1"></i>Buscando ' + tipo + ' en SUNAT/RENIEC...</div>', '#17a2b8');
+
+    fetch('/api/sunat/consultar?tipo=' + tipo + '&numero=' + numero)
+        .then(function(r) { return r.json(); })
+        .then(function(data) {
+            if (data.error) {
+                mostrarAlertaFlotante('<div style="color:#721c24;"><i class="bi bi-x-circle-fill me-1"></i>' + data.error + '</div>', '#dc3545');
+                return;
+            }
+
+            if (tipo === 'RUC') {
+                document.getElementById('transpRuc').value = numero;
+                document.getElementById('transpNombre').value = data.razonSocial || data.nombre || '';
+
+                var html = '<div style="color:#155724;"><i class="bi bi-check-circle-fill me-1"></i><strong>Transportista encontrado</strong></div>';
+                html += '<table style="width:100%; margin-top:6px; font-size:13px; border-collapse:collapse;">';
+                html += '<tr><td style="padding:2px 8px 2px 0; font-weight:600;">Nombre:</td><td>' + (data.razonSocial || '') + '</td></tr>';
+                html += '<tr><td style="padding:2px 8px 2px 0; font-weight:600;">RUC:</td><td>' + numero + '</td></tr>';
+                if (data.estado) html += '<tr><td style="padding:2px 8px 2px 0; font-weight:600;">Estado:</td><td>' + data.estado + '</td></tr>';
+                if (data.condicion) html += '<tr><td style="padding:2px 8px 2px 0; font-weight:600;">Condici\u00f3n:</td><td>' + data.condicion + '</td></tr>';
+                if (data.direccion) html += '<tr><td style="padding:2px 8px 2px 0; font-weight:600;"><i class="bi bi-geo-alt"></i> Direcci\u00f3n:</td><td>' + data.direccion + '</td></tr>';
+                html += '</table>';
+                mostrarAlertaFlotante(html, '#28a745');
+            } else {
+                document.getElementById('transpRuc').value = '';
+                var nombreCompleto = '';
+                if (data.nombres) {
+                    nombreCompleto = (data.nombres || '') + ' ' + (data.apellidoPaterno || '') + ' ' + (data.apellidoMaterno || '');
+                } else if (data.razonSocial) {
+                    nombreCompleto = data.razonSocial;
+                }
+                nombreCompleto = nombreCompleto.trim();
+
+                document.getElementById('transpCondDni').value = numero;
+                document.getElementById('transpCondNombre').value = nombreCompleto;
+                document.getElementById('transpNombre').value = nombreCompleto;
+
+                var html = '<div style="color:#155724;"><i class="bi bi-check-circle-fill me-1"></i><strong>Conductor encontrado</strong></div>';
+                html += '<table style="width:100%; margin-top:6px; font-size:13px; border-collapse:collapse;">';
+                html += '<tr><td style="padding:2px 8px 2px 0; font-weight:600;">Nombre:</td><td>' + nombreCompleto + '</td></tr>';
+                html += '<tr><td style="padding:2px 8px 2px 0; font-weight:600;">DNI:</td><td>' + numero + '</td></tr>';
+                if (data.direccion) html += '<tr><td style="padding:2px 8px 2px 0; font-weight:600;"><i class="bi bi-geo-alt"></i> Direcci\u00f3n:</td><td>' + data.direccion + '</td></tr>';
+                html += '</table>';
+                mostrarAlertaFlotante(html, '#28a745');
+            }
+        })
+        .catch(function(err) {
+            mostrarAlertaFlotante('<div style="color:#721c24;"><i class="bi bi-x-circle-fill me-1"></i>Error: ' + err + '</div>', '#dc3545');
+        });
+}
+
+function abrirModalTransportistas() {
+    if (!modalTranspInstance) {
+        modalTranspInstance = new bootstrap.Modal(document.getElementById('modalTransportistas'));
+    }
+    modalTranspInstance.show();
+    cargarTransportistas();
+}
+
+function cargarTransportistas() {
+    fetch(API_TRANSP)
+        .then(function(r) { return r.json(); })
+        .then(function(lista) {
+            var tbody = document.getElementById('tbodyTransportistas');
+            tbody.innerHTML = '';
+            if (lista.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="5" class="text-center text-muted">No hay transportistas registrados.</td></tr>';
+                return;
+            }
+            for (var i = 0; i < lista.length; i++) {
+                var t = lista[i];
+                var tr = '<tr>';
+                tr += '<td>' + (t.ruc || t.conductorDni || '—') + '</td>';
+                tr += '<td>' + (t.nombre || '') + '</td>';
+                tr += '<td>' + (t.conductorNombre || '') + '</td>';
+                tr += '<td>' + (t.placaVehiculo || '') + '</td>';
+                tr += '<td class="text-center">';
+                tr += '<button class="btn btn-sm btn-success me-1" onclick="seleccionarTransportista(' + t.id + ')" title="Seleccionar"><i class="bi bi-check-lg"></i></button>';
+                tr += '<button class="btn btn-sm btn-warning me-1" onclick="editarTransportista(' + t.id + ')" title="Editar"><i class="bi bi-pencil"></i></button>';
+                tr += '<button class="btn btn-sm btn-danger" onclick="eliminarTransportista(' + t.id + ')" title="Eliminar"><i class="bi bi-trash"></i></button>';
+                tr += '</td>';
+                tr += '</tr>';
+                tbody.innerHTML += tr;
+            }
+        })
+        .catch(function(err) { alert('Error cargando transportistas: ' + err); });
+}
+
+function guardarTransportista() {
+    var nombre = document.getElementById('transpNombre').value.trim();
+    if (!nombre) { alert('El nombre es obligatorio.'); return; }
+
+    var datos = {
+        ruc: document.getElementById('transpRuc').value.trim(),
+        nombre: nombre,
+        conductorDni: document.getElementById('transpCondDni').value.trim(),
+        conductorNombre: document.getElementById('transpCondNombre').value.trim(),
+        conductorLicencia: document.getElementById('transpCondLicencia').value.trim(),
+        placaVehiculo: document.getElementById('transpPlaca').value.trim(),
+        telefono: document.getElementById('transpTelefono').value.trim()
+    };
+
+    var editId = document.getElementById('transpEditId').value;
+    var url = editId ? (API_TRANSP + '/' + editId) : API_TRANSP;
+    var method = editId ? 'PUT' : 'POST';
+
+    fetch(url, {
+        method: method,
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify(datos)
+    })
+    .then(function(r) { return r.json(); })
+    .then(function(resp) {
+        if (resp.error) { alert('Error: ' + resp.error); return; }
+        limpiarFormTransp();
+        cargarTransportistas();
+        var msg = document.getElementById('msgTransp');
+        msg.innerHTML = '<i class="bi bi-check-circle me-1"></i>' + (editId ? 'Transportista actualizado.' : 'Transportista agregado.');
+        msg.className = 'alert alert-success py-2';
+        msg.style.display = '';
+        setTimeout(function() { msg.style.display = 'none'; }, 3000);
+    })
+    .catch(function(err) { alert('Error: ' + err); });
+}
+
+function editarTransportista(id) {
+    fetch(API_TRANSP)
+        .then(function(r) { return r.json(); })
+        .then(function(lista) {
+            var t = lista.find(function(x) { return x.id === id; });
+            if (!t) { alert('No encontrado'); return; }
+            document.getElementById('transpEditId').value = t.id;
+            document.getElementById('transpRuc').value = t.ruc || '';
+            document.getElementById('transpRuc').readOnly = false;
+            document.getElementById('transpNombre').value = t.nombre || '';
+            document.getElementById('transpCondDni').value = t.conductorDni || '';
+            document.getElementById('transpCondNombre').value = t.conductorNombre || '';
+            document.getElementById('transpCondLicencia').value = t.conductorLicencia || '';
+            document.getElementById('transpPlaca').value = t.placaVehiculo || '';
+            document.getElementById('transpTelefono').value = t.telefono || '';
+            if (t.ruc && t.ruc.length === 11) {
+                document.getElementById('transpNumDoc').value = t.ruc;
+            } else if (t.conductorDni) {
+                document.getElementById('transpNumDoc').value = t.conductorDni;
+            }
+            cerrarAlertaFlotante();
+            document.getElementById('formTranspTitulo').textContent = 'Editando: ' + t.nombre;
+            document.getElementById('btnGuardarTranspTexto').textContent = 'Actualizar';
+            document.getElementById('btnCancelarEdicion').style.display = '';
+        });
+}
+
+function cancelarEdicionTransp() {
+    limpiarFormTransp();
+}
+
+function limpiarFormTransp() {
+    document.getElementById('transpEditId').value = '';
+    document.getElementById('transpRuc').value = '';
+    document.getElementById('transpRuc').readOnly = true;
+    document.getElementById('transpNombre').value = '';
+    document.getElementById('transpCondDni').value = '';
+    document.getElementById('transpCondNombre').value = '';
+    document.getElementById('transpCondLicencia').value = '';
+    document.getElementById('transpPlaca').value = '';
+    document.getElementById('transpTelefono').value = '';
+    document.getElementById('transpNumDoc').value = '';
+    cerrarAlertaFlotante();
+    document.getElementById('formTranspTitulo').textContent = 'Nuevo transportista';
+    document.getElementById('btnGuardarTranspTexto').textContent = 'Agregar';
+    document.getElementById('btnCancelarEdicion').style.display = 'none';
+}
+
+function eliminarTransportista(id) {
+    if (!confirm('¿Eliminar este transportista permanentemente?')) return;
+    fetch(API_TRANSP + '/' + id, { method: 'DELETE' })
+        .then(function(r) { return r.json(); })
+        .then(function(resp) {
+            if (resp.error) { alert('Error: ' + resp.error); return; }
+            cargarTransportistas();
+            var msg = document.getElementById('msgTransp');
+            msg.innerHTML = '<i class="bi bi-trash me-1"></i>Transportista eliminado.';
+            msg.className = 'alert alert-warning py-2';
+            msg.style.display = '';
+            setTimeout(function() { msg.style.display = 'none'; }, 3000);
+        })
+        .catch(function(err) { alert('Error: ' + err); });
+}
+
+function seleccionarTransportista(id) {
+    fetch(API_TRANSP)
+        .then(function(r) { return r.json(); })
+        .then(function(lista) {
+            var t = lista.find(function(x) { return x.id === id; });
+            if (!t) { alert('No encontrado'); return; }
+            document.getElementById('transportistaRuc').value = t.ruc || '';
+            document.getElementById('transportistaNombre').value = t.nombre || '';
+            document.getElementById('conductorDni').value = t.conductorDni || '';
+            document.getElementById('conductorNombre').value = t.conductorNombre || '';
+            document.getElementById('conductorLicencia').value = t.conductorLicencia || '';
+            document.getElementById('placaVehiculo').value = t.placaVehiculo || '';
+
+            var info = '<i class="bi bi-truck me-1"></i><strong>' + t.nombre + '</strong>';
+            if (t.ruc) info += ' | RUC: ' + t.ruc;
+            if (t.placaVehiculo) info += ' | Placa: ' + t.placaVehiculo;
+            if (t.conductorNombre) info += ' | Conductor: ' + t.conductorNombre;
+            document.getElementById('infoTranspTexto').innerHTML = info;
+            document.getElementById('infoTranspSeleccionado').style.display = '';
+
+            modalTranspInstance.hide();
+        });
+}
+
+function limpiarTransportista() {
+    document.getElementById('transportistaRuc').value = '';
+    document.getElementById('transportistaNombre').value = '';
+    document.getElementById('conductorDni').value = '';
+    document.getElementById('conductorNombre').value = '';
+    document.getElementById('conductorLicencia').value = '';
+    document.getElementById('placaVehiculo').value = '';
+    document.getElementById('infoTranspSeleccionado').style.display = 'none';
+}
+
 function cargarOrden() {
     var sel = document.getElementById('selOrden');
-    var opt = sel.options[sel.selectedIndex];
-    if (sel.value) {
-        document.getElementById('dirPartida').value = opt.getAttribute('data-dir') || '';
-        document.getElementById('divProveedor').style.display = 'none';
-    } else {
+    var ordenId = sel.value;
+
+    if (!ordenId) {
         document.getElementById('divProveedor').style.display = '';
+        document.getElementById('infoOrden').style.display = 'none';
+        document.getElementById('divItemsOrden').style.display = 'none';
+        document.getElementById('dirPartida').value = '';
+        document.getElementById('dirLlegada').value = '';
+        document.getElementById('observaciones').value = '';
+        document.getElementById('tbodyItems').innerHTML = '';
+        document.getElementById('totalOrden').textContent = '0.00';
+        return;
     }
+
+    fetch('/web/guias-remision/api/orden/' + ordenId)
+        .then(function(r) { return r.json(); })
+        .then(function(data) {
+            if (data.error) {
+                alert('Error: ' + data.error);
+                return;
+            }
+
+            document.getElementById('divProveedor').style.display = 'none';
+
+            var prov = data.proveedor || {};
+            document.getElementById('dirPartida').value = prov.direccion || '';
+            document.getElementById('dirLlegada').value = data.direccionLlegada || '';
+
+            if (data.observaciones) {
+                document.getElementById('observaciones').value = 'Ref. OC #' + data.id + ' - ' + (data.observaciones || '');
+            } else {
+                document.getElementById('observaciones').value = 'Ref. OC #' + data.id;
+            }
+
+            var html = '<i class="bi bi-building me-1"></i><strong>Proveedor:</strong> ' + (prov.razonSocial || '—');
+            html += ' | <strong>' + (prov.tipoDocumento || 'DOC') + ':</strong> ' + (prov.numeroDocumento || '—');
+            if (prov.direccion) html += '<br><i class="bi bi-geo-alt me-1"></i><strong>Dirección:</strong> ' + prov.direccion;
+            if (prov.telefono) html += ' | <i class="bi bi-telephone me-1"></i>' + prov.telefono;
+            if (prov.email) html += ' | <i class="bi bi-envelope me-1"></i>' + prov.email;
+            html += '<br><i class="bi bi-arrow-right me-1"></i><strong>Destino:</strong> ' + (data.empresaNombre || '') + ' — ' + (data.direccionLlegada || '');
+            html += ' | <strong>Estado OC:</strong> <span class="badge bg-secondary">' + (data.estado || '') + '</span>';
+            document.getElementById('infoOrdenContenido').innerHTML = html;
+            document.getElementById('infoOrden').style.display = '';
+
+            var tbody = document.getElementById('tbodyItems');
+            tbody.innerHTML = '';
+            var items = data.items || [];
+            if (items.length > 0) {
+                for (var i = 0; i < items.length; i++) {
+                    var it = items[i];
+                    var tr = '<tr>';
+                    tr += '<td>' + (i + 1) + '</td>';
+                    tr += '<td>' + (it.productoNombre || '') + '</td>';
+                    tr += '<td class="text-center">' + (it.cantidad || 0) + '</td>';
+                    tr += '<td class="text-end">' + parseFloat(it.precioUnitario || 0).toFixed(2) + '</td>';
+                    tr += '<td class="text-end">' + parseFloat(it.subtotal || 0).toFixed(2) + '</td>';
+                    tr += '</tr>';
+                    tbody.innerHTML += tr;
+                }
+                document.getElementById('totalOrden').textContent = parseFloat(data.total || 0).toFixed(2);
+                document.getElementById('numeroBultos').value = items.length;
+                document.getElementById('divItemsOrden').style.display = '';
+            } else {
+                document.getElementById('divItemsOrden').style.display = 'none';
+            }
+
+            document.getElementById('motivoTraslado').value = 'COMPRA';
+            var hoy = new Date().toISOString().split('T')[0];
+            document.getElementById('fechaTraslado').value = hoy;
+        })
+        .catch(function(err) {
+            alert('Error cargando datos de la orden: ' + err);
+        });
 }
 </script>
 </body>
