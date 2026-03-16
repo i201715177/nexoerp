@@ -1,3 +1,14 @@
+### Etapa 1: construir el JAR con Maven
+FROM maven:3.9-eclipse-temurin-17 AS build
+
+WORKDIR /build
+COPY pom.xml .
+COPY src ./src
+
+# Construye el JAR sin tests (más rápido y evita fallos de tests en Render)
+RUN mvn -q -DskipTests package
+
+### Etapa 2: imagen ligera solo con el runtime
 FROM eclipse-temurin:17-jre-alpine
 
 LABEL maintainer="NexoERP"
@@ -7,7 +18,8 @@ RUN addgroup -S nexoerp && adduser -S nexoerp -G nexoerp
 
 WORKDIR /app
 
-COPY target/nexoerp-1.0.0.jar app.jar
+# Copiamos el artefacto construido en la etapa anterior
+COPY --from=build /build/target/nexoerp-1.0.0.jar app.jar
 
 RUN mkdir -p /app/logs /app/backups && \
     chown -R nexoerp:nexoerp /app
